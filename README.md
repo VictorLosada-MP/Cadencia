@@ -42,11 +42,15 @@ evidencia/  capturas del teardown
 
 ```bash
 npm install
-cp .env.local.example .env.local   # y pega tu clave de console.anthropic.com
+cp .env.local.example .env.local   # y pega tu clave
 npm run dev
 ```
 
 Abre http://localhost:3000, pega tu perfil y dale a Diagnosticar.
+
+**Sirve la clave de OpenAI o la de Anthropic** — la que tengas. El sistema usa
+la que encuentre; si están las dos, gana Anthropic, o fuerzas una con
+`PROVEEDOR=openai`.
 
 ## Estado
 
@@ -64,10 +68,12 @@ Abre http://localhost:3000, pega tu perfil y dale a Diagnosticar.
 
 - `prompts/*.md` — cada función es un archivo de texto, editable sin tocar código
 - `perfiles/*.json` — los datos de cada negocio; el sistema no los lleva dentro
+- `lib/modelo.ts` — la única capa que habla con un proveedor de IA
 - `lib/perfil.ts` — carga perfil y prompt en tiempo de ejecución
 - `app/api/*/route.ts` — una ruta por función
 
 Cambiar cómo diagnostica es editar un `.md`, no recompilar nada.
+Cambiar de proveedor de IA es cambiar una variable de entorno.
 
 ## Nombre
 
