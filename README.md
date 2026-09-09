@@ -38,15 +38,36 @@ perfiles/   perfiles de prueba
 evidencia/  capturas del teardown
 ```
 
+## Correr el proyecto
+
+```bash
+npm install
+cp .env.local.example .env.local   # y pega tu clave de console.anthropic.com
+npm run dev
+```
+
+Abre http://localhost:3000, pega tu perfil y dale a Diagnosticar.
+
 ## Estado
 
 | | |
 |---|---|
 | Mapa del producto de referencia | cerrado — 11 módulos, 17 capturas |
 | Arquitectura y datos mínimos | definidos |
-| Lógica de funciones 1, 2 y 3 | escrita, pendiente de 5 correcciones |
-| Lógica de función 4 | espera el criterio de publicable |
-| Prompts | pendientes |
+| Perfil de prueba | completo |
+| **Función 1 — diagnóstico** | **funcionando** |
+| Función 2 — banco semanal | prompt pendiente |
+| Función 3 — guion | prompt pendiente |
+| Función 4 — pieza publicable | espera el criterio de publicable |
+
+## Cómo está armado
+
+- `prompts/*.md` — cada función es un archivo de texto, editable sin tocar código
+- `perfiles/*.json` — los datos de cada negocio; el sistema no los lleva dentro
+- `lib/perfil.ts` — carga perfil y prompt en tiempo de ejecución
+- `app/api/*/route.ts` — una ruta por función
+
+Cambiar cómo diagnostica es editar un `.md`, no recompilar nada.
 
 ## Nombre
 
