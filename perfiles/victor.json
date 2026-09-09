@@ -13,10 +13,13 @@
       "tipo": "tres audios transcritos, registro natural, sin editar",
       "estado": "completo"
     },
-    "accion": null
-  },
-  "pendiente": {
-    "accion": "No tiene un CTA probado todavía. El análisis de perfil sugirió 'Escribe SISTEMA' o 'Aplica al diagnóstico', sin validar. La Función 2 lo necesita para cerrar cada pieza."
+    "accion": {
+      "texto": "Aplicar ahora",
+      "antesala": "Deja de construir un negocio que depende de otras personas para funcionar",
+      "origen": "Landing page — en uso",
+      "validado": false,
+      "nota": "Sin datos de conversión todavía. La antesala nombra el dolor y usa el 'deja de' propio de su registro; el botón no dice qué pasa después de tocar."
+    }
   },
   "enriquecimiento": {
     "objeciones": [
@@ -82,7 +85,11 @@
   },
   "estado_contenido": {
     "publica_hoy": false,
-    "nota": "En fase de construcción de marca. Contacto directo, propuestas, optimización de perfiles y trabajo por referidos. Sin sistema constante de contenido público.",
+    "nota": "No ha empezado públicamente con la marca personal porque el sistema todavía no está construido. Contacto directo, propuestas y trabajo por referidos.",
     "implicacion": "Sin historial publicado, la Función 1 corre solo en modo perfil. Es exactamente el caso del público B, así que sirve para validar esa puerta."
+  },
+  "integridad": {
+    "sin_prueba_social": true,
+    "nota": "No hay clientes ni casos publicables todavía. Ninguna función puede generar testimonios, cifras ni casos de éxito para este perfil — no existen. Ver la regla anti-invención del Reglamento."
   }
 }

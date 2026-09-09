@@ -6,6 +6,18 @@ Este archivo es el campo `voz` del perfil. No es una descripción del tono: es
 el tono, en crudo. La Función 3 lo lee para escribir como él habla, no para
 copiar sus frases.
 
+## Regla del archivo: aquí no entra prueba inventada
+
+Se retiraron dos afirmaciones de las muestras originales — un caso de cliente
+que no existe y una mención a clientes y seguidores que todavía no hay.
+
+No es una cuestión de forma. **El modelo aprende del patrón, no del dato.** Una
+muestra que contiene un testimonio inventado le enseña al sistema a producir
+testimonios inventados, con nombres y edades nuevos cada vez, y esos sí saldrían
+publicados. Es exactamente lo que prohíbe la regla anti-invención del Reglamento.
+
+Todo lo demás está literal.
+
 ---
 
 ## Muestra 1 — Explicando qué hace, a un amigo
@@ -102,10 +114,10 @@ copiar sus frases.
 > obsesiones tipo: bueno, ¿y si no sé explicar el sistema? ¿Y si no funciona? ¿Y
 > si no sé venderlo?
 >
-> Pero créeme que lo que me llevó hoy en día a estar aquí vendiendo, a tener ya
-> mis clientes, fue **el haberlo intentado**. Pero antes de haberlo intentado fue
-> el haber tenido la voluntad de hacerlo, ¿no? La voluntad de hacerlo y también
-> sin altas expectativas, saber que puede que pierda como puede que gane.
+> Pero créeme que lo que me llevó a estar donde estoy fue **el haberlo
+> intentado**. Pero antes de haberlo intentado fue el haber tenido la voluntad de
+> hacerlo, ¿no? La voluntad de hacerlo y también sin altas expectativas, saber
+> que puede que pierda como puede que gane.
 >
 > Ahora no te estoy diciendo que tú ahorita conmigo tienes que tener esa
 > expectativa de que vas a perder, no, esto es muy distinto. Yo lo único que te
@@ -124,13 +136,7 @@ copiar sus frases.
 > archivo, después toca…” no, no, no. Esto es algo muy, muy — podría decir
 > fácil — pero **fácil pero fuerte, fácil y poderoso de aprender**.
 >
-> De hecho, uno de mis clientes, la persona más mayor que he atendido hasta el
-> momento, ha sido una persona de cincuenta y un años, no me acuerdo bien. Y él
-> ya hoy en día tiene su propio sistema, lo sabe manejar, sabe para qué funciona
-> la sección de marketing, sabe para qué funciona la sección de ventas, sabe cómo
-> cambiar algo en algún otro momento. Y todavía sigo hablando con él, y el último
-> mensaje que recibí es que estaba muy contento y que pensaba venderle el sistema
-> que él tenía a un amigo, hacer de eso otro negocio.
+> *[Aquí venía un caso de cliente que no es real. Retirado — ver nota abajo.]*
 >
 > Entonces no te preocupes por eso, de verdad, de verdad que yo me tomo la
 > responsabilidad, o sea, tengo la seguridad y me responsabilizo de decir que tú
