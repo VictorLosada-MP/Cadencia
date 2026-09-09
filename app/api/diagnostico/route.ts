@@ -1,15 +1,14 @@
-import { cliente, extraerJSON, MODELO } from "@/lib/claude";
+import { extraerJSON, generar, type Imagen } from "@/lib/modelo";
 import { cargarPerfil, cargarPrompt } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
-import type Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 120;
 
 type Cuerpo = {
   perfilId: string;
-  /** El perfil social a revisar: texto pegado, imagen en base64, o ambos. */
+  /** El perfil social a revisar: texto pegado, captura, o ambos. */
   texto?: string;
-  imagen?: { media_type: string; data: string };
+  imagen?: Imagen;
 };
 
 export async function POST(request: Request) {
@@ -39,61 +38,22 @@ export async function POST(request: Request) {
     // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { voz: _fuente, ...nucleo } = perfil.nucleo;
-    const contexto = [
+
+    const texto = [
       "## Perfil de Negocio",
       JSON.stringify({ ...perfil, nucleo }, null, 2),
       voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
+      "\n## Perfil social a revisar",
+      cuerpo.imagen ? "Está en la captura adjunta." : "",
+      cuerpo.texto?.trim() ?? "",
+      "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const contenido: Anthropic.ContentBlockParam[] = [];
-    if (cuerpo.imagen) {
-      contenido.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: cuerpo.imagen.media_type as "image/png",
-          data: cuerpo.imagen.data,
-        },
-      });
-    }
-    contenido.push({
-      type: "text",
-      text: [
-        contexto,
-        "\n## Perfil social a revisar",
-        cuerpo.imagen ? "Está en la captura de arriba." : "",
-        cuerpo.texto?.trim() ?? "",
-        "\nDevuelve solo el JSON.",
-      ].join("\n"),
-    });
-
-    const respuesta = await cliente().messages.create({
-      model: MODELO,
-      max_tokens: 16000,
-      system: [{ type: "text", text: instrucciones, cache_control: { type: "ephemeral" } }],
-      thinking: { type: "adaptive" },
-      messages: [{ role: "user", content: contenido }],
-    });
-
-    if (respuesta.stop_reason === "refusal") {
-      return Response.json(
-        { error: "El modelo declinó esta solicitud." },
-        { status: 422 },
-      );
-    }
-
-    const texto = respuesta.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
+    const r = await generar({ sistema: instrucciones, texto, imagen: cuerpo.imagen });
 
     return Response.json({
-      diagnostico: extraerJSON<Diagnostico>(texto),
-      uso: {
-        entrada: respuesta.usage.input_tokens,
-        salida: respuesta.usage.output_tokens,
-        cache: respuesta.usage.cache_read_input_tokens ?? 0,
-      },
+      diagnostico: extraerJSON<Diagnostico>(r.texto),
+      meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error inesperado.";

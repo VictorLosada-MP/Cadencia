@@ -1,5 +1,5 @@
 {
-  "name": "app-tmp",
+  "name": "cadencia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "next": "16.3.4",
+    "openai": "^7.13.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
