@@ -42,7 +42,7 @@ evidencia/  capturas del teardown
 
 ```bash
 npm install
-cp .env.local.example .env.local   # y pega tu clave
+cp .env.example .env.local   # y pega tu clave
 npm run dev
 ```
 
@@ -51,6 +51,21 @@ Abre http://localhost:3000, pega tu perfil y dale a Diagnosticar.
 **Sirve la clave de OpenAI o la de Anthropic** — la que tengas. El sistema usa
 la que encuentre; si están las dos, gana Anthropic, o fuerzas una con
 `PROVEEDOR=openai`.
+
+### ¿Qué modelo pongo?
+
+```bash
+npm run modelos
+```
+
+Lista los modelos que tu clave puede usar. Copia uno a `MODELO_OPENAI` (o
+`MODELO_ANTHROPIC`) en `.env.local`. No adivines: pregúntale a tu propia clave.
+
+### Sobre las claves
+
+Van solo en `.env.local`, que git ignora. Nunca en un mensaje, un chat o un
+commit — una clave que se ve una vez ya está comprometida y hay que anularla
+desde el panel del proveedor.
 
 ## Estado
 
