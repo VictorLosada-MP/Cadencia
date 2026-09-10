@@ -1,6 +1,7 @@
 import { extraerJSON, generar, type Adjunto } from "@/lib/modelo";
-import { cargarPerfil, cargarPrompt } from "@/lib/perfil";
+import { cargarPerfil, cargarPrompt, perfilDesdeNegocio } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
+import { negocioListo, type Negocio } from "@/types/negocio";
 import {
   CASILLAS,
   MAX_REDES,
@@ -20,7 +21,14 @@ const MAX_CUADRICULAS = 2;
 const MAX_BYTES_IMAGEN = 5_000_000;
 
 type Cuerpo = {
-  perfilId: string;
+  /**
+   * El negocio a diagnosticar. Va en línea porque quien llega de internet no
+   * tiene ningún archivo commiteado — y mientras esto no existió, toda prueba
+   * con otro negocio corría contra el perfil de prueba.
+   */
+  negocio?: Negocio;
+  /** Alternativa: un perfil semilla del repositorio. Para pruebas. */
+  perfilId?: string;
   /** Una o dos redes, con las casillas ya confirmadas por el dueño. */
   redes?: EntradaRed[];
   publicado?: Publicado;
@@ -38,8 +46,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
 
-  if (!cuerpo.perfilId) {
-    return Response.json({ error: "Falta el perfil." }, { status: 400 });
+  if (!cuerpo.negocio && !cuerpo.perfilId) {
+    return Response.json({ error: "Falta el perfil del negocio." }, { status: 400 });
+  }
+  if (cuerpo.negocio && !negocioListo(cuerpo.negocio)) {
+    return Response.json(
+      { error: "Llena qué vendes, a quién le sirve y cómo queda después." },
+      { status: 400 },
+    );
   }
 
   const redes = (cuerpo.redes ?? []).filter(tieneContenido);
@@ -76,10 +90,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [{ perfil, voz }, instrucciones] = await Promise.all([
-      cargarPerfil(cuerpo.perfilId),
-      cargarPrompt("1-diagnostico.md"),
-    ]);
+    const instrucciones = await cargarPrompt("1-diagnostico.md");
+    const { perfil, voz } = cuerpo.negocio
+      ? {
+          perfil: perfilDesdeNegocio(cuerpo.negocio),
+          voz: cuerpo.negocio.voz?.trim() ?? "",
+        }
+      : await cargarPerfil(cuerpo.perfilId!);
 
     // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
