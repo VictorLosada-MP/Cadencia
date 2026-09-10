@@ -43,12 +43,30 @@ evidencia/  capturas del teardown
 
 ```bash
 npm install
-cp .env.example .env.local   # y pega tu clave
+cp .env.example .env.local        # y rellena las claves
+npx @better-auth/cli migrate      # crea las tablas de cuentas
+psql "$DATABASE_URL" -f db/001-cuentas-y-negocio.sql
 npm run dev
 ```
 
-Abre http://localhost:3000, sube una captura de tu perfil o escribe las
-casillas, y dale a Diagnosticar.
+Abre http://localhost:3000, crea tu cuenta, llena tu negocio una vez, sube una
+captura de tu perfil o escribe las casillas, y dale a Diagnosticar.
+
+### La base de datos
+
+Postgres a secas — sirve Supabase, Neon o uno propio. El código habla SQL plano
+con el driver `pg`: sin cliente del proveedor y sin extensiones propietarias,
+mudarse es cambiar `DATABASE_URL` y nada más.
+
+En Supabase la cadena está en *Project Settings → Database → Connection string*,
+la de **Transaction pooler**.
+
+### Las cuentas
+
+Son cuentas de Cadencia, con su correo y su contraseña. **Aquí no se pide ni se
+guarda ninguna credencial de Instagram, TikTok ni de ninguna red**, y no se va a
+pedir nunca — ni el sistema entra a ninguna red por su cuenta. Las capturas las
+toma el dueño desde su propio teléfono, donde ya tiene su sesión abierta.
 
 **Sirve la clave de OpenAI o la de Anthropic** — la que tengas. El sistema usa
 la que encuentre; si están las dos, gana Anthropic, o fuerzas una con
@@ -77,6 +95,9 @@ desde el panel del proveedor.
 | Arquitectura y datos mínimos | definidos |
 | Perfil de prueba | completo |
 | **Función 1 — diagnóstico** | **funcionando** |
+| Cuentas y Perfil de Negocio en base de datos | migración 1, hecha |
+| Historial y comparación entre fechas | migración 2, pendiente |
+| Planes y límites | migración 3, pendiente |
 | Función 2 — banco semanal | prompt pendiente |
 | Función 3 — guion | prompt pendiente |
 | Función 4 — pieza publicable | espera el criterio de publicable |
@@ -89,7 +110,9 @@ desde el panel del proveedor.
   nunca sobre una imagen
 - `perfiles/*.json` — los datos de cada negocio; el sistema no los lleva dentro
 - `lib/modelo.ts` — la única capa que habla con un proveedor de IA
-- `lib/perfil.ts` — carga perfil y prompt en tiempo de ejecución
+- `lib/db.ts` — la única capa que sabe dónde viven los datos
+- `lib/auth.ts` — cuentas de Cadencia, en el mismo Postgres
+- `lib/perfil.ts` — carga los prompts y arma el perfil que lee el modelo
 - `app/api/*/route.ts` — una ruta por función
 
 Cambiar cómo diagnostica es editar un `.md`, no recompilar nada.

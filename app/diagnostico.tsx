@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { signOut, useSession } from "@/lib/auth-cliente";
 import type { Imagen } from "@/lib/modelo";
 import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
 import {
@@ -63,7 +65,6 @@ const fuente = (i: Imagen) => `data:${i.media_type};base64,${i.data}`;
  * correo al almacenamiento. Es, en pequeño, lo que hará la base de datos.
  */
 type Guardado = {
-  negocio?: Negocio;
   redes?: EntradaRed[];
   textos?: string;
   ventana?: Ventana;
@@ -90,10 +91,12 @@ export default function Diagnostico() {
     textos: guardado?.textos ?? "",
     ventana: guardado?.ventana,
   }));
-  const [negocio, setNegocio] = useState<Negocio>(
-    () => guardado?.negocio ?? { oferta: "", cliente: "", despues: "" },
-  );
+  const [negocio, setNegocio] = useState<Negocio>({ oferta: "", cliente: "", despues: "" });
+  const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [semilla, setSemilla] = useState(false);
+
+  const { data: sesion, isPending: cargandoSesion } = useSession();
+  const router = useRouter();
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -105,7 +108,6 @@ export default function Diagnostico() {
       localStorage.setItem(
         "cadencia",
         JSON.stringify({
-          negocio,
           redes: sinImagenes,
           textos: publicado.textos,
           ventana: publicado.ventana,
@@ -114,7 +116,33 @@ export default function Diagnostico() {
     } catch {
       // Sin espacio o en incógnito: se sigue trabajando, solo no se recuerda.
     }
-  }, [negocio, redes, publicado.textos, publicado.ventana]);
+  }, [redes, publicado.textos, publicado.ventana]);
+
+  useEffect(() => {
+    if (!sesion) return;
+    let vivo = true;
+    fetch("/api/negocio")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d?.negocio) return;
+        const n = d.negocio;
+        setNegocio({
+          oferta: n.oferta ?? "",
+          cliente: n.cliente ?? "",
+          despues: n.despues ?? "",
+          freno: n.freno ?? "",
+          accion: n.accion ?? "",
+          voz: n.voz ?? "",
+        });
+        setNegocioEnBase(true);
+      })
+      .catch(() => {
+        // Sin negocio guardado se empieza en blanco, que es lo correcto.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [sesion]);
 
   const listas = redes.filter(tieneContenido);
   const usadas = redes.map((r) => r.plataforma);
@@ -132,7 +160,7 @@ export default function Diagnostico() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(semilla ? { perfilId: "victor" } : { negocio }),
+          ...(semilla ? { perfilId: "victor" } : {}),
           redes: listas,
           publicado,
           respuestas: conRespuestas
@@ -156,8 +184,47 @@ export default function Diagnostico() {
   const hayRespuestas = Object.values(respuestas).some((v) => v.trim());
   const piezas = contarPiezas(publicado.textos);
 
+  if (cargandoSesion) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+
+  if (!sesion) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-20">
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
+          Función 1 · Diagnóstico
+        </p>
+        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Cadencia</h1>
+        <p className="mt-5 max-w-xl text-neutral-600 dark:text-neutral-400">
+          Qué le está costando conversaciones a tu perfil, con el texto ya
+          corregido. Necesitas una cuenta para que tu negocio y tus diagnósticos
+          queden guardados de una visita a la otra.
+        </p>
+        <a
+          href="/entrar"
+          className="mt-7 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+        >
+          Entrar o crear cuenta
+        </a>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
+      <div className="mb-6 flex items-center justify-end gap-3 text-xs text-neutral-500">
+        <span className="font-mono">{sesion.user.email}</span>
+        <button
+          onClick={() =>
+            signOut().then(() => {
+              router.push("/");
+              router.refresh();
+            })
+          }
+          className="font-mono uppercase tracking-wider underline underline-offset-4 hover:no-underline"
+        >
+          salir
+        </button>
+      </div>
+
       <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 1 · Diagnóstico
@@ -180,7 +247,12 @@ export default function Diagnostico() {
         </p>
         <BloqueNegocio
           negocio={negocio}
-          onCambio={(c) => setNegocio({ ...negocio, ...c })}
+          onCambio={(c) => {
+            setNegocio({ ...negocio, ...c });
+            setNegocioEnBase(false);
+          }}
+          guardado={negocioEnBase}
+          onGuardado={() => setNegocioEnBase(true)}
           semilla={semilla}
           onSemilla={setSemilla}
         />
@@ -313,7 +385,9 @@ export default function Diagnostico() {
       <div className="mt-10">
         <button
           onClick={() => diagnosticar(false)}
-          disabled={cargando || listas.length === 0 || (!semilla && !negocioListo(negocio))}
+          disabled={
+            cargando || listas.length === 0 || (!semilla && !negocioEnBase)
+          }
           className="rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando ? "Revisando…" : dx ? "Volver a diagnosticar" : "Diagnosticar"}
@@ -349,15 +423,40 @@ export default function Diagnostico() {
 function BloqueNegocio({
   negocio,
   onCambio,
+  guardado,
+  onGuardado,
   semilla,
   onSemilla,
 }: {
   negocio: Negocio;
   onCambio: (c: Partial<Negocio>) => void;
+  guardado: boolean;
+  onGuardado: () => void;
   semilla: boolean;
   onSemilla: (v: boolean) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [fallo, setFallo] = useState("");
+
+  async function guardar() {
+    setGuardando(true);
+    setFallo("");
+    try {
+      const r = await fetch("/api/negocio", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(negocio),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No se pudo guardar.");
+      onGuardado();
+    } catch (e) {
+      setFallo(e instanceof Error ? e.message : "No se pudo guardar.");
+    } finally {
+      setGuardando(false);
+    }
+  }
 
   return (
     <div className="rounded border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
@@ -424,6 +523,22 @@ function BloqueNegocio({
                 />
               </div>
             ))}
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              onClick={guardar}
+              disabled={guardando || guardado || !negocioListo(negocio)}
+              className="rounded border border-teal-700 px-4 py-2 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+            >
+              {guardando ? "Guardando…" : guardado ? "Guardado" : "Guardar mi negocio"}
+            </button>
+            {guardado && (
+              <span className="text-xs text-neutral-500">
+                Se llena una vez. La próxima visita ya está aquí.
+              </span>
+            )}
+          </div>
+          {fallo && <p className="text-xs text-red-700 dark:text-red-400">{fallo}</p>}
         </div>
       )}
     </div>

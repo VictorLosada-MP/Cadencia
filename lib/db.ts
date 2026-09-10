@@ -1,0 +1,47 @@
+import { Pool } from "pg";
+
+/**
+ * La única capa que sabe dónde viven los datos.
+ *
+ * Es SQL plano contra Postgres a propósito: sin cliente del proveedor y sin
+ * extensiones propietarias, mudarse de Supabase a un servidor propio es cambiar
+ * DATABASE_URL y nada más. La misma independencia que lib/modelo.ts le da al
+ * proveedor de IA, aplicada a los datos.
+ */
+
+declare global {
+  // En desarrollo el módulo se recarga en cada cambio; sin esto cada recarga
+  // abriría un pool nuevo y acabaría agotando las conexiones de Supabase.
+  var __cadenciaPool: Pool | undefined;
+}
+
+function crearPool(): Pool {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "Falta DATABASE_URL. Cópiala de tu proyecto de Supabase a .env.local — la de tipo pooler.",
+    );
+  }
+  return new Pool({
+    connectionString: url,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
+}
+
+export function pool(): Pool {
+  if (!globalThis.__cadenciaPool) globalThis.__cadenciaPool = crearPool();
+  return globalThis.__cadenciaPool;
+}
+
+export async function consultar<T>(sql: string, valores: unknown[] = []): Promise<T[]> {
+  const r = await pool().query(sql, valores);
+  return r.rows as T[];
+}
+
+/** La primera fila, o null. Para los muchos casos en que se busca una sola. */
+export async function una<T>(sql: string, valores: unknown[] = []): Promise<T | null> {
+  const filas = await consultar<T>(sql, valores);
+  return filas[0] ?? null;
+}

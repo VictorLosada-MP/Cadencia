@@ -1,4 +1,5 @@
 import { extraerJSON, generar, type Imagen } from "@/lib/modelo";
+import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
 import {
   CASILLAS_VACIAS,
@@ -22,6 +23,13 @@ type Cuerpo = { plataforma?: Plataforma; imagen?: Imagen };
  * cortada con "… más" se convierta en un "no pasa" que era mentira.
  */
 export async function POST(request: Request) {
+  // Cuesta dinero en cada llamada: es el endpoint más barato de abusar de todo
+  // el sistema si se deja abierto.
+  const usuario = await usuarioActual();
+  if (!usuario) {
+    return Response.json({ error: "Entra a tu cuenta." }, { status: 401 });
+  }
+
   let cuerpo: Cuerpo;
   try {
     cuerpo = await request.json();
