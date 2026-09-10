@@ -9,6 +9,10 @@ type Cuerpo = {
   /** El perfil social a revisar: texto pegado, captura, o ambos. */
   texto?: string;
   imagen?: Imagen;
+  /** Piezas ya publicadas. Sin esto el diagnóstico se queda en la bio. */
+  contenido?: string;
+  /** Respuestas a las preguntas de una ronda anterior. */
+  respuestas?: { pregunta: string; respuesta: string }[];
 };
 
 export async function POST(request: Request) {
@@ -46,6 +50,16 @@ export async function POST(request: Request) {
       "\n## Perfil social a revisar",
       cuerpo.imagen ? "Está en la captura adjunta." : "",
       cuerpo.texto?.trim() ?? "",
+      cuerpo.contenido?.trim()
+        ? `\n## Piezas publicadas\n\n${cuerpo.contenido.trim()}`
+        : "\n## Piezas publicadas\n\n(ninguna — dilo en limites)",
+      cuerpo.respuestas?.length
+        ? "\n## Respuestas del dueño a preguntas anteriores\n\n" +
+          cuerpo.respuestas
+            .filter((r) => r.respuesta.trim())
+            .map((r) => `P: ${r.pregunta}\nR: ${r.respuesta.trim()}`)
+            .join("\n\n")
+        : "",
       "\nDevuelve solo el JSON.",
     ].join("\n");
 

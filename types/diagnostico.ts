@@ -6,12 +6,19 @@ export type Punto = {
   corregido: string;
 };
 
+export type Pregunta = {
+  pregunta: string;
+  para_que: string;
+};
+
 export type Diagnostico = {
-  score: number;
+  /** Cuántos de los cinco puntos pasan. No hay puntaje 0-100: no era comparable. */
+  pasan: number;
   veredicto: string;
   lo_que_funciona: string[];
   puntos: Punto[];
   el_que_mas_cuesta: string;
   bios: { angulo: string; texto: string }[];
-  avisos: string[];
+  preguntas: Pregunta[];
+  limites: string[];
 };
