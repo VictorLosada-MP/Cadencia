@@ -59,6 +59,8 @@ export async function POST(request: Request) {
       sistema: instrucciones,
       texto,
       adjuntos: [{ etiqueta: `Captura del perfil de ${plataforma}:`, imagen }],
+      // Transcribir no es razonar, y es la espera que el usuario paga dos veces.
+      esfuerzo: "low",
     });
 
     const cruda = extraerJSON<Partial<Transcripcion>>(r.texto);

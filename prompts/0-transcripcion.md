@@ -36,6 +36,18 @@ que el dueño vio y aprobó.
 - **`link`** — el enlace tal como aparece, aunque salga recortado. Si hay
   varios, el primero, y los demás no.
 
+## Si lo que te llega es un sitio web
+
+Un sitio no tiene arroba ni bio, pero tiene lo mismo en otro sitio, y ahí es
+donde lo buscas:
+
+- **`nombre`** — el nombre del sitio o del negocio, el que va arriba con el logo.
+- **`bio`** — el titular grande de la portada y la línea que lo acompaña.
+  Es lo primero que lee quien llega, que es exactamente lo que hace una bio.
+- **`cta`** — el texto del botón principal. *"Empieza gratis"*, *"Pide tu cita"*.
+- **`link`** — el dominio.
+- **`usuario`** — vacío. Un sitio no tiene.
+
 ## Lo que no transcribes
 
 Seguidores, publicaciones, me gusta, la hora del teléfono, la batería, los

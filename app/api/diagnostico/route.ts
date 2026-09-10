@@ -7,6 +7,7 @@ import {
   MIN_PIEZAS_PARA_PATRON,
   casillasDe,
   contarPiezas,
+  puntosQueNoAplican,
   nombreRed,
   tieneContenido,
   type EntradaRed,
@@ -103,8 +104,12 @@ export async function POST(request: Request) {
         });
 
         if (noTiene.length) {
+          lineas.push(`- Esta red no tiene casilla de: ${noTiene.map(rotulo).join(", ")}.`);
+        }
+        const fueraDePunto = puntosQueNoAplican(r.plataforma);
+        if (fueraDePunto.length) {
           lineas.push(
-            `- Esta red no tiene: ${noTiene.map(rotulo).join(", ")} — van con aplica: false.`,
+            `- Puntos que no aplican en esta red: ${fueraDePunto.join(", ")} — van con aplica: false.`,
           );
         }
         if (r.transcritas?.length) {
@@ -138,11 +143,16 @@ export async function POST(request: Request) {
 
     const hayPublicado = publicado.cuadriculas.length > 0 || piezas > 0;
 
-    const texto = [
+    // El perfil y la voz no cambian entre corridas: van aparte para poder
+    // cachearlos. "Afinar con mis respuestas" los reenvía idénticos.
+    const estable = [
       "## Perfil de Negocio",
       JSON.stringify({ ...perfil, nucleo }, null, 2),
       voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
-      `\n## Redes a revisar (${redes.length})`,
+    ].join("\n");
+
+    const texto = [
+      `## Redes a revisar (${redes.length})`,
       "Las casillas ya vienen confirmadas por el dueño. Cópialas literal en `actual`.",
       "",
       bloqueRedes,
@@ -158,7 +168,7 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const r = await generar({ sistema: instrucciones, texto, adjuntos });
+    const r = await generar({ sistema: instrucciones, estable, texto, adjuntos });
 
     return Response.json({
       diagnostico: extraerJSON<Diagnostico>(r.texto),

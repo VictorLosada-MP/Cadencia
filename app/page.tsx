@@ -10,10 +10,11 @@ import {
   MIN_PIEZAS_PARA_PATRON,
   PLATAFORMAS,
   VENTANAS,
-  casillasDe,
+  casillasVisibles,
   contarPiezas,
   hayPublicado,
   redVacia,
+  rotuloCasilla,
   tieneContenido,
   type Casilla,
   type EntradaRed,
@@ -292,7 +293,9 @@ function Ficha({
   const [fallo, setFallo] = useState("");
   const primeraCortada = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
-  const aplican = casillasDe(red.plataforma);
+  // Se pintan las de la plataforma más las que ya tengan algo escrito: cambiar
+  // de red nunca puede hacer desaparecer texto que el dueño ya puso.
+  const aplican = casillasVisibles(red);
   const cortadas = red.cortadas ?? [];
   const transcritas = red.transcritas ?? [];
   // El cursor va a la primera que quedó cortada: es la que hay que completar.
@@ -425,7 +428,7 @@ function Ficha({
             <div key={c.id}>
               <label className="flex items-baseline gap-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-                  {c.etiqueta}
+                  {rotuloCasilla(red.plataforma, c.id)}
                 </span>
                 {transcritas.includes(c.id) && !cortada && (
                   <span className="font-mono text-[10px] text-teal-700 dark:text-teal-400">

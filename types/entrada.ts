@@ -43,20 +43,53 @@ export const CASILLAS: { id: Casilla; etiqueta: string; pista: string; filas?: n
 ];
 
 /**
- * No todas las redes tienen las cinco. Un sitio web no tiene punto Link: el
- * sitio ES el destino. Una casilla que la plataforma no tiene no es una casilla
- * que falta.
+ * Casi todas las redes tienen las cinco casillas. Solo se esconde la que de
+ * verdad no existe — un sitio web no tiene arroba.
+ *
+ * Esconder de más sale caro: si al cambiar de plataforma desaparece una casilla
+ * que ya estaba escrita, el usuario pierde lo que puso sin que nadie se lo diga.
+ * Por eso quien pinta la ficha suma también las casillas que tengan contenido.
  */
 const SIN: Partial<Record<Plataforma, Casilla[]>> = {
-  LinkedIn: ["usuario"],
-  Facebook: ["usuario"],
-  "WhatsApp Business": ["usuario", "link"],
-  "Sitio web": ["usuario", "link"],
+  "Sitio web": ["usuario"],
 };
 
 export function casillasDe(p: Plataforma): Casilla[] {
   const fuera = SIN[p] ?? [];
   return CASILLAS.map((c) => c.id).filter((c) => !fuera.includes(c));
+}
+
+/** Las casillas a pintar: las de la plataforma, más las que ya tengan algo. */
+export function casillasVisibles(r: EntradaRed): Casilla[] {
+  const suyas = casillasDe(r.plataforma);
+  return CASILLAS.map((c) => c.id).filter(
+    (c) => suyas.includes(c) || Boolean(r.casillas[c]?.trim()),
+  );
+}
+
+/**
+ * Distinto de esconder una casilla: aquí el dato existe, pero el punto no tiene
+ * sentido en esa plataforma. En un sitio web el destino ES el sitio, así que no
+ * hay un "link en la bio" que juzgar — la dirección sigue haciendo falta para
+ * saber de qué sitio hablamos.
+ */
+const PUNTOS_FUERA: Partial<Record<Plataforma, string[]>> = {
+  "Sitio web": ["Link"],
+};
+
+export function puntosQueNoAplican(p: Plataforma): string[] {
+  return PUNTOS_FUERA[p] ?? [];
+}
+
+/** El rótulo cambia según la red: en un sitio web «Link» es su dirección. */
+export function rotuloCasilla(p: Plataforma, c: Casilla): string {
+  const base = CASILLAS.find((x) => x.id === c);
+  if (p === "Sitio web") {
+    if (c === "link") return "Dirección del sitio";
+    if (c === "nombre") return "Nombre del sitio";
+    if (c === "bio") return "Lo que dice arriba del todo";
+  }
+  return base?.etiqueta ?? c;
 }
 
 /**
