@@ -19,8 +19,16 @@ export type Perfil = {
   integridad?: { sin_prueba_social?: boolean; nota?: string };
 };
 
+/**
+ * El id llega del cuerpo de la petición, así que se valida antes de tocar el
+ * disco. Un id con "../" no debería llegar nunca a path.join.
+ */
+const ID_VALIDO = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 /** Perfil + la muestra de voz resuelta desde su archivo. */
 export async function cargarPerfil(id: string) {
+  if (!ID_VALIDO.test(id)) throw new Error("Perfil no encontrado.");
+
   const perfil: Perfil = JSON.parse(
     await fs.readFile(path.join(RAIZ, "perfiles", `${id}.json`), "utf8"),
   );

@@ -12,18 +12,29 @@ export type Imagen = { media_type: string; data: string };
 /** Una captura con la etiqueta que dice de dónde salió. */
 export type Adjunto = { etiqueta: string; imagen: Imagen };
 
+/** Los mismos niveles que expone el proveedor. Transcribir no es razonar. */
+export type Esfuerzo = "low" | "medium" | "high" | "xhigh" | "max";
+
 export type Peticion = {
   sistema: string;
+  /**
+   * El bloque caro que no cambia entre corridas — el perfil y las muestras de
+   * voz. Va antes que nada y con marca de caché, porque "Afinar con mis
+   * respuestas" lo reenvía idéntico.
+   */
+  estable?: string;
   texto: string;
   /** Van antes del texto, cada una precedida de su etiqueta. */
   adjuntos?: Adjunto[];
+  esfuerzo?: Esfuerzo;
 };
 
 export type Respuesta = {
   texto: string;
   proveedor: "anthropic" | "openai";
   modelo: string;
-  uso: { entrada: number; salida: number };
+  /** `cache` en cero corrida tras corrida significa que la marca no sirve. */
+  uso: { entrada: number; salida: number; cache?: number };
 };
 
 const MODELO_ANTHROPIC = process.env.MODELO_ANTHROPIC ?? "claude-opus-5";
@@ -47,8 +58,23 @@ export async function generar(p: Peticion): Promise<Respuesta> {
   return proveedor === "anthropic" ? conAnthropic(p) : conOpenAI(p);
 }
 
-async function conAnthropic({ sistema, texto, adjuntos }: Peticion): Promise<Respuesta> {
+async function conAnthropic({
+  sistema,
+  estable,
+  texto,
+  adjuntos,
+  esfuerzo,
+}: Peticion): Promise<Respuesta> {
   const contenido: Anthropic.ContentBlockParam[] = [];
+  // El prefijo cacheable tiene que ir primero, antes de las imágenes: si una
+  // imagen se cuela delante, el prefijo cambia en cada corrida y no se reusa.
+  if (estable) {
+    contenido.push({
+      type: "text",
+      text: estable,
+      cache_control: { type: "ephemeral" },
+    });
+  }
   for (const a of adjuntos ?? []) {
     contenido.push({ type: "text", text: a.etiqueta });
     contenido.push({
@@ -62,26 +88,41 @@ async function conAnthropic({ sistema, texto, adjuntos }: Peticion): Promise<Res
   }
   contenido.push({ type: "text", text: texto });
 
-  const r = await new Anthropic().messages.create({
-    model: MODELO_ANTHROPIC,
-    max_tokens: 16000,
-    system: [{ type: "text", text: sistema, cache_control: { type: "ephemeral" } }],
-    thinking: { type: "adaptive" },
-    messages: [{ role: "user", content: contenido }],
-  });
+  // Con max_tokens alto y respuestas largas, streaming es lo que evita que la
+  // petición muera por tiempo después de haberse facturado entera.
+  const r = await new Anthropic().messages
+    .stream({
+      model: MODELO_ANTHROPIC,
+      max_tokens: 16000,
+      system: [{ type: "text", text: sistema, cache_control: { type: "ephemeral" } }],
+      thinking: { type: "adaptive" },
+      ...(esfuerzo ? { output_config: { effort: esfuerzo } } : {}),
+      messages: [{ role: "user", content: contenido }],
+    })
+    .finalMessage();
 
   if (r.stop_reason === "refusal") throw new Error("El modelo declinó esta solicitud.");
+  // Sin esta comprobación el JSON llega cortado y extraerJSON recorta hasta la
+  // última llave: devolvería un diagnóstico sin la segunda red, y sin avisar.
+  if (r.stop_reason === "max_tokens") {
+    throw new Error("La respuesta salió más larga de lo que cabe. Prueba con una sola red.");
+  }
 
   return {
     texto: r.content.filter((b) => b.type === "text").map((b) => b.text).join(""),
     proveedor: "anthropic",
     modelo: MODELO_ANTHROPIC,
-    uso: { entrada: r.usage.input_tokens, salida: r.usage.output_tokens },
+    uso: {
+      entrada: r.usage.input_tokens,
+      salida: r.usage.output_tokens,
+      cache: r.usage.cache_read_input_tokens ?? 0,
+    },
   };
 }
 
-async function conOpenAI({ sistema, texto, adjuntos }: Peticion): Promise<Respuesta> {
+async function conOpenAI({ sistema, estable, texto, adjuntos }: Peticion): Promise<Respuesta> {
   const contenido: OpenAI.Chat.ChatCompletionContentPart[] = [];
+  if (estable) contenido.push({ type: "text", text: estable });
   for (const a of adjuntos ?? []) {
     contenido.push({ type: "text", text: a.etiqueta });
     contenido.push({
@@ -101,6 +142,9 @@ async function conOpenAI({ sistema, texto, adjuntos }: Peticion): Promise<Respue
 
   const salida = r.choices[0]?.message?.content;
   if (!salida) throw new Error("El modelo devolvió una respuesta vacía.");
+  if (r.choices[0]?.finish_reason === "length") {
+    throw new Error("La respuesta salió más larga de lo que cabe. Prueba con una sola red.");
+  }
 
   return {
     texto: salida,

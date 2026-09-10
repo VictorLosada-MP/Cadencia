@@ -14,6 +14,7 @@ siguiente — esa es la diferencia entre un sistema y una colección de utilidad
 | | Función | Devuelve |
 |---|---|---|
 | 1 | Diagnóstico | La brecha nombrada, con su umbral y la corrección ya escrita |
+| | | Hasta dos redes, y qué cambia entre una y otra |
 | 2 | Banco de la semana | Piezas con día asignado y guion de respuesta al mensaje |
 | 3 | Guion | Golpes con dirección actoral, cierre y cómo grabarlo |
 | 4 | Pieza publicable | 9:16, subtítulos, silencios cortados |
@@ -46,7 +47,8 @@ cp .env.example .env.local   # y pega tu clave
 npm run dev
 ```
 
-Abre http://localhost:3000, pega tu perfil y dale a Diagnosticar.
+Abre http://localhost:3000, sube una captura de tu perfil o escribe las
+casillas, y dale a Diagnosticar.
 
 **Sirve la clave de OpenAI o la de Anthropic** — la que tengas. El sistema usa
 la que encuentre; si están las dos, gana Anthropic, o fuerzas una con
@@ -82,6 +84,9 @@ desde el panel del proveedor.
 ## Cómo está armado
 
 - `prompts/*.md` — cada función es un archivo de texto, editable sin tocar código
+- `prompts/0-transcripcion.md` — el paso que convierte una captura en casillas,
+  separado a propósito: el diagnóstico corre sobre lo que el dueño confirma,
+  nunca sobre una imagen
 - `perfiles/*.json` — los datos de cada negocio; el sistema no los lleva dentro
 - `lib/modelo.ts` — la única capa que habla con un proveedor de IA
 - `lib/perfil.ts` — carga perfil y prompt en tiempo de ejecución
