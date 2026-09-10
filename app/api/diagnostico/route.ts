@@ -2,29 +2,32 @@ import { extraerJSON, generar, type Adjunto } from "@/lib/modelo";
 import { cargarPerfil, cargarPrompt } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
 import {
-  MAX_PIEZAS,
+  CASILLAS,
   MAX_REDES,
+  MIN_PIEZAS_PARA_PATRON,
+  casillasDe,
+  contarPiezas,
   nombreRed,
-  piezaTieneContenido,
   tieneContenido,
-  type EntradaPieza,
   type EntradaRed,
+  type Publicado,
 } from "@/types/entrada";
 
 export const maxDuration = 300;
 
+const MAX_CUADRICULAS = 2;
+const MAX_BYTES_IMAGEN = 5_000_000;
+
 type Cuerpo = {
   perfilId: string;
-  /** Una o dos redes. Cada una con captura, con texto, o con las dos. */
+  /** Una o dos redes, con las casillas ya confirmadas por el dueño. */
   redes?: EntradaRed[];
-  /** Piezas ya publicadas. Sin esto el diagnóstico se queda en la bio. */
-  piezas?: EntradaPieza[];
+  publicado?: Publicado;
   /** Respuestas a las preguntas de una ronda anterior. */
   respuestas?: { pregunta: string; respuesta: string }[];
 };
 
-/** Cada imagen viaja en base64, así que pesa un tercio más que el archivo. */
-const MAX_BYTES_IMAGEN = 5_000_000;
+const rotulo = (id: string) => CASILLAS.find((c) => c.id === id)?.etiqueta ?? id;
 
 export async function POST(request: Request) {
   let cuerpo: Cuerpo;
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
   const redes = (cuerpo.redes ?? []).filter(tieneContenido);
   if (redes.length === 0) {
     return Response.json(
-      { error: "Sube la captura de tu perfil o pega los campos para poder revisarlo." },
+      { error: "Llena al menos una casilla de una red para poder revisarla." },
       { status: 400 },
     );
   }
@@ -52,12 +55,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const piezas = (cuerpo.piezas ?? []).filter(piezaTieneContenido).slice(0, MAX_PIEZAS);
+  const publicado: Publicado = {
+    cuadriculas: cuerpo.publicado?.cuadriculas ?? [],
+    textos: cuerpo.publicado?.textos ?? "",
+    ventana: cuerpo.publicado?.ventana,
+  };
 
-  const pesada = [...redes, ...piezas].find(
-    (x) => x.imagen && x.imagen.data.length > MAX_BYTES_IMAGEN,
-  );
-  if (pesada) {
+  if (publicado.cuadriculas.length > MAX_CUADRICULAS) {
+    return Response.json(
+      { error: `Con ${MAX_CUADRICULAS} capturas de la cuadrícula basta.` },
+      { status: 400 },
+    );
+  }
+  if (publicado.cuadriculas.some((i) => i.data.length > MAX_BYTES_IMAGEN)) {
     return Response.json(
       { error: "Una de las capturas pesa demasiado. Vuelve a subirla." },
       { status: 413 },
@@ -74,51 +84,70 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { voz: _fuente, ...nucleo } = perfil.nucleo;
 
-    const adjuntos: Adjunto[] = [];
-    for (const r of redes) {
-      if (r.imagen) {
-        adjuntos.push({ etiqueta: `Captura del perfil de ${nombreRed(r)}:`, imagen: r.imagen });
-      }
-    }
-    piezas.forEach((p, i) => {
-      if (p.imagen) {
-        const de = [p.red, p.cuando].filter(Boolean).join(", ");
-        adjuntos.push({
-          etiqueta: `Captura de una pieza publicada ${de ? `(${de})` : `#${i + 1}`}:`,
-          imagen: p.imagen,
-        });
-      }
-    });
+    // Lo único que viaja como imagen es la cuadrícula. El perfil ya es texto
+    // confirmado: más barato, comparable entre corridas, y sin nada que inventar.
+    const adjuntos: Adjunto[] = publicado.cuadriculas.map((imagen, i) => ({
+      etiqueta: `Captura de la cuadrícula de publicaciones ${i + 1}:`,
+      imagen,
+    }));
 
     const bloqueRedes = redes
       .map((r) => {
-        const partes = [`### ${nombreRed(r)}`];
-        if (r.imagen) partes.push("Su captura viene adjunta arriba.");
-        if (r.texto?.trim()) partes.push(`Campos pegados por el dueño:\n${r.texto.trim()}`);
-        return partes.join("\n");
+        const aplican = casillasDe(r.plataforma);
+        const noTiene = CASILLAS.map((c) => c.id).filter((c) => !aplican.includes(c));
+
+        const lineas = aplican.map((c) => {
+          const v = r.casillas[c]?.trim();
+          const cortada = r.cortadas?.includes(c) ? "  [venía cortada con «… más»]" : "";
+          return `- ${rotulo(c)}: ${v ? `«${v}»${cortada}` : "(vacía)"}`;
+        });
+
+        if (noTiene.length) {
+          lineas.push(
+            `- Esta red no tiene: ${noTiene.map(rotulo).join(", ")} — van con aplica: false.`,
+          );
+        }
+        if (r.transcritas?.length) {
+          lineas.push(
+            `- Salieron de una captura y el dueño las confirmó: ${r.transcritas
+              .map(rotulo)
+              .join(", ")}.`,
+          );
+        }
+
+        return `### ${nombreRed(r)}  (id: ${r.id})\n${lineas.join("\n")}`;
       })
       .join("\n\n");
 
-    const bloquePiezas = piezas.length
-      ? piezas
-          .map((p, i) => {
-            const cabecera = [`### Pieza ${i + 1}`, p.red, p.cuando]
-              .filter(Boolean)
-              .join(" · ");
-            const cuerpoPieza = p.texto?.trim() || "(solo la captura adjunta)";
-            return `${cabecera}\n${cuerpoPieza}`;
-          })
-          .join("\n\n")
-      : "(ninguna — dilo en limites)";
+    const piezas = contarPiezas(publicado.textos);
+    const bloquePublicado = [
+      publicado.ventana
+        ? `Ventana temporal declarada: ${publicado.ventana}.`
+        : "Ventana temporal: no la declaró — no afirmes ningún ritmo.",
+      publicado.cuadriculas.length
+        ? `Cuadrículas adjuntas: ${publicado.cuadriculas.length}. Dan ritmo, formato y temas repetidos. No dan las palabras.`
+        : "Cuadrículas: ninguna.",
+      piezas
+        ? `Textos completos pegados: ${piezas}. De aquí y solo de aquí salen las palabras.${
+            piezas < MIN_PIEZAS_PARA_PATRON
+              ? ` Son menos de ${MIN_PIEZAS_PARA_PATRON}: no escribas «siempre» ni «nunca».`
+              : ""
+          }\n\n${publicado.textos.trim()}`
+        : "Textos completos pegados: ninguno.",
+    ].join("\n");
+
+    const hayPublicado = publicado.cuadriculas.length > 0 || piezas > 0;
 
     const texto = [
       "## Perfil de Negocio",
       JSON.stringify({ ...perfil, nucleo }, null, 2),
       voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
       `\n## Redes a revisar (${redes.length})`,
+      "Las casillas ya vienen confirmadas por el dueño. Cópialas literal en `actual`.",
+      "",
       bloqueRedes,
-      "\n## Piezas publicadas",
-      bloquePiezas,
+      "\n## Lo ya publicado",
+      hayPublicado ? bloquePublicado : "(nada — dilo en limites y deja linea_base vacía)",
       cuerpo.respuestas?.length
         ? "\n## Respuestas del dueño a preguntas anteriores\n\n" +
           cuerpo.respuestas
@@ -136,8 +165,11 @@ export async function POST(request: Request) {
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error inesperado.";
-    console.error("diagnostico:", msg);
-    return Response.json({ error: msg }, { status: 500 });
+    // El mensaje del proveedor llega en inglés y no le sirve a quien lo lee.
+    console.error("diagnostico:", e instanceof Error ? e.message : e);
+    return Response.json(
+      { error: "No se pudo completar el diagnóstico. Vuelve a intentarlo." },
+      { status: 500 },
+    );
   }
 }

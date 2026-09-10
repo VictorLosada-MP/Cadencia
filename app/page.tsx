@@ -1,24 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Imagen } from "@/lib/modelo";
 import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
 import {
-  MAX_PIEZAS,
+  CASILLAS,
+  CASILLAS_VACIAS,
   MAX_REDES,
+  MIN_PIEZAS_PARA_PATRON,
   PLATAFORMAS,
-  nombreRed,
-  piezaTieneContenido,
+  VENTANAS,
+  casillasDe,
+  contarPiezas,
+  hayPublicado,
+  redVacia,
   tieneContenido,
-  type EntradaPieza,
+  type Casilla,
   type EntradaRed,
   type Plataforma,
+  type Publicado,
+  type Transcripcion,
+  type Ventana,
 } from "@/types/entrada";
 
 /**
  * Las capturas de un teléfono pesan varios megas y el modelo no aprovecha más
  * de ~1800px de lado largo. Se reducen aquí y no en el servidor: así lo que
- * viaja por la red ya es lo que hace falta, y nada más.
+ * viaja ya es lo que hace falta, y nada más.
  */
 async function comprimir(file: File): Promise<Imagen> {
   const bitmap = await createImageBitmap(file);
@@ -43,21 +51,23 @@ async function comprimir(file: File): Promise<Imagen> {
 const fuente = (i: Imagen) => `data:${i.media_type};base64,${i.data}`;
 
 export default function Home() {
-  const [redes, setRedes] = useState<EntradaRed[]>([{ plataforma: "Instagram" }]);
-  const [piezas, setPiezas] = useState<EntradaPieza[]>([]);
+  // La primera red lleva id fijo: uno aleatorio no coincidiría entre el
+  // servidor y el navegador y rompería la hidratación.
+  const [redes, setRedes] = useState<EntradaRed[]>(() => [
+    { id: "red-1", plataforma: "Instagram", casillas: { ...CASILLAS_VACIAS } },
+  ]);
+  const [publicado, setPublicado] = useState<Publicado>({ cuadriculas: [], textos: "" });
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [dx, setDx] = useState<Diagnostico | null>(null);
 
   const listas = redes.filter(tieneContenido);
+  const usadas = redes.map((r) => r.plataforma);
+  const libre = PLATAFORMAS.find((p) => !usadas.includes(p)) ?? "Otra";
 
-  function cambiarRed(i: number, cambio: Partial<EntradaRed>) {
-    setRedes(redes.map((r, j) => (i === j ? { ...r, ...cambio } : r)));
-  }
-
-  function cambiarPieza(i: number, cambio: Partial<EntradaPieza>) {
-    setPiezas(piezas.map((p, j) => (i === j ? { ...p, ...cambio } : p)));
+  function cambiarRed(id: string, cambio: Partial<EntradaRed>) {
+    setRedes((rs) => rs.map((r) => (r.id === id ? { ...r, ...cambio } : r)));
   }
 
   async function diagnosticar(conRespuestas = false) {
@@ -70,7 +80,7 @@ export default function Home() {
         body: JSON.stringify({
           perfilId: "victor",
           redes: listas,
-          piezas: piezas.filter(piezaTieneContenido),
+          publicado,
           respuestas: conRespuestas
             ? Object.entries(respuestas)
                 .filter(([, v]) => v.trim())
@@ -90,6 +100,7 @@ export default function Home() {
   }
 
   const hayRespuestas = Object.values(respuestas).some((v) => v.trim());
+  const piezas = contarPiezas(publicado.textos);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
@@ -97,12 +108,11 @@ export default function Home() {
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 1 · Diagnóstico
         </p>
-        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">
-          Cadencia
-        </h1>
+        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Cadencia</h1>
         <p className="mt-4 max-w-xl text-neutral-600 dark:text-neutral-400">
           Qué le está costando conversaciones a tu perfil, con el texto ya
-          corregido. Sube una captura — es lo que ve quien llega a tu perfil.
+          corregido. Escribe las casillas o rellénalas desde una captura — lo
+          que se revisa es siempre lo que tú confirmes.
         </p>
       </header>
 
@@ -116,21 +126,20 @@ export default function Home() {
         </p>
 
         <div className="space-y-3">
-          {redes.map((r, i) => (
-            <TarjetaRed
-              key={i}
+          {redes.map((r) => (
+            <Ficha
+              key={r.id}
               red={r}
-              indice={i}
               puedeQuitar={redes.length > 1}
-              onCambio={(c) => cambiarRed(i, c)}
-              onQuitar={() => setRedes(redes.filter((_, j) => j !== i))}
+              onCambio={(c) => cambiarRed(r.id, c)}
+              onQuitar={() => setRedes(redes.filter((x) => x.id !== r.id))}
             />
           ))}
         </div>
 
         {redes.length < MAX_REDES ? (
           <button
-            onClick={() => setRedes([...redes, { plataforma: "LinkedIn" }])}
+            onClick={() => setRedes([...redes, redVacia(libre)])}
             className="mt-3 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
           >
             + añadir otra red
@@ -147,32 +156,88 @@ export default function Home() {
           Lo que ya publicaste
         </h2>
         <p className="mb-3 mt-0.5 text-sm text-neutral-500">
-          Opcional, y con tres o cuatro alcanza. No se corrige ni se borra nada:
-          sirve para saber de dónde partes.
+          Opcional. No se corrige ni se borra nada: sirve para saber de dónde
+          partes.
         </p>
 
-        {piezas.length > 0 && (
-          <div className="space-y-3">
-            {piezas.map((p, i) => (
-              <TarjetaPieza
-                key={i}
-                pieza={p}
-                indice={i}
-                onCambio={(c) => cambiarPieza(i, c)}
-                onQuitar={() => setPiezas(piezas.filter((_, j) => j !== i))}
-              />
+        <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="font-semibold">La cuadrícula</span> da el ritmo, el
+            formato y los temas que se repiten.
+          </p>
+          <div className="mt-2 flex flex-wrap items-start gap-3">
+            {publicado.cuadriculas.map((img, i) => (
+              <div key={i} className="flex items-start gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fuente(img)}
+                  alt={`cuadrícula ${i + 1}`}
+                  className="max-h-32 rounded border border-neutral-300 dark:border-neutral-700"
+                />
+                <button
+                  onClick={() =>
+                    setPublicado({
+                      ...publicado,
+                      cuadriculas: publicado.cuadriculas.filter((_, j) => j !== i),
+                    })
+                  }
+                  className="font-mono text-[11px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
+                >
+                  quitar
+                </button>
+              </div>
             ))}
+            {publicado.cuadriculas.length < 2 && (
+              <SubirImagen
+                etiqueta="Subir captura de la cuadrícula"
+                onImagen={(img) =>
+                  setPublicado({ ...publicado, cuadriculas: [...publicado.cuadriculas, img] })
+                }
+              />
+            )}
           </div>
-        )}
 
-        {piezas.length < MAX_PIEZAS && (
-          <button
-            onClick={() => setPiezas([...piezas, {}])}
-            className="mt-3 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-          >
-            + añadir pieza
-          </button>
-        )}
+          <p className="mt-5 text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="font-semibold">Los textos completos</span> son lo
+            único que da tus palabras. Pega los que quieras, separados por una
+            línea en blanco.
+          </p>
+          <textarea
+            value={publicado.textos}
+            onChange={(e) => setPublicado({ ...publicado, textos: e.target.value })}
+            rows={6}
+            placeholder={"El texto de una publicación…\n\nEl de otra…"}
+            className="mt-2 w-full rounded border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+          />
+          {piezas > 0 && (
+            <p className="mt-1.5 text-xs text-neutral-500">
+              Detecté {piezas} {piezas === 1 ? "pieza" : "piezas"}.
+              {piezas < MIN_PIEZAS_PARA_PATRON &&
+                ` Con menos de ${MIN_PIEZAS_PARA_PATRON} no se puede afirmar un "siempre" ni un "nunca" — se dirá "en las que subiste".`}
+            </p>
+          )}
+
+          <label className="mt-5 block">
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">
+              <span className="font-semibold">¿De cuándo es esto?</span> Es lo
+              único que permite hablar de ritmo.
+            </span>
+            <select
+              value={publicado.ventana ?? ""}
+              onChange={(e) =>
+                setPublicado({ ...publicado, ventana: (e.target.value || undefined) as Ventana })
+              }
+              className="mt-2 block rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+            >
+              <option value="">Elige…</option>
+              {VENTANAS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </section>
 
       <div className="mt-10">
@@ -185,7 +250,8 @@ export default function Home() {
         </button>
         {cargando && (
           <p className="mt-3 text-sm text-neutral-500">
-            Leyendo {listas.length === 2 ? "los dos perfiles" : "el perfil"}. Suele
+            Leyendo {listas.length > 1 ? "los perfiles" : "el perfil"}
+            {hayPublicado(publicado) ? " y lo que ya publicaste" : ""}. Suele
             tardar cerca de un minuto.
           </p>
         )}
@@ -210,20 +276,65 @@ export default function Home() {
   );
 }
 
-function TarjetaRed({
+function Ficha({
   red,
-  indice,
   puedeQuitar,
   onCambio,
   onQuitar,
 }: {
   red: EntradaRed;
-  indice: number;
   puedeQuitar: boolean;
   onCambio: (c: Partial<EntradaRed>) => void;
   onQuitar: () => void;
 }) {
-  const [pegando, setPegando] = useState(false);
+  const [leyendo, setLeyendo] = useState(false);
+  const [avisoPrivacidad, setAvisoPrivacidad] = useState(false);
+  const [fallo, setFallo] = useState("");
+  const primeraCortada = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
+
+  const aplican = casillasDe(red.plataforma);
+  const cortadas = red.cortadas ?? [];
+  const transcritas = red.transcritas ?? [];
+  // El cursor va a la primera que quedó cortada: es la que hay que completar.
+  const aCompletar = CASILLAS.find(
+    (c) => aplican.includes(c.id) && cortadas.includes(c.id),
+  )?.id;
+
+  async function transcribir(file: File | undefined | null) {
+    if (!file) return;
+    setLeyendo(true);
+    setFallo("");
+    try {
+      const imagen = await comprimir(file);
+      const r = await fetch("/api/transcripcion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plataforma: red.plataforma, imagen }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No se pudo leer la captura.");
+
+      const t: Transcripcion = d.transcripcion;
+      const rellenas = (Object.keys(t.casillas) as Casilla[]).filter((c) =>
+        t.casillas[c]?.trim(),
+      );
+      onCambio({
+        casillas: { ...red.casillas, ...t.casillas },
+        transcritas: rellenas,
+        cortadas: [...t.cortados, ...t.no_legible],
+      });
+      if (t.datos_personales) {
+        setFallo(
+          "En la captura había datos personales (un teléfono, un correo o un mensaje). No se copiaron.",
+        );
+      }
+      setTimeout(() => primeraCortada.current?.focus(), 0);
+    } catch (e) {
+      setFallo(e instanceof Error ? e.message : "No se pudo leer la captura.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
 
   return (
     <div className="rounded border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
@@ -242,114 +353,118 @@ function TarjetaRed({
 
         {red.plataforma === "Otra" && (
           <input
-            value={red.nombre ?? ""}
-            onChange={(e) => onCambio({ nombre: e.target.value })}
+            value={red.otra ?? ""}
+            onChange={(e) => onCambio({ otra: e.target.value })}
             placeholder="¿Cuál?"
             className="w-32 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
           />
         )}
 
-        <span className="ml-auto flex items-center gap-3">
+        {puedeQuitar && (
           <button
-            onClick={() => setPegando(!pegando)}
-            className="font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:text-neutral-800 hover:no-underline dark:hover:text-neutral-200"
+            onClick={onQuitar}
+            className="ml-auto font-mono text-[11px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
           >
-            {pegando ? "ocultar texto" : "o pegar el texto"}
+            quitar
           </button>
-          {puedeQuitar && (
-            <button
-              onClick={onQuitar}
-              aria-label={`Quitar la red ${indice + 1}`}
-              className="font-mono text-[11px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
-            >
-              quitar
-            </button>
-          )}
-        </span>
+        )}
       </div>
 
-      <ZonaCaptura
-        imagen={red.imagen}
-        etiqueta={`captura de ${nombreRed(red)}`}
-        onImagen={(imagen) => onCambio({ imagen })}
-      />
-
-      {(pegando || red.texto) && (
-        <textarea
-          value={red.texto ?? ""}
-          onChange={(e) => onCambio({ texto: e.target.value })}
-          rows={5}
-          placeholder="Nombre, bio, CTA y link — tal como aparecen"
-          className="mt-3 w-full rounded border border-neutral-300 bg-neutral-50 p-3 font-mono text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-        />
-      )}
-    </div>
-  );
-}
-
-function TarjetaPieza({
-  pieza,
-  indice,
-  onCambio,
-  onQuitar,
-}: {
-  pieza: EntradaPieza;
-  indice: number;
-  onCambio: (c: Partial<EntradaPieza>) => void;
-  onQuitar: () => void;
-}) {
-  return (
-    <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={pieza.red ?? ""}
-          onChange={(e) => onCambio({ red: e.target.value })}
-          placeholder="¿De qué red?"
-          className="w-36 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-        />
-        <input
-          value={pieza.cuando ?? ""}
-          onChange={(e) => onCambio({ cuando: e.target.value })}
-          placeholder="¿Cuándo? (aprox.)"
-          className="w-40 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-        />
-        <button
-          onClick={onQuitar}
-          aria-label={`Quitar la pieza ${indice + 1}`}
-          className="ml-auto font-mono text-[11px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
+      <div className="mt-3 rounded border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          ¿Prefieres no escribirlo? Sube una captura y se rellenan solas — tú las
+          revisas antes de que se diagnostique nada.
+        </p>
+        <p className="mt-1.5 text-xs text-neutral-500">
+          Captura tu perfil como lo ve un desconocido, no la pantalla de{" "}
+          <em>Editar perfil</em> — esa muestra tu correo y tu teléfono.
+        </p>
+        <label
+          className="mt-2 inline-flex cursor-pointer items-center rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+          onMouseEnter={() => setAvisoPrivacidad(true)}
         >
-          quitar
-        </button>
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            disabled={leyendo}
+            onChange={(e) => transcribir(e.target.files?.[0])}
+          />
+          {leyendo ? "leyendo la captura…" : "rellenar desde una captura"}
+        </label>
+        {avisoPrivacidad && !leyendo && (
+          <span className="ml-2 text-xs text-neutral-500">
+            La captura no se guarda.
+          </span>
+        )}
+        {fallo && <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">{fallo}</p>}
       </div>
 
-      <textarea
-        value={pieza.texto ?? ""}
-        onChange={(e) => onCambio({ texto: e.target.value })}
-        rows={3}
-        placeholder="El texto de la pieza, o déjalo vacío y sube la captura"
-        className="mt-3 w-full rounded border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-      />
+      <div className="mt-3 space-y-2.5">
+        {CASILLAS.filter((c) => aplican.includes(c.id)).map((c) => {
+          const cortada = cortadas.includes(c.id);
+          const enfocar = c.id === aCompletar;
+          const valor = red.casillas[c.id] ?? "";
 
-      <ZonaCaptura
-        imagen={pieza.imagen}
-        etiqueta={`captura de la pieza ${indice + 1}`}
-        onImagen={(imagen) => onCambio({ imagen })}
-        compacta
-      />
+          const comun = {
+            value: valor,
+            onChange: (e: { target: { value: string } }) =>
+              onCambio({
+                casillas: { ...red.casillas, [c.id]: e.target.value },
+                cortadas: cortadas.filter((x) => x !== c.id),
+              }),
+            placeholder: c.pista,
+            className: `mt-1 w-full rounded border bg-neutral-50 p-2 font-mono text-sm outline-none focus:border-teal-700 dark:bg-neutral-950 dark:focus:border-teal-400 ${
+              cortada
+                ? "border-amber-500 dark:border-amber-500"
+                : "border-neutral-300 dark:border-neutral-700"
+            }`,
+          };
+
+          return (
+            <div key={c.id}>
+              <label className="flex items-baseline gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                  {c.etiqueta}
+                </span>
+                {transcritas.includes(c.id) && !cortada && (
+                  <span className="font-mono text-[10px] text-teal-700 dark:text-teal-400">
+                    de tu captura
+                  </span>
+                )}
+              </label>
+              {c.filas ? (
+                <textarea
+                  {...comun}
+                  rows={c.filas}
+                  ref={enfocar ? (primeraCortada as React.RefObject<HTMLTextAreaElement>) : null}
+                />
+              ) : (
+                <input
+                  {...comun}
+                  ref={enfocar ? (primeraCortada as React.RefObject<HTMLInputElement>) : null}
+                />
+              )}
+              {cortada && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-500">
+                  Esto venía cortado con «… más». Complétalo — si no, este punto
+                  no se evalúa.
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function ZonaCaptura({
-  imagen,
+function SubirImagen({
   etiqueta,
   onImagen,
-  compacta = false,
 }: {
-  imagen?: Imagen;
   etiqueta: string;
-  onImagen: (i: Imagen | undefined) => void;
-  compacta?: boolean;
+  onImagen: (i: Imagen) => void;
 }) {
   const [ocupado, setOcupado] = useState(false);
   const [fallo, setFallo] = useState("");
@@ -367,38 +482,16 @@ function ZonaCaptura({
     }
   }
 
-  if (imagen) {
-    return (
-      <div className="mt-3 flex items-start gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={fuente(imagen)}
-          alt={etiqueta}
-          className="max-h-40 rounded border border-neutral-300 dark:border-neutral-700"
-        />
-        <button
-          onClick={() => onImagen(undefined)}
-          className="font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:text-red-700 hover:no-underline dark:hover:text-red-400"
-        >
-          cambiar
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className={compacta ? "mt-2" : "mt-3"}>
-      <label
-        className="flex cursor-pointer items-center gap-2 rounded border border-dashed border-neutral-400 px-3 py-2.5 text-sm text-neutral-600 transition hover:border-teal-700 hover:text-teal-800 dark:border-neutral-600 dark:text-neutral-400 dark:hover:border-teal-400 dark:hover:text-teal-300"
-        onPaste={(e) => tomar(e.clipboardData.files[0])}
-      >
+    <div>
+      <label className="flex cursor-pointer items-center rounded border border-dashed border-neutral-400 px-3 py-2 text-sm text-neutral-600 transition hover:border-teal-700 hover:text-teal-800 dark:border-neutral-600 dark:text-neutral-400 dark:hover:border-teal-400 dark:hover:text-teal-300">
         <input
           type="file"
           accept="image/*"
           className="sr-only"
           onChange={(e) => tomar(e.target.files?.[0])}
         />
-        {ocupado ? "Preparando…" : compacta ? "Subir captura (opcional)" : "Subir captura"}
+        {ocupado ? "Preparando…" : etiqueta}
       </label>
       {fallo && <p className="mt-1.5 text-xs text-red-700 dark:text-red-400">{fallo}</p>}
     </div>
@@ -422,7 +515,7 @@ function Resultado({
 }) {
   return (
     <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
-      {dx.redes?.map((r) => <BloqueRed key={r.red} r={r} />)}
+      {dx.redes?.map((r) => <BloqueRed key={r.id ?? r.red} r={r} />)}
 
       {dx.coherencia && (
         <div
@@ -515,7 +608,8 @@ function Resultado({
 }
 
 function BloqueRed({ r }: { r: DiagnosticoRed }) {
-  const noVistos = r.puntos?.filter((p) => !p.visible).length ?? 0;
+  const fuera = r.puntos?.filter((p) => p.aplica === false).length ?? 0;
+  const noVistos = r.puntos?.filter((p) => p.aplica !== false && !p.visible).length ?? 0;
 
   return (
     <article className="mt-10 first:mt-0">
@@ -537,10 +631,14 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
 
       {noVistos > 0 && (
         <p className="mt-3 text-xs text-neutral-500">
-          {noVistos === 1
-            ? "Un campo no se alcanzaba a leer en la captura, así que no se cuenta."
-            : `${noVistos} campos no se alcanzaban a leer en la captura, así que no se cuentan.`}{" "}
-          Si quieres que entren, pega ese texto a mano.
+          {noVistos === 1 ? "Una casilla llegó vacía" : `${noVistos} casillas llegaron vacías`}, así
+          que {noVistos === 1 ? "ese punto no cuenta" : "esos puntos no cuentan"}. Si quieres que
+          entren, escríbelas y vuelve a diagnosticar.
+        </p>
+      )}
+      {fuera > 0 && (
+        <p className="mt-1 text-xs text-neutral-500">
+          {fuera === 1 ? "Un punto no aplica" : `${fuera} puntos no aplican`} en esta red.
         </p>
       )}
 
@@ -558,35 +656,37 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
       )}
 
       <div className="mt-5 divide-y divide-neutral-200 overflow-hidden rounded border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-        {r.puntos?.map((p) => (
-          <div key={p.campo} className="bg-white p-4 dark:bg-neutral-900">
-            <div className="flex items-center gap-2.5">
-              <span
-                className={`font-mono text-[10px] font-bold uppercase tracking-wider ${
-                  !p.visible
-                    ? "text-neutral-400"
-                    : p.pasa
-                      ? "text-green-700 dark:text-green-400"
-                      : "text-red-700 dark:text-red-400"
-                }`}
-              >
-                {!p.visible ? "no se veía" : p.pasa ? "pasa" : "no pasa"}
-              </span>
-              <h3 className="font-semibold">{p.campo}</h3>
+        {r.puntos?.map((p) => {
+          const estado =
+            p.aplica === false ? "no aplica" : !p.visible ? "sin dato" : p.pasa ? "pasa" : "no pasa";
+          const color =
+            p.aplica === false || !p.visible
+              ? "text-neutral-400"
+              : p.pasa
+                ? "text-green-700 dark:text-green-400"
+                : "text-red-700 dark:text-red-400";
+          return (
+            <div key={p.campo} className="bg-white p-4 dark:bg-neutral-900">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`font-mono text-[10px] font-bold uppercase tracking-wider ${color}`}
+                >
+                  {estado}
+                </span>
+                <h3 className="font-semibold">{p.campo}</h3>
+              </div>
+              {p.actual && (
+                <p className="mt-2 font-mono text-xs text-neutral-500">hoy: {p.actual}</p>
+              )}
+              {p.aplica !== false && p.visible && !p.pasa && (
+                <>
+                  <p className="mt-2 text-sm text-neutral-700 dark:text-neutral-300">{p.por_que}</p>
+                  {p.corregido && <Copiable texto={p.corregido} />}
+                </>
+              )}
             </div>
-            {p.actual && (
-              <p className="mt-2 font-mono text-xs text-neutral-500">hoy: {p.actual}</p>
-            )}
-            {p.visible && !p.pasa && (
-              <>
-                <p className="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
-                  {p.por_que}
-                </p>
-                {p.corregido && <Copiable texto={p.corregido} />}
-              </>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {r.bios?.length > 0 && (

@@ -1,8 +1,13 @@
 export type Punto = {
   campo: string;
   /**
-   * Falso cuando el campo no se alcanzaba a leer en la captura. Un campo que no
-   * se ve no es un campo que falla: contarlo como "no pasa" sería inventar.
+   * Falso cuando esta red no tiene ese campo — un sitio web no tiene punto
+   * Link, el sitio es el destino. Distinto de no haberlo podido leer.
+   */
+  aplica: boolean;
+  /**
+   * Falso cuando la casilla llegó vacía o cortada. Un campo que no se pudo leer
+   * no es un campo que falla: contarlo como "no pasa" sería inventar.
    */
   visible: boolean;
   pasa: boolean;
@@ -18,10 +23,12 @@ export type Bio = {
 
 /** Un diagnóstico completo de un perfil. Con dos redes hay dos de estos. */
 export type DiagnosticoRed = {
+  /** El mismo id de la ficha. La pantalla casa por aquí, no por el nombre. */
+  id: string;
   red: string;
   /** Cuántos puntos pasan, de los que se pudieron evaluar. */
   pasan: number;
-  /** Cuántos se pudieron evaluar. Cinco si la captura se veía entera. */
+  /** Cuántos aplican y además llegaron con algo escrito. */
   evaluados: number;
   veredicto: string;
   lo_que_funciona: string[];
