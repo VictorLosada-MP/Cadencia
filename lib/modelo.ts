@@ -9,10 +9,14 @@ import OpenAI from "openai";
 
 export type Imagen = { media_type: string; data: string };
 
+/** Una captura con la etiqueta que dice de dónde salió. */
+export type Adjunto = { etiqueta: string; imagen: Imagen };
+
 export type Peticion = {
   sistema: string;
   texto: string;
-  imagen?: Imagen;
+  /** Van antes del texto, cada una precedida de su etiqueta. */
+  adjuntos?: Adjunto[];
 };
 
 export type Respuesta = {
@@ -43,15 +47,16 @@ export async function generar(p: Peticion): Promise<Respuesta> {
   return proveedor === "anthropic" ? conAnthropic(p) : conOpenAI(p);
 }
 
-async function conAnthropic({ sistema, texto, imagen }: Peticion): Promise<Respuesta> {
+async function conAnthropic({ sistema, texto, adjuntos }: Peticion): Promise<Respuesta> {
   const contenido: Anthropic.ContentBlockParam[] = [];
-  if (imagen) {
+  for (const a of adjuntos ?? []) {
+    contenido.push({ type: "text", text: a.etiqueta });
     contenido.push({
       type: "image",
       source: {
         type: "base64",
-        media_type: imagen.media_type as "image/png",
-        data: imagen.data,
+        media_type: a.imagen.media_type as "image/png",
+        data: a.imagen.data,
       },
     });
   }
@@ -75,12 +80,13 @@ async function conAnthropic({ sistema, texto, imagen }: Peticion): Promise<Respu
   };
 }
 
-async function conOpenAI({ sistema, texto, imagen }: Peticion): Promise<Respuesta> {
+async function conOpenAI({ sistema, texto, adjuntos }: Peticion): Promise<Respuesta> {
   const contenido: OpenAI.Chat.ChatCompletionContentPart[] = [];
-  if (imagen) {
+  for (const a of adjuntos ?? []) {
+    contenido.push({ type: "text", text: a.etiqueta });
     contenido.push({
       type: "image_url",
-      image_url: { url: `data:${imagen.media_type};base64,${imagen.data}` },
+      image_url: { url: `data:${a.imagen.media_type};base64,${a.imagen.data}` },
     });
   }
   contenido.push({ type: "text", text: texto });
