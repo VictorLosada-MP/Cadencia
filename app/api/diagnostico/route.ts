@@ -1,6 +1,7 @@
 import { extraerJSON, generar, type Adjunto } from "@/lib/modelo";
-import { cargarPerfil, cargarPrompt } from "@/lib/perfil";
+import { cargarPerfil, cargarPrompt, perfilDesdeNegocio } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
+import { negocioDe, usuarioActual } from "@/lib/negocio";
 import {
   CASILLAS,
   MAX_REDES,
@@ -20,7 +21,12 @@ const MAX_CUADRICULAS = 2;
 const MAX_BYTES_IMAGEN = 5_000_000;
 
 type Cuerpo = {
-  perfilId: string;
+  /**
+   * Un perfil semilla del repositorio, solo para probar el sistema. El negocio
+   * de verdad sale de la sesión, nunca del cuerpo: si viniera de aquí, escribir
+   * el id de otro devolvería su oferta, su cliente y sus muestras de voz.
+   */
+  perfilId?: string;
   /** Una o dos redes, con las casillas ya confirmadas por el dueño. */
   redes?: EntradaRed[];
   publicado?: Publicado;
@@ -31,6 +37,11 @@ type Cuerpo = {
 const rotulo = (id: string) => CASILLAS.find((c) => c.id === id)?.etiqueta ?? id;
 
 export async function POST(request: Request) {
+  const usuario = await usuarioActual();
+  if (!usuario) {
+    return Response.json({ error: "Entra a tu cuenta para diagnosticar." }, { status: 401 });
+  }
+
   let cuerpo: Cuerpo;
   try {
     cuerpo = await request.json();
@@ -38,9 +49,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
 
-  if (!cuerpo.perfilId) {
-    return Response.json({ error: "Falta el perfil." }, { status: 400 });
-  }
 
   const redes = (cuerpo.redes ?? []).filter(tieneContenido);
   if (redes.length === 0) {
@@ -76,10 +84,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [{ perfil, voz }, instrucciones] = await Promise.all([
-      cargarPerfil(cuerpo.perfilId),
-      cargarPrompt("1-diagnostico.md"),
-    ]);
+    const instrucciones = await cargarPrompt("1-diagnostico.md");
+
+    let perfil, voz;
+    if (cuerpo.perfilId) {
+      ({ perfil, voz } = await cargarPerfil(cuerpo.perfilId));
+    } else {
+      const guardado = await negocioDe(usuario.id);
+      if (!guardado) {
+        return Response.json(
+          { error: "Llena primero tu negocio: qué vendes, a quién le sirve y cómo queda después." },
+          { status: 400 },
+        );
+      }
+      perfil = perfilDesdeNegocio(guardado);
+      voz = guardado.voz?.trim() ?? "";
+    }
 
     // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
