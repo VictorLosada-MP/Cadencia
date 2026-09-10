@@ -68,8 +68,8 @@ export default function Home() {
         />
         <Campo
           id="contenido"
-          etiqueta="Tus últimas piezas"
-          nota="Opcional, y es lo que le da profundidad — pega los textos de 3 a 5 publicaciones"
+          etiqueta="Lo que ya publicaste"
+          nota="Opcional. No se corrige ni se borra nada: sirve para saber de dónde partes"
           valor={contenido}
           onChange={setContenido}
           filas={7}
@@ -169,6 +169,21 @@ function Resultado({
           </p>
         </div>
       </div>
+
+      {dx.linea_base && (
+        <div className="mt-8 rounded border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+            De dónde partes
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+            {dx.linea_base}
+          </p>
+          <p className="mt-2 text-xs text-neutral-500">
+            Nada de esto se corrige ni se borra. Es el punto de partida —
+            el cambio se nota de aquí en adelante.
+          </p>
+        </div>
+      )}
 
       {dx.lo_que_funciona?.length > 0 && (
         <ul className="mt-7 space-y-1.5">

@@ -18,6 +18,8 @@ export type Diagnostico = {
   lo_que_funciona: string[];
   puntos: Punto[];
   el_que_mas_cuesta: string;
+  /** De dónde parte, leído de lo ya publicado. Contexto, nunca juicio. */
+  linea_base: string;
   bios: { angulo: string; texto: string }[];
   preguntas: Pregunta[];
   limites: string[];
