@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Pool } from "pg";
 
 /**
@@ -19,11 +20,22 @@ function crearPool(): Pool {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
-      "Falta DATABASE_URL. Cópiala de tu proyecto de Supabase a .env.local — la de tipo pooler.",
+      "Falta DATABASE_URL en .env.local. Corre `npm run comprobar` para ver qué falta.",
     );
   }
+  // Supabase y cualquier Postgres administrado exigen TLS. Sin el certificado
+  // raíz del proveedor la conexión va cifrada pero no se verifica quién está al
+  // otro lado; con PGSSLROOTCERT apuntando a ese certificado, sí se verifica.
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(url).hostname);
+  const raiz = process.env.PGSSLROOTCERT;
+
   return new Pool({
     connectionString: url,
+    ssl: local
+      ? undefined
+      : raiz
+        ? { ca: readFileSync(raiz, "utf8"), rejectUnauthorized: true }
+        : { rejectUnauthorized: false },
     max: 5,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
