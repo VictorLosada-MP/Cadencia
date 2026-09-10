@@ -43,11 +43,17 @@ evidencia/  capturas del teardown
 
 ```bash
 npm install
-cp .env.example .env.local        # y rellena las claves
+cp .env.example .env.local        # rellénalo: el propio archivo explica cada valor
+npm run secreto                   # genera BETTER_AUTH_SECRET y lo imprime
+npm run comprobar                 # dice qué falta, sin imprimir ninguna clave
 npx @better-auth/cli migrate      # crea las tablas de cuentas
 psql "$DATABASE_URL" -f db/001-cuentas-y-negocio.sql
+npm run comprobar                 # ahora tiene que salir todo en ok
 npm run dev
 ```
+
+`npm run comprobar` es el atajo cuando algo no arranca: comprueba la forma de
+cada valor, se conecta a la base y te dice si faltan tablas.
 
 Abre http://localhost:3000, crea tu cuenta, llena tu negocio una vez, sube una
 captura de tu perfil o escribe las casillas, y dale a Diagnosticar.
@@ -58,8 +64,12 @@ Postgres a secas — sirve Supabase, Neon o uno propio. El código habla SQL pla
 con el driver `pg`: sin cliente del proveedor y sin extensiones propietarias,
 mudarse es cambiar `DATABASE_URL` y nada más.
 
-En Supabase la cadena está en *Project Settings → Database → Connection string*,
-la de **Transaction pooler**.
+En Supabase está en el botón **Connect**, arriba del proyecto → pestaña
+**Connection string** → **Transaction pooler**. Empieza por `postgresql://` y
+lleva `[YOUR-PASSWORD]`, que hay que cambiar por la contraseña de la base.
+
+No confundir con `https://xxxx.supabase.co`: esa es la dirección de la API y no
+sirve para conectarse a Postgres.
 
 ### Las cuentas
 
