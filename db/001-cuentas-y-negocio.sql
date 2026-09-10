@@ -4,12 +4,79 @@
 -- tenía dónde guardar su negocio, porque en producción el disco es de solo
 -- lectura y los perfiles vivían en archivos del repositorio.
 --
--- Se corre una vez contra la base:
---   psql "$DATABASE_URL" -f db/001-cuentas-y-negocio.sql
+-- Se corre con:  npm run migrar
+--
+-- Las cuatro primeras tablas son las que Better Auth espera. Están aquí y no
+-- generadas por su CLI a propósito: así el esquema entero vive en el
+-- repositorio, se lee, se versiona y no depende de que una herramienta encuentre
+-- un archivo de configuración. Los nombres salen de la propia librería
+-- (getAuthTables), no de memoria, y por eso van entre comillas: son camelCase y
+-- Postgres los bajaría a minúsculas sin ellas.
 
--- Better Auth crea y mantiene sus propias tablas ("user", "session",
--- "account", "verification"). No se declaran aquí para no pelear con sus
--- migraciones: se generan con `npx @better-auth/cli migrate` antes que esto.
+-- ── Cuentas de Cadencia ──────────────────────────────────────────────────────
+-- Aquí no hay ni habrá una sola credencial de red social. La contraseña que se
+-- guarda es la de Cadencia, cifrada por la librería, y vive en "account".
+
+create table if not exists "user" (
+  id              text primary key,
+  name            text not null,
+  email           text not null unique,
+  "emailVerified" boolean not null default false,
+  image           text,
+  "createdAt"     timestamptz not null default now(),
+  "updatedAt"     timestamptz not null default now(),
+  -- Del complemento de administración: es lo que permite dar de alta a un
+  -- cliente de la marca y regalarle la cuenta sin tocar la base a mano.
+  role            text,
+  banned          boolean default false,
+  "banReason"     text,
+  "banExpires"    timestamptz
+);
+
+create table if not exists session (
+  id               text primary key,
+  "expiresAt"      timestamptz not null,
+  token            text not null unique,
+  "createdAt"      timestamptz not null default now(),
+  "updatedAt"      timestamptz not null default now(),
+  "ipAddress"      text,
+  "userAgent"      text,
+  "userId"         text not null references "user"(id) on delete cascade,
+  "impersonatedBy" text
+);
+
+create index if not exists session_usuario on session ("userId");
+
+create table if not exists account (
+  id                      text primary key,
+  "accountId"             text not null,
+  "providerId"            text not null,
+  "userId"                text not null references "user"(id) on delete cascade,
+  "accessToken"           text,
+  "refreshToken"          text,
+  "idToken"               text,
+  "accessTokenExpiresAt"  timestamptz,
+  "refreshTokenExpiresAt" timestamptz,
+  scope                   text,
+  password                text,
+  "createdAt"             timestamptz not null default now(),
+  "updatedAt"             timestamptz not null default now()
+);
+
+create index if not exists account_usuario on account ("userId");
+
+create table if not exists verification (
+  id           text primary key,
+  identifier   text not null,
+  value        text not null,
+  "expiresAt"  timestamptz not null,
+  "createdAt"  timestamptz not null default now(),
+  "updatedAt"  timestamptz not null default now()
+);
+
+create index if not exists verification_identificador on verification (identifier);
+
+-- ── El Perfil de Negocio ─────────────────────────────────────────────────────
 
 create table if not exists negocio (
   id            uuid primary key default gen_random_uuid(),
@@ -33,10 +100,8 @@ create table if not exists negocio (
   actualizado   timestamptz not null default now()
 );
 
-create index if not exists negocio_usuario on negocio (usuario_id);
-
 -- Un negocio por cuenta en esta migración. Cuando entren los planes, el de
--- arriba levanta este límite y esto pasa a ser un índice parcial.
+-- arriba levanta el límite y esto pasa a ser un índice parcial.
 create unique index if not exists negocio_uno_por_usuario on negocio (usuario_id);
 
 create or replace function tocar_actualizado() returns trigger as $$

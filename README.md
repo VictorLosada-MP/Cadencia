@@ -46,14 +46,16 @@ npm install
 cp .env.example .env.local        # rellénalo: el propio archivo explica cada valor
 npm run secreto                   # genera BETTER_AUTH_SECRET y lo imprime
 npm run comprobar                 # dice qué falta, sin imprimir ninguna clave
-npx @better-auth/cli migrate      # crea las tablas de cuentas
-psql "$DATABASE_URL" -f db/001-cuentas-y-negocio.sql
+npm run migrar                    # crea las tablas
 npm run comprobar                 # ahora tiene que salir todo en ok
 npm run dev
 ```
 
 `npm run comprobar` es el atajo cuando algo no arranca: comprueba la forma de
 cada valor, se conecta a la base y te dice si faltan tablas.
+
+`npm run migrar` aplica lo que haya en `db/` y lleva la cuenta de lo aplicado,
+así que se puede correr las veces que haga falta. No necesita `psql` instalado.
 
 Abre http://localhost:3000, crea tu cuenta, llena tu negocio una vez, sube una
 captura de tu perfil o escribe las casillas, y dale a Diagnosticar.

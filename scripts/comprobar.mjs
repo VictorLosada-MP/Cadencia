@@ -5,25 +5,8 @@
  * Nunca imprime el valor de una clave: dice si está, si tiene la forma correcta
  * y, en el caso de la base de datos, si de verdad conecta.
  */
-import fs from "node:fs";
-import path from "node:path";
+import { cargarEnv, opcionesSSL } from "./entorno.mjs";
 
-const RAIZ = process.cwd();
-
-function cargarEnv() {
-  const env = {};
-  for (const archivo of [".env.local", ".env"]) {
-    const ruta = path.join(RAIZ, archivo);
-    if (!fs.existsSync(ruta)) continue;
-    for (const linea of fs.readFileSync(ruta, "utf8").split("\n")) {
-      const m = linea.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
-      if (!m) continue;
-      const valor = m[2].trim().replace(/^["']|["']$/g, "");
-      if (valor && !(m[1] in env)) env[m[1]] = valor;
-    }
-  }
-  return env;
-}
 
 const env = cargarEnv();
 let fallos = 0;
@@ -86,7 +69,7 @@ if (url && /^postgres(ql)?:\/\//.test(url) && !url.includes("[")) {
   const { Pool } = await import("pg");
   const pool = new Pool({
     connectionString: url,
-    ssl: url.includes("localhost") ? undefined : { rejectUnauthorized: false },
+    ssl: opcionesSSL(url),
     connectionTimeoutMillis: 10_000,
   });
   try {

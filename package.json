@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "modelos": "node scripts/modelos.mjs",
+    "migrar": "node scripts/migrar.mjs",
     "comprobar": "node scripts/comprobar.mjs",
-    "secreto": "node scripts/secreto.mjs"
+    "secreto": "node scripts/secreto.mjs",
+    "modelos": "node scripts/modelos.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
