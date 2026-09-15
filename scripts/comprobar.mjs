@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 /**
- * Comprueba que .env.local esté bien antes de arrancar.
+ * Comprueba que la configuración esté bien antes de arrancar.
  *
  * Nunca imprime el valor de una clave: dice si está, si tiene la forma correcta
  * y, en el caso de la base de datos, si de verdad conecta.
  */
-import { cargarEnv, opcionesSSL } from "./entorno.mjs";
+import { cargarEnv, opcionesSSL, revisarClaveEnURL } from "./entorno.mjs";
 
-
-const env = cargarEnv();
+const { valores: env, fuentes } = cargarEnv();
 let fallos = 0;
 
 const bien = (m) => console.log(`  ok    ${m}`);
@@ -18,6 +17,30 @@ const mal = (m, arreglo) => {
   if (arreglo) console.log(`        → ${arreglo}`);
 };
 
+console.log("\nDe dónde leo");
+if (fuentes.length === 0) {
+  mal(
+    "no encuentro ni .env.local ni .env en esta carpeta",
+    "copia .env.example a .env.local y rellénalo",
+  );
+} else {
+  for (const f of fuentes) {
+    const detalle = `${f.archivo} · ${f.encontradas} ${
+      f.encontradas === 1 ? "variable" : "variables"
+    } · ${f.codificacion}`;
+    if (f.encontradas === 0) {
+      mal(
+        `${detalle} — no pude leer ninguna línea`,
+        f.bytes === 0
+          ? "el archivo está vacío"
+          : "revisa que cada línea sea NOMBRE=valor, sin espacios raros",
+      );
+    } else {
+      bien(detalle);
+    }
+  }
+}
+
 console.log("\nEl modelo");
 if (env.ANTHROPIC_API_KEY) bien("ANTHROPIC_API_KEY puesta");
 else if (env.OPENAI_API_KEY) bien("OPENAI_API_KEY puesta");
@@ -25,6 +48,8 @@ else mal("no hay clave de modelo", "pon ANTHROPIC_API_KEY o OPENAI_API_KEY");
 
 console.log("\nLa base de datos");
 const url = env.DATABASE_URL;
+let urlUsable = false;
+
 if (!url) {
   mal(
     "DATABASE_URL vacía",
@@ -43,7 +68,20 @@ if (!url) {
     "cambia [YOUR-PASSWORD] por la contraseña de la base",
   );
 } else {
-  bien(`DATABASE_URL con forma correcta (${new URL(url).hostname})`);
+  const clave = revisarClaveEnURL(url);
+  if (!clave.ok) {
+    const motivos = [];
+    if (clave.conflictivos.length) motivos.push(`lleva ${clave.conflictivos.join(" ")}`);
+    if (clave.porcentajeSuelto) motivos.push("lleva un % suelto");
+    mal(
+      `la contraseña dentro de DATABASE_URL ${motivos.join(" y ")}`,
+      "esos caracteres parten la cadena. Lo más rápido: Supabase → Project Settings → " +
+        "Database → Reset database password, y pon una de solo letras y números",
+    );
+  } else {
+    bien(`DATABASE_URL con forma correcta (${new URL(url).hostname})`);
+    urlUsable = true;
+  }
 }
 
 console.log("\nLas cuentas");
@@ -64,13 +102,13 @@ if (!secreto) {
 if (env.BETTER_AUTH_URL) bien(`BETTER_AUTH_URL = ${env.BETTER_AUTH_URL}`);
 else mal("BETTER_AUTH_URL vacía", "en local: http://localhost:3000");
 
-if (url && /^postgres(ql)?:\/\//.test(url) && !url.includes("[")) {
+if (urlUsable) {
   console.log("\nProbando la conexión…");
   const { Pool } = await import("pg");
   const pool = new Pool({
     connectionString: url,
     ssl: opcionesSSL(url),
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 15_000,
   });
   try {
     const r = await pool.query(
@@ -78,13 +116,10 @@ if (url && /^postgres(ql)?:\/\//.test(url) && !url.includes("[")) {
               to_regclass('public.user')    is not null as usuarios`,
     );
     bien("conecta con la base");
-    if (r.rows[0].usuarios) bien("las tablas de cuentas existen");
-    else mal("faltan las tablas de cuentas", "npx @better-auth/cli migrate");
-    if (r.rows[0].negocio) bien("la tabla negocio existe");
-    else
-      mal("falta la tabla negocio", 'psql "$DATABASE_URL" -f db/001-cuentas-y-negocio.sql');
+    if (r.rows[0].usuarios && r.rows[0].negocio) bien("las tablas están creadas");
+    else mal("faltan tablas", "npm run migrar");
   } catch (e) {
-    mal(`no conecta: ${e.message}`);
+    mal(`no conecta: ${e.message}`, "si habla de la contraseña, revisa que no lleve símbolos");
   } finally {
     await pool.end().catch(() => {});
   }
