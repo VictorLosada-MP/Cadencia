@@ -8,7 +8,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { cargarEnv, opcionesSSL, revisarClaveEnURL } from "./entorno.mjs";
+import { cargarEnv, opcionesSSL, revisarURL } from "./entorno.mjs";
 import { Pool } from "pg";
 
 const RAIZ = process.cwd();
@@ -17,16 +17,10 @@ const RAIZ = process.cwd();
 const { valores: env } = cargarEnv();
 
 const url = env.DATABASE_URL ?? process.env.DATABASE_URL;
-if (!url || !/^postgres(ql)?:\/\//.test(url)) {
-  console.error("\nFalta DATABASE_URL, o no es una cadena de Postgres.");
-  console.error("Corre `npm run comprobar`: te dice qué archivo leyó y qué encontró.\n");
-  process.exit(1);
-}
-
-const clave = revisarClaveEnURL(url);
-if (!clave.ok) {
-  console.error("\nLa contraseña dentro de DATABASE_URL lleva caracteres que parten la cadena.");
-  console.error("Corre `npm run comprobar` para el detalle y cómo arreglarlo.\n");
+const veredicto = revisarURL(url);
+if (!veredicto.ok) {
+  console.error(`\n  ${veredicto.motivo}`);
+  if (veredicto.arreglo) console.error(`  → ${veredicto.arreglo}\n`);
   process.exit(1);
 }
 

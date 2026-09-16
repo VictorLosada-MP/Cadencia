@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { Pool } from "pg";
+import { normalizarURL } from "./postgres-url.mjs";
 
 /**
  * La única capa que sabe dónde viven los datos.
@@ -26,11 +27,14 @@ function crearPool(): Pool {
   // Supabase y cualquier Postgres administrado exigen TLS. Sin el certificado
   // raíz del proveedor la conexión va cifrada pero no se verifica quién está al
   // otro lado; con PGSSLROOTCERT apuntando a ese certificado, sí se verifica.
-  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(url).hostname);
+  // La contraseña puede traer símbolos sin codificar: se arregla aquí, una vez,
+  // en vez de pedirle al dueño que los codifique a mano.
+  const cadena = normalizarURL(url);
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(cadena).hostname);
   const raiz = process.env.PGSSLROOTCERT;
 
   return new Pool({
-    connectionString: url,
+    connectionString: cadena,
     ssl: local
       ? undefined
       : raiz
