@@ -1,6 +1,7 @@
 /** Lo que comparten los scripts: leer .env y decidir el TLS de la conexión. */
 import fs from "node:fs";
 import path from "node:path";
+import { faltaLaClave, normalizarURL } from "../lib/postgres-url.mjs";
 
 const LINEA = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/;
 
@@ -41,6 +42,7 @@ function leerTexto(ruta) {
 export function cargarEnv(raiz = process.cwd()) {
   const valores = {};
   const fuentes = [];
+  const repetidas = new Set();
 
   for (const archivo of [".env.local", ".env"]) {
     const ruta = path.join(raiz, archivo);
@@ -55,13 +57,17 @@ export function cargarEnv(raiz = process.cwd()) {
       if (!m) continue;
       encontradas++;
       const valor = m[2].replace(/^["']|["']$/g, "");
-      if (valor && !(m[1] in valores)) valores[m[1]] = valor;
+      if (!valor) continue;
+      // Una variable escrita dos veces es casi siempre una edición a medias: se
+      // queda la última, que es lo que la persona acaba de escribir, y se avisa.
+      if (m[1] in valores) repetidas.add(m[1]);
+      valores[m[1]] = valor;
     }
 
     fuentes.push({ archivo, codificacion, encontradas, bytes: fs.statSync(ruta).size });
   }
 
-  return { valores, fuentes };
+  return { valores, fuentes, repetidas: [...repetidas] };
 }
 
 /**
@@ -70,28 +76,52 @@ export function cargarEnv(raiz = process.cwd()) {
  * script no diga que algo falla cuando en la app funciona.
  */
 export function opcionesSSL(url) {
-  const local = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/.test(new URL(url).hostname);
+  const host = new URL(normalizarURL(url)).hostname;
+  const local = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/.test(host);
   return local ? undefined : { rejectUnauthorized: false };
 }
 
 /**
- * Una contraseña con caracteres especiales dentro de la cadena de conexión es
- * la trampa más común: el `@` parte la cadena donde no toca, y un `%` suelto
- * hace que el driver reviente al descifrarla.
+ * El veredicto sobre DATABASE_URL, en un solo sitio, para que `migrar` y
+ * `comprobar` no puedan decir cosas distintas del mismo archivo.
  */
-export function revisarClaveEnURL(url) {
-  const resto = url.slice(url.indexOf("://") + 3);
-  const corte = resto.lastIndexOf("@");
-  if (corte < 0) return { ok: true };
-
-  const credenciales = resto.slice(0, corte);
-  const dosPuntos = credenciales.indexOf(":");
-  if (dosPuntos < 0) return { ok: true };
-
-  const clave = credenciales.slice(dosPuntos + 1);
-  const conflictivos = [...new Set([...clave].filter((c) => "@/?#[]".includes(c)))];
-  const porcentajeSuelto = /%(?![0-9A-Fa-f]{2})/.test(clave);
-
-  if (!conflictivos.length && !porcentajeSuelto) return { ok: true };
-  return { ok: false, conflictivos, porcentajeSuelto };
+export function revisarURL(url) {
+  if (!url) {
+    return {
+      ok: false,
+      motivo: "DATABASE_URL vacía",
+      arreglo: "en Supabase: botón Connect (arriba) → Connection string → Transaction pooler",
+    };
+  }
+  if (url.startsWith("https://")) {
+    return {
+      ok: false,
+      motivo: "DATABASE_URL es la dirección de la API, no la de Postgres",
+      arreglo: "empieza por postgresql://, no por https://. Es otra pantalla: Connect → Connection string",
+    };
+  }
+  if (!/^postgres(ql)?:\/\//.test(url)) {
+    return {
+      ok: false,
+      motivo: "DATABASE_URL no parece una cadena de Postgres",
+      arreglo: "tiene que empezar por postgresql://",
+    };
+  }
+  if (faltaLaClave(url)) {
+    return {
+      ok: false,
+      motivo: "DATABASE_URL trae el hueco de la contraseña sin rellenar",
+      arreglo: "cambia [YOUR-PASSWORD] por la contraseña de la base, sin los corchetes",
+    };
+  }
+  try {
+    new URL(normalizarURL(url));
+  } catch {
+    return {
+      ok: false,
+      motivo: "DATABASE_URL no se puede interpretar",
+      arreglo: "vuelve a copiarla entera desde Supabase",
+    };
+  }
+  return { ok: true };
 }

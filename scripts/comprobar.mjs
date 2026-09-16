@@ -5,9 +5,10 @@
  * Nunca imprime el valor de una clave: dice si está, si tiene la forma correcta
  * y, en el caso de la base de datos, si de verdad conecta.
  */
-import { cargarEnv, opcionesSSL, revisarClaveEnURL } from "./entorno.mjs";
+import { cargarEnv, opcionesSSL, revisarURL } from "./entorno.mjs";
+import { servidorDe } from "../lib/postgres-url.mjs";
 
-const { valores: env, fuentes } = cargarEnv();
+const { valores: env, fuentes, repetidas } = cargarEnv();
 let fallos = 0;
 
 const bien = (m) => console.log(`  ok    ${m}`);
@@ -41,6 +42,13 @@ if (fuentes.length === 0) {
   }
 }
 
+if (repetidas.length) {
+  mal(
+    `escritas dos veces: ${repetidas.join(", ")}`,
+    "me quedo con la última de cada una. Borra las líneas de arriba que sobren",
+  );
+}
+
 console.log("\nEl modelo");
 if (env.ANTHROPIC_API_KEY) bien("ANTHROPIC_API_KEY puesta");
 else if (env.OPENAI_API_KEY) bien("OPENAI_API_KEY puesta");
@@ -48,40 +56,14 @@ else mal("no hay clave de modelo", "pon ANTHROPIC_API_KEY o OPENAI_API_KEY");
 
 console.log("\nLa base de datos");
 const url = env.DATABASE_URL;
+const veredicto = revisarURL(url);
 let urlUsable = false;
 
-if (!url) {
-  mal(
-    "DATABASE_URL vacía",
-    "en Supabase: botón Connect (arriba) → Connection string → Transaction pooler",
-  );
-} else if (url.startsWith("https://")) {
-  mal(
-    "DATABASE_URL es la dirección de la API, no la de Postgres",
-    "empieza por postgresql://, no por https://. Es otra pantalla: Connect → Connection string",
-  );
-} else if (!/^postgres(ql)?:\/\//.test(url)) {
-  mal("DATABASE_URL no parece una cadena de Postgres", "tiene que empezar por postgresql://");
-} else if (url.includes("[") || url.includes("YOUR-PASSWORD")) {
-  mal(
-    "DATABASE_URL trae el hueco de la contraseña sin rellenar",
-    "cambia [YOUR-PASSWORD] por la contraseña de la base",
-  );
+if (!veredicto.ok) {
+  mal(veredicto.motivo, veredicto.arreglo);
 } else {
-  const clave = revisarClaveEnURL(url);
-  if (!clave.ok) {
-    const motivos = [];
-    if (clave.conflictivos.length) motivos.push(`lleva ${clave.conflictivos.join(" ")}`);
-    if (clave.porcentajeSuelto) motivos.push("lleva un % suelto");
-    mal(
-      `la contraseña dentro de DATABASE_URL ${motivos.join(" y ")}`,
-      "esos caracteres parten la cadena. Lo más rápido: Supabase → Project Settings → " +
-        "Database → Reset database password, y pon una de solo letras y números",
-    );
-  } else {
-    bien(`DATABASE_URL con forma correcta (${new URL(url).hostname})`);
-    urlUsable = true;
-  }
+  bien(`DATABASE_URL con forma correcta (${servidorDe(url)})`);
+  urlUsable = true;
 }
 
 console.log("\nLas cuentas");
