@@ -1,7 +1,7 @@
 /** Lo que comparten los scripts: leer .env y decidir el TLS de la conexión. */
 import fs from "node:fs";
 import path from "node:path";
-import { faltaLaClave, normalizarURL } from "../lib/postgres-url.mjs";
+import { normalizarURL, revisarClave } from "../lib/postgres-url.mjs";
 
 const LINEA = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/;
 
@@ -107,13 +107,8 @@ export function revisarURL(url) {
       arreglo: "tiene que empezar por postgresql://",
     };
   }
-  if (faltaLaClave(url)) {
-    return {
-      ok: false,
-      motivo: "DATABASE_URL trae el hueco de la contraseña sin rellenar",
-      arreglo: "cambia [YOUR-PASSWORD] por la contraseña de la base, sin los corchetes",
-    };
-  }
+  const clave = revisarClave(url);
+  if (!clave.ok) return clave;
   try {
     new URL(normalizarURL(url));
   } catch {
