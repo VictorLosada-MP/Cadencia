@@ -16,6 +16,8 @@ export type Negocio = {
   voz?: string;
   /** El CTA que usa hoy. */
   accion?: string;
+  /** Lo que le escriben y le preguntan. Dice en qué escalón está su audiencia. */
+  senales?: string;
 };
 
 export const CAMPOS_NUCLEO = [
@@ -51,6 +53,13 @@ export const CAMPOS_EXTRA = [
     etiqueta: "Tu CTA de hoy",
     pista: "El texto del botón o la línea que pide la acción",
     filas: 1,
+  },
+  {
+    id: "senales" as const,
+    etiqueta: "Qué te escriben",
+    pista:
+      "Lo que te preguntan por privado o en comentarios. Es lo que dice en qué punto está tu audiencia — la gente pregunta desde donde está",
+    filas: 4,
   },
   {
     id: "voz" as const,
