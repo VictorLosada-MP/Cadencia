@@ -2,23 +2,34 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signIn, signUp } from "@/lib/auth-cliente";
+import { requestPasswordReset, signIn, signUp } from "@/lib/auth-cliente";
 
 export default function Entrar() {
   const router = useRouter();
-  const [modo, setModo] = useState<"entrar" | "crear">("entrar");
+  const [modo, setModo] = useState<"entrar" | "crear" | "olvide">("entrar");
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
   const [nombre, setNombre] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [pedido, setPedido] = useState(false);
 
   const creando = modo === "crear";
+  const olvidado = modo === "olvide";
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setCargando(true);
     setError("");
+    if (olvidado) {
+      await requestPasswordReset({ email: correo, redirectTo: "/restablecer" });
+      setCargando(false);
+      // Siempre el mismo mensaje, exista o no la cuenta: si cambiara, esta
+      // pantalla se convertiría en una forma de averiguar quién está dentro.
+      setPedido(true);
+      return;
+    }
+
     const r = creando
       ? await signUp.email({ email: correo, password: clave, name: nombre })
       : await signIn.email({ email: correo, password: clave });
@@ -41,13 +52,35 @@ export default function Entrar() {
         Cadencia
       </p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight">
-        {creando ? "Crea tu cuenta" : "Entra a tu cuenta"}
+        {olvidado ? "Recupera tu cuenta" : creando ? "Crea tu cuenta" : "Entra a tu cuenta"}
       </h1>
       <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
-        Es la cuenta de Cadencia. Aquí no se pide ni se guarda ninguna contraseña
-        de Instagram, TikTok ni de ninguna red — y no se va a pedir nunca.
+        {olvidado
+          ? "Pon tu correo y te mando un enlace para elegir una contraseña nueva. Vale una hora."
+          : "Es la cuenta de Cadencia. Aquí no se pide ni se guarda ninguna contraseña de Instagram, TikTok ni de ninguna red — y no se va a pedir nunca."}
       </p>
 
+      {pedido ? (
+        <div className="mt-8">
+          <p className="rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm dark:border-teal-400 dark:bg-teal-950/30">
+            Si esa cuenta existe, el enlace ya va en camino. Revisa tu correo.
+          </p>
+          <p className="mt-3 text-xs text-neutral-500">
+            ¿Corriendo esto en tu máquina y sin proveedor de correo configurado?
+            El enlace sale impreso en la terminal donde tienes{" "}
+            <code className="font-mono">npm run dev</code>.
+          </p>
+          <button
+            onClick={() => {
+              setPedido(false);
+              setModo("entrar");
+            }}
+            className="mt-5 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+          >
+            volver a entrar
+          </button>
+        </div>
+      ) : (
       <form onSubmit={enviar} className="mt-8 space-y-4">
         {creando && (
           <Campo
@@ -67,22 +100,30 @@ export default function Entrar() {
           onChange={setCorreo}
           autoComplete="email"
         />
-        <Campo
-          id="clave"
-          etiqueta="Contraseña"
-          tipo="password"
-          valor={clave}
-          onChange={setClave}
-          autoComplete={creando ? "new-password" : "current-password"}
-          nota={creando ? "Diez caracteres o más" : undefined}
-        />
+        {!olvidado && (
+          <Campo
+            id="clave"
+            etiqueta="Contraseña"
+            tipo="password"
+            valor={clave}
+            onChange={setClave}
+            autoComplete={creando ? "new-password" : "current-password"}
+            nota={creando ? "Diez caracteres o más" : undefined}
+          />
+        )}
 
         <button
           type="submit"
-          disabled={cargando || !correo.trim() || !clave.trim()}
+          disabled={cargando || !correo.trim() || (!olvidado && !clave.trim())}
           className="w-full rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
-          {cargando ? "Un momento…" : creando ? "Crear cuenta" : "Entrar"}
+          {cargando
+            ? "Un momento…"
+            : olvidado
+              ? "Mándame el enlace"
+              : creando
+                ? "Crear cuenta"
+                : "Entrar"}
         </button>
 
         {error && (
@@ -91,16 +132,32 @@ export default function Entrar() {
           </p>
         )}
       </form>
+      )}
 
-      <button
-        onClick={() => {
-          setModo(creando ? "entrar" : "crear");
-          setError("");
-        }}
-        className="mt-6 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-      >
-        {creando ? "ya tengo cuenta" : "crear una cuenta"}
-      </button>
+      {!pedido && (
+        <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+          <button
+            onClick={() => {
+              setModo(creando || olvidado ? "entrar" : "crear");
+              setError("");
+            }}
+            className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+          >
+            {creando || olvidado ? "ya tengo cuenta" : "crear una cuenta"}
+          </button>
+          {!olvidado && (
+            <button
+              onClick={() => {
+                setModo("olvide");
+                setError("");
+              }}
+              className="font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:no-underline"
+            >
+              olvidé mi contraseña
+            </button>
+          )}
+        </div>
+      )}
     </main>
   );
 }
