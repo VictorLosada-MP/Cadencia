@@ -211,6 +211,12 @@ export default function Diagnostico() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
       <div className="mb-6 flex items-center justify-end gap-3 text-xs text-neutral-500">
+        <a
+          href="/semana"
+          className="font-mono uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+        >
+          la semana →
+        </a>
         <span className="font-mono">{sesion.user.email}</span>
         <button
           onClick={() =>

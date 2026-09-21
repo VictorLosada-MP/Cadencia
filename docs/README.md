@@ -1,32 +1,33 @@
 # Documentos
 
-Los cuatro documentos de diseño. Hoy viven como páginas publicadas; se van
-pasando a markdown aquí a medida que cada uno se toca, para que queden
-versionados y con historial.
+El material de diseño, en el repositorio y no en páginas sueltas: aquí se lee,
+se versiona y se corrige.
 
-| | Documento | Qué responde | Estado |
-|---|---|---|---|
-| 01 | Teardown del producto de referencia | Qué encontramos, con evidencia | publicado |
-| 02 | Planos | Qué construimos — arquitectura y datos | publicado |
-| 03 | Reglamento | Cómo decide cada función | publicado, **5 correcciones pendientes** |
-| 04 | Apuntes clasificados | Qué material propio alimenta cada función | publicado |
+| | Documento | Qué responde |
+|---|---|---|
+| 01 | [`apuntes.md`](apuntes.md) | Qué material propio alimenta cada función |
+| 02 | [`reglamento.md`](reglamento.md) | Cómo decide cada función |
 
 ## Orden de lectura
 
-`teardown` → `planos` → `reglamento`
+`apuntes` → `reglamento`. Los apuntes son la fuente; el reglamento es lo que se
+programó a partir de ellos. **Cuando se contradigan, mandan los apuntes** — son
+material de vender, no de analizar.
 
-Cada uno responde una pregunta distinta: qué encontramos, qué construimos,
-cómo decide.
+## De dónde salen los prompts
 
-## Correcciones pendientes en el Reglamento
+| Prompt | Se apoya en |
+|---|---|
+| `prompts/0-transcripcion.md` | Reglas transversales: solo existe lo que se ve, datos personales |
+| `prompts/1-diagnostico.md` | Reglamento · Función 1, más las reglas transversales |
+| `prompts/2-banco.md` | Apuntes · correcciones 1, 3, 4 y 5 · Reglamento · Función 2 |
 
-Cinco, todas salidas del material propio:
+Cambiar cómo decide una función es editar su `.md`. Este documento dice **por
+qué** decide así, que es lo que no cabe dentro del prompt.
 
-1. **Los cinco niveles de conciencia** reemplazan el reparto arbitrario de
-   ángulos en la Función 2
-2. **Lo viral es relativo** — el umbral es el propio histórico, no un
-   estándar de creadores
-3. **Cómo se contacta** — el guion de respuesta nunca abre con la oferta
-4. **Las tres preguntas que califican** son el guion de respuesta, literal
-5. **No inventar** cifras, testimonios ni autoridad — regla dura en las
-   cuatro funciones. Y **reencuadrar en neutral** en vez de acusar
+## Pendientes
+
+- El teardown del producto de referencia y los planos siguen fuera del
+  repositorio. Se traen cuando se toquen.
+- La Función 4 espera el criterio de publicable, que no sale de ningún análisis:
+  sale de grabar y editar un video y anotar qué se revisó.

@@ -24,7 +24,7 @@ export async function usuarioActual() {
  */
 export function negocioDe(usuarioId: string) {
   return una<NegocioGuardado>(
-    `select id, oferta, cliente, despues, freno, accion, voz, nombre,
+    `select id, oferta, cliente, despues, freno, accion, voz, senales, nombre,
             actualizado
        from negocio
       where usuario_id = $1`,
@@ -37,8 +37,8 @@ export async function guardarNegocio(
   n: Negocio & { nombre?: string },
 ): Promise<NegocioGuardado> {
   const filas = await consultar<NegocioGuardado>(
-    `insert into negocio (usuario_id, oferta, cliente, despues, freno, accion, voz, nombre)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)
+    `insert into negocio (usuario_id, oferta, cliente, despues, freno, accion, voz, senales, nombre)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      on conflict (usuario_id) do update set
        oferta  = excluded.oferta,
        cliente = excluded.cliente,
@@ -46,8 +46,9 @@ export async function guardarNegocio(
        freno   = excluded.freno,
        accion  = excluded.accion,
        voz     = excluded.voz,
+       senales = excluded.senales,
        nombre  = excluded.nombre
-     returning id, oferta, cliente, despues, freno, accion, voz, nombre, actualizado`,
+     returning id, oferta, cliente, despues, freno, accion, voz, senales, nombre, actualizado`,
     [
       usuarioId,
       n.oferta.trim(),
@@ -56,6 +57,7 @@ export async function guardarNegocio(
       n.freno?.trim() ?? "",
       n.accion?.trim() ?? "",
       n.voz?.trim() ?? "",
+      n.senales?.trim() ?? "",
       n.nombre?.trim() ?? "",
     ],
   );
