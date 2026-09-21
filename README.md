@@ -73,6 +73,18 @@ lleva `[YOUR-PASSWORD]`, que hay que cambiar por la contraseña de la base.
 No confundir con `https://xxxx.supabase.co`: esa es la dirección de la API y no
 sirve para conectarse a Postgres.
 
+### Si no puedes entrar
+
+```bash
+npm run clave                      # lista las cuentas de tu base
+npm run clave -- tu@correo.com     # le pone una contraseña nueva
+```
+
+Es la llave maestra del dueño de la base. Dentro de la app hay recuperación por
+correo: pide el enlace en *olvidé mi contraseña*. **Sin proveedor de correo
+configurado el enlace se imprime en la terminal** donde corre `npm run dev` — en
+local es suficiente; para abrir al público hace falta un proveedor.
+
 ### Las cuentas
 
 Son cuentas de Cadencia, con su correo y su contraseña. **Aquí no se pide ni se
