@@ -17,7 +17,7 @@ siguiente — esa es la diferencia entre un sistema y una colección de utilidad
 | | | Hasta dos redes, y qué cambia entre una y otra |
 | 2 | Banco de la semana | Cinco piezas que suben a tu audiencia un escalón, con el guion de respuesta |
 | 3 | Guion | Golpes con dirección física, cierre y cómo grabarlo |
-| 4 | Pieza publicable | 9:16, subtítulos, silencios cortados |
+| 4 | Pieza publicable | Los ocho chequeos mecánicos, medidos en tu navegador |
 
 Las cuatro leen un único **Perfil de Negocio** de seis campos, que el usuario
 llena una vez. Ninguna función pide dos veces el mismo dato.
@@ -137,10 +137,11 @@ desde el panel del proveedor.
 | Cuentas y Perfil de Negocio en base de datos | migración 1, hecha |
 | Historial y comparación entre fechas | hecho |
 | Planes, cuota y cortesías | hecho |
-| Función 4 — pieza publicable | en curso |
+
 | **Función 2 — banco semanal** | **funcionando** |
 | **Función 3 — guion** | **funcionando** |
-| Función 4 — pieza publicable | espera el criterio de publicable |
+| **Función 4 — chequeos mecánicos** | **funcionando** |
+| Función 4 — criterio editorial | espera grabar y editar un video |
 
 ## Cómo está armado
 
@@ -154,6 +155,7 @@ desde el panel del proveedor.
 - `perfiles/*.json` — los datos de cada negocio; el sistema no los lleva dentro
 - `lib/modelo.ts` — la única capa que habla con un proveedor de IA
 - `lib/db.ts` — la única capa que sabe dónde viven los datos
+- `lib/pieza.ts` — los chequeos mecánicos, funciones puras sin red ni servidor
 - `lib/auth.ts` — cuentas de Cadencia, en el mismo Postgres
 - `lib/perfil.ts` — carga los prompts y arma el perfil que lee el modelo
 - `app/api/*/route.ts` — una ruta por función

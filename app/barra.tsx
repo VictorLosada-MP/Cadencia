@@ -13,6 +13,7 @@ const PASOS = [
   { href: "/", n: "1", nombre: "Diagnóstico" },
   { href: "/semana", n: "2", nombre: "La semana" },
   { href: "/guion", n: "3", nombre: "El guion" },
+  { href: "/pieza", n: "4", nombre: "La pieza" },
 ];
 
 type Cuota = {
