@@ -1,4 +1,6 @@
 import { cargarContexto, FaltaNegocio } from "@/lib/contexto";
+import { revisarCuota } from "@/lib/cuota";
+import { guardarCorrida } from "@/lib/historial";
 import { extraerJSON, generar } from "@/lib/modelo";
 import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
@@ -80,8 +82,25 @@ export async function POST(request: Request) {
             "\nDevuelve solo el JSON.",
           ].join("\n");
 
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    if (!permiso.ok) {
+      return Response.json(
+        { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },
+        { status: 402 },
+      );
+    }
+
     const r = await generar({ sistema: instrucciones, estable: contexto.estable, texto });
     const salida = extraerJSON<Ganchos | Guion>(r.texto);
+
+    // Solo se guarda el guion terminado: los tres ganchos son un paso
+    // intermedio y guardarlos llenaría el historial de borradores.
+    if (cuerpo.paso === "guion" && contexto.negocioId) {
+      await guardarCorrida(contexto.negocioId, 3, salida, r.modelo, {
+        formato: cuerpo.formato,
+        idea: cuerpo.idea,
+      });
+    }
 
     return Response.json({
       [cuerpo.paso]: salida,

@@ -1,5 +1,7 @@
 import { extraerJSON, generar } from "@/lib/modelo";
 import { cargarContexto, FaltaNegocio } from "@/lib/contexto";
+import { revisarCuota } from "@/lib/cuota";
+import { guardarCorrida } from "@/lib/historial";
 import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
 import type { Banco } from "@/types/banco";
@@ -45,10 +47,24 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    if (!permiso.ok) {
+      return Response.json(
+        { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },
+        { status: 402 },
+      );
+    }
+
     const r = await generar({ sistema: instrucciones, estable: contexto.estable, texto });
 
+    const salida = extraerJSON<Banco>(r.texto);
+
+    if (contexto.negocioId) {
+      await guardarCorrida(contexto.negocioId, 2, salida, r.modelo);
+    }
+
     return Response.json({
-      banco: extraerJSON<Banco>(r.texto),
+      banco: salida,
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {

@@ -15,6 +15,8 @@ export type Contexto = {
   voz: string;
   senales: string;
   accion: string;
+  /** null cuando se corrió con un perfil semilla del repositorio. */
+  negocioId: string | null;
 };
 
 export class FaltaNegocio extends Error {
@@ -28,6 +30,7 @@ export async function cargarContexto(
   perfilId?: string,
 ): Promise<Contexto> {
   let perfil, voz, senales = "";
+  let negocioId: string | null = null;
 
   if (perfilId) {
     ({ perfil, voz } = await cargarPerfil(perfilId));
@@ -37,6 +40,7 @@ export async function cargarContexto(
     perfil = perfilDesdeNegocio(guardado);
     voz = guardado.voz?.trim() ?? "";
     senales = guardado.senales?.trim() ?? "";
+    negocioId = guardado.id;
   }
 
   // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
@@ -52,5 +56,6 @@ export async function cargarContexto(
     voz,
     senales,
     accion: perfil.nucleo.accion?.texto?.trim() ?? "",
+    negocioId,
   };
 }

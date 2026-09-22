@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-cliente";
 
@@ -14,12 +15,39 @@ const PASOS = [
   { href: "/guion", n: "3", nombre: "El guion" },
 ];
 
+type Cuota = {
+  plan: { nombre: string };
+  cortesia: boolean;
+  usadas: number;
+  limite: number | null;
+};
+
 export function Barra() {
   const aqui = usePathname();
   const { data: sesion } = useSession();
   const router = useRouter();
+  const [cuota, setCuota] = useState<Cuota | null>(null);
+
+  useEffect(() => {
+    if (!sesion) return;
+    let vivo = true;
+    fetch("/api/negocio")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (vivo && d?.cuota) setCuota(d.cuota);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [sesion, aqui]);
 
   if (!sesion) return null;
+
+  // Se avisa al 80%, una sola vez y en la página. Nunca un aviso a mitad de una
+  // corrida: eso interrumpe el trabajo por el que ya pagó.
+  const cerca =
+    cuota?.limite != null && cuota.usadas >= Math.floor(cuota.limite * 0.8);
 
   return (
     <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-200 pb-3 dark:border-neutral-800">
@@ -45,6 +73,21 @@ export function Barra() {
       </nav>
 
       <span className="ml-auto flex items-center gap-3 text-xs text-neutral-500">
+        {cuota?.limite != null && (
+          <span
+            className={`font-mono tabular-nums ${
+              cerca ? "font-bold text-amber-700 dark:text-amber-500" : ""
+            }`}
+            title={
+              cuota.cortesia
+                ? `Plan ${cuota.plan.nombre}, de cortesía`
+                : `Plan ${cuota.plan.nombre}`
+            }
+          >
+            {cuota.usadas}/{cuota.limite}
+            {cuota.cortesia && " ·  cortesía"}
+          </span>
+        )}
         <span className="font-mono">{sesion.user.email}</span>
         <button
           onClick={() =>

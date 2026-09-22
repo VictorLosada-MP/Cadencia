@@ -73,6 +73,21 @@ lleva `[YOUR-PASSWORD]`, que hay que cambiar por la contraseña de la base.
 No confundir con `https://xxxx.supabase.co`: esa es la dirección de la API y no
 sirve para conectarse a Postgres.
 
+### Planes y cortesías
+
+```bash
+npm run cortesia                            # quién tiene qué plan y cuánto gastó
+npm run cortesia -- cliente@x.com cadencia  # se lo regalas
+npm run cortesia -- cliente@x.com quitar    # lo dejas en su plan, sin borrar nada
+```
+
+Se limita por **corridas al mes**. El contador no es una columna: se cuenta la
+tabla de corridas, que solo recibe fila cuando una corrida termina bien — así un
+error del sistema no gasta cuota, por construcción.
+
+La cortesía apunta a un plan real, no es un plan aparte: si cambias lo que
+incluye Cadencia, las cortesías con Cadencia cambian solas.
+
 ### Si no puedes entrar
 
 ```bash
@@ -120,8 +135,9 @@ desde el panel del proveedor.
 | Perfil de prueba | completo |
 | **Función 1 — diagnóstico** | **funcionando** |
 | Cuentas y Perfil de Negocio en base de datos | migración 1, hecha |
-| Historial y comparación entre fechas | migración 2, pendiente |
-| Planes y límites | migración 3, pendiente |
+| Historial y comparación entre fechas | hecho |
+| Planes, cuota y cortesías | hecho |
+| Función 4 — pieza publicable | en curso |
 | **Función 2 — banco semanal** | **funcionando** |
 | **Función 3 — guion** | **funcionando** |
 | Función 4 — pieza publicable | espera el criterio de publicable |

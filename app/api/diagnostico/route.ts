@@ -2,6 +2,8 @@ import { extraerJSON, generar, type Adjunto } from "@/lib/modelo";
 import { cargarPrompt } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
 import { cargarContexto, FaltaNegocio } from "@/lib/contexto";
+import { revisarCuota } from "@/lib/cuota";
+import { estadoAnterior, guardarCorrida } from "@/lib/historial";
 import { usuarioActual } from "@/lib/negocio";
 import {
   CASILLAS,
@@ -148,7 +150,12 @@ export async function POST(request: Request) {
 
     const hayPublicado = publicado.cuadriculas.length > 0 || piezas > 0;
 
+    // Para no volver a proponer una corrección que ya aplicó. No para
+    // re-evaluar el pasado: eso convertiría el historial en examen.
+    const anterior = contexto.negocioId ? await estadoAnterior(contexto.negocioId) : "";
+
     const texto = [
+      anterior ? `${anterior}\n` : "",
       `## Redes a revisar (${redes.length})`,
       "Las casillas ya vienen confirmadas por el dueño. Cópialas literal en `actual`.",
       "",
@@ -165,6 +172,14 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    if (!permiso.ok) {
+      return Response.json(
+        { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },
+        { status: 402 },
+      );
+    }
+
     const r = await generar({
       sistema: instrucciones,
       estable: contexto.estable,
@@ -172,8 +187,14 @@ export async function POST(request: Request) {
       adjuntos,
     });
 
+    const salida = extraerJSON<Diagnostico>(r.texto);
+
+    if (contexto.negocioId) {
+      await guardarCorrida(contexto.negocioId, 1, salida, r.modelo);
+    }
+
     return Response.json({
-      diagnostico: extraerJSON<Diagnostico>(r.texto),
+      diagnostico: salida,
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
