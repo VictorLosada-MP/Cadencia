@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
+import { Barra } from "../barra";
 import { BRECHAS, NIVELES, type Banco, type PiezaSemana } from "@/types/banco";
 
 export default function Semana() {
@@ -66,6 +67,8 @@ export default function Semana() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
+      <Barra />
+
       <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 2 · Banco de la semana
@@ -75,12 +78,6 @@ export default function Semana() {
           Cinco piezas, de lunes a viernes. Cada una sube a tu audiencia un
           escalón — y trae cómo responder al mensaje que genere.
         </p>
-        <Link
-          href="/"
-          className="mt-4 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-        >
-          ← volver al diagnóstico
-        </Link>
       </header>
 
       <section className="mt-9">

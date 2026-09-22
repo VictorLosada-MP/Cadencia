@@ -1,6 +1,7 @@
 import { extraerJSON, generar } from "@/lib/modelo";
-import { negocioDe, usuarioActual } from "@/lib/negocio";
-import { cargarPerfil, cargarPrompt, perfilDesdeNegocio } from "@/lib/perfil";
+import { cargarContexto, FaltaNegocio } from "@/lib/contexto";
+import { usuarioActual } from "@/lib/negocio";
+import { cargarPrompt } from "@/lib/perfil";
 import type { Banco } from "@/types/banco";
 
 export const maxDuration = 300;
@@ -29,36 +30,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const instrucciones = await cargarPrompt("2-banco.md");
-
-    let perfil, voz;
-    let guardadas = "";
-    if (cuerpo.perfilId) {
-      ({ perfil, voz } = await cargarPerfil(cuerpo.perfilId));
-    } else {
-      const guardado = await negocioDe(usuario.id);
-      if (!guardado) {
-        return Response.json(
-          { error: "Llena primero tu negocio: qué vendes, a quién le sirve y cómo queda después." },
-          { status: 400 },
-        );
-      }
-      perfil = perfilDesdeNegocio(guardado);
-      voz = guardado.voz?.trim() ?? "";
-      guardadas = guardado.senales?.trim() ?? "";
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { voz: _fuente, ...nucleo } = perfil.nucleo;
-
-    const estable = [
-      "## Perfil de Negocio",
-      JSON.stringify({ ...perfil, nucleo }, null, 2),
-      voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
-    ].join("\n");
+    const [instrucciones, contexto] = await Promise.all([
+      cargarPrompt("2-banco.md"),
+      cargarContexto(usuario.id, cuerpo.perfilId),
+    ]);
 
     // Lo que mande la pantalla gana; si no viene, lo guardado en el negocio.
-    const senales = cuerpo.senales?.trim() || guardadas;
+    const senales = cuerpo.senales?.trim() || contexto.senales;
     const texto = [
       "## Lo que le escriben y le preguntan",
       senales
@@ -67,13 +45,16 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const r = await generar({ sistema: instrucciones, estable, texto });
+    const r = await generar({ sistema: instrucciones, estable: contexto.estable, texto });
 
     return Response.json({
       banco: extraerJSON<Banco>(r.texto),
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
+    if (e instanceof FaltaNegocio) {
+      return Response.json({ error: e.message }, { status: 400 });
+    }
     console.error("banco:", e instanceof Error ? e.message : e);
     return Response.json(
       { error: "No se pudo armar la semana. Vuelve a intentarlo." },

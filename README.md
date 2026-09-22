@@ -16,7 +16,7 @@ siguiente — esa es la diferencia entre un sistema y una colección de utilidad
 | 1 | Diagnóstico | La brecha nombrada, con su umbral y la corrección ya escrita |
 | | | Hasta dos redes, y qué cambia entre una y otra |
 | 2 | Banco de la semana | Cinco piezas que suben a tu audiencia un escalón, con el guion de respuesta |
-| 3 | Guion | Golpes con dirección actoral, cierre y cómo grabarlo |
+| 3 | Guion | Golpes con dirección física, cierre y cómo grabarlo |
 | 4 | Pieza publicable | 9:16, subtítulos, silencios cortados |
 
 Las cuatro leen un único **Perfil de Negocio** de seis campos, que el usuario
@@ -123,13 +123,15 @@ desde el panel del proveedor.
 | Historial y comparación entre fechas | migración 2, pendiente |
 | Planes y límites | migración 3, pendiente |
 | **Función 2 — banco semanal** | **funcionando** |
-| Función 3 — guion | prompt pendiente |
+| **Función 3 — guion** | **funcionando** |
 | Función 4 — pieza publicable | espera el criterio de publicable |
 
 ## Cómo está armado
 
 - `prompts/*.md` — cada función es un archivo de texto, editable sin tocar código
 - `prompts/2-banco.md` — la semana, sobre los cinco niveles de conciencia
+- `prompts/3-ganchos.md` y `prompts/3-guion.md` — la idea afilada y tres ganchos
+  primero; el guion después, alrededor del elegido
 - `prompts/0-transcripcion.md` — el paso que convierte una captura en casillas,
   separado a propósito: el diagnóstico corre sobre lo que el dueño confirma,
   nunca sobre una imagen

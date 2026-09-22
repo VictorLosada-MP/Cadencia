@@ -1,7 +1,8 @@
 import { extraerJSON, generar, type Adjunto } from "@/lib/modelo";
-import { cargarPerfil, cargarPrompt, perfilDesdeNegocio } from "@/lib/perfil";
+import { cargarPrompt } from "@/lib/perfil";
 import type { Diagnostico } from "@/types/diagnostico";
-import { negocioDe, usuarioActual } from "@/lib/negocio";
+import { cargarContexto, FaltaNegocio } from "@/lib/contexto";
+import { usuarioActual } from "@/lib/negocio";
 import {
   CASILLAS,
   MAX_REDES,
@@ -84,26 +85,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const instrucciones = await cargarPrompt("1-diagnostico.md");
-
-    let perfil, voz;
-    if (cuerpo.perfilId) {
-      ({ perfil, voz } = await cargarPerfil(cuerpo.perfilId));
-    } else {
-      const guardado = await negocioDe(usuario.id);
-      if (!guardado) {
-        return Response.json(
-          { error: "Llena primero tu negocio: qué vendes, a quién le sirve y cómo queda después." },
-          { status: 400 },
-        );
-      }
-      perfil = perfilDesdeNegocio(guardado);
-      voz = guardado.voz?.trim() ?? "";
-    }
-
-    // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { voz: _fuente, ...nucleo } = perfil.nucleo;
+    const [instrucciones, contexto] = await Promise.all([
+      cargarPrompt("1-diagnostico.md"),
+      cargarContexto(usuario.id, cuerpo.perfilId),
+    ]);
 
     // Lo único que viaja como imagen es la cuadrícula. El perfil ya es texto
     // confirmado: más barato, comparable entre corridas, y sin nada que inventar.
@@ -163,14 +148,6 @@ export async function POST(request: Request) {
 
     const hayPublicado = publicado.cuadriculas.length > 0 || piezas > 0;
 
-    // El perfil y la voz no cambian entre corridas: van aparte para poder
-    // cachearlos. "Afinar con mis respuestas" los reenvía idénticos.
-    const estable = [
-      "## Perfil de Negocio",
-      JSON.stringify({ ...perfil, nucleo }, null, 2),
-      voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
-    ].join("\n");
-
     const texto = [
       `## Redes a revisar (${redes.length})`,
       "Las casillas ya vienen confirmadas por el dueño. Cópialas literal en `actual`.",
@@ -188,13 +165,21 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const r = await generar({ sistema: instrucciones, estable, texto, adjuntos });
+    const r = await generar({
+      sistema: instrucciones,
+      estable: contexto.estable,
+      texto,
+      adjuntos,
+    });
 
     return Response.json({
       diagnostico: extraerJSON<Diagnostico>(r.texto),
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
+    if (e instanceof FaltaNegocio) {
+      return Response.json({ error: e.message }, { status: 400 });
+    }
     // El mensaje del proveedor llega en inglés y no le sirve a quien lo lee.
     console.error("diagnostico:", e instanceof Error ? e.message : e);
     return Response.json(

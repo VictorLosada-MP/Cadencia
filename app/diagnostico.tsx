@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { signOut, useSession } from "@/lib/auth-cliente";
+import { useSession } from "@/lib/auth-cliente";
+import { Barra } from "./barra";
 import type { Imagen } from "@/lib/modelo";
 import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
 import {
@@ -96,7 +96,6 @@ export default function Diagnostico() {
   const [semilla, setSemilla] = useState(false);
 
   const { data: sesion, isPending: cargandoSesion } = useSession();
-  const router = useRouter();
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -210,26 +209,7 @@ export default function Diagnostico() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
-      <div className="mb-6 flex items-center justify-end gap-3 text-xs text-neutral-500">
-        <a
-          href="/semana"
-          className="font-mono uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-        >
-          la semana →
-        </a>
-        <span className="font-mono">{sesion.user.email}</span>
-        <button
-          onClick={() =>
-            signOut().then(() => {
-              router.push("/");
-              router.refresh();
-            })
-          }
-          className="font-mono uppercase tracking-wider underline underline-offset-4 hover:no-underline"
-        >
-          salir
-        </button>
-      </div>
+      <Barra />
 
       <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
