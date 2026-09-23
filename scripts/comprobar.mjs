@@ -5,6 +5,8 @@
  * Nunca imprime el valor de una clave: dice si está, si tiene la forma correcta
  * y, en el caso de la base de datos, si de verdad conecta.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { cargarEnv, opcionesSSL, revisarURL } from "./entorno.mjs";
 import { servidorDe } from "../lib/postgres-url.mjs";
 
@@ -47,6 +49,27 @@ if (repetidas.length) {
     `escritas dos veces: ${repetidas.join(", ")}`,
     "me quedo con la última de cada una. Borra las líneas de arriba que sobren",
   );
+}
+
+// .env.example SÍ va a git: es la plantilla. Un valor real escrito ahí acaba
+// publicado en el repositorio, y una clave que se ve una vez ya está quemada.
+const plantilla = path.join(process.cwd(), ".env.example");
+if (fs.existsSync(plantilla)) {
+  const rellenas = fs
+    .readFileSync(plantilla, "utf8")
+    .split(/\r?\n/)
+    .map((l) => l.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/))
+    .filter((m) => m && m[2] && !/^http:\/\/localhost/.test(m[2]))
+    .map((m) => m[1]);
+
+  if (rellenas.length) {
+    console.log("\nCuidado");
+    mal(
+      `.env.example tiene valores escritos: ${rellenas.join(", ")}`,
+      "ese archivo sí se sube a git. Mueve los valores a .env.local y déjalo vacío: " +
+        "git checkout -- .env.example",
+    );
+  }
 }
 
 console.log("\nEl modelo");

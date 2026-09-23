@@ -1,5 +1,6 @@
 import { extraerJSON, generar, type Imagen } from "@/lib/modelo";
-import { usuarioActual } from "@/lib/negocio";
+import { revisarCuota } from "@/lib/cuota";
+import { negocioDe, usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
 import {
   CASILLAS_VACIAS,
@@ -52,6 +53,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Leer una captura cuesta dinero, así que no puede quedar abierta. No gasta
+    // corrida —transcribir no es diagnosticar— pero una cuenta agotada no
+    // transcribe: era el endpoint más barato de abusar del sistema.
+    const negocio = await negocioDe(usuario.id);
+    const permiso = await revisarCuota(usuario.id, negocio?.id ?? null);
+    if (!permiso.ok) {
+      return Response.json({ error: permiso.mensaje, agotada: true }, { status: 402 });
+    }
+
     const instrucciones = await cargarPrompt("0-transcripcion.md");
     const aplican = casillasDe(plataforma);
 

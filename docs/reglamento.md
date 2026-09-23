@@ -158,22 +158,43 @@ duracion_s    palabras ÷ 2,5
 
 ---
 
-## Función 4 — Pieza publicable · *en espera*
+## Función 4 — Pieza publicable · *la mitad mecánica, hecha*
 
-Esta función no se puede reglamentar todavía, y la razón importa.
+El criterio **editorial** de publicable sigue sin existir, y no sale de ningún
+análisis: sale de grabar un video, editarlo y anotar qué se revisa antes de decir
+"esto ya se publica". Eso sigue pendiente y es de su dueño.
 
-Las funciones 1, 2 y 3 tienen reglas porque hubo dónde observarlas: once módulos
-recorridos, salidas reales, aciertos y defectos medibles. La 4 no tiene esa base.
+Lo que sí se pudo construir es la otra mitad, la que el propio documento ya
+identificaba: **las verificaciones mecánicas**. Se miden en código, no se
+opinan, y por eso esta función **no tiene prompt**.
 
-Pero el vacío no es de evidencia ajena: es del **criterio de publicable**. No se
-pueden escribir las reglas de una función cuyo estándar de terminado no existe. Y
-ese estándar sale de grabar un video, editarlo, y anotar qué se revisó antes de
-decir "esto ya se publica".
+| | Chequeo | Cómo se mide |
+|---|---|---|
+| 1 | **9:16** | ancho ÷ alto contra 0,5625, con 2% de tolerancia |
+| 2 | **Resolución** | alto ≥ 1920 pasa; ≥ 1280 avisa; menos falla |
+| 3 | **Audio presente** | se distingue "no trae pista" de "no lo supe leer" |
+| 4 | **Arranca hablando** | primer sonido antes de los 0,4s |
+| 5 | **Se oye** | pico demasiado bajo, o pegado al techo |
+| 6 | **Sin baches** | silencios interiores de más de 0,6s, con su marca de tiempo |
+| 7 | **Abre con imagen** | luminancia del primer fotograma |
+| 8 | **Cuadra con el guion** | duración contra palabras ÷ 2,5, con 25% de margen |
 
-Casi todo ese criterio son verificaciones mecánicas: subtítulos sincronizados
-contra el transcript, inicio de audio en el primer segundo, cortes que no parten
-palabras, relación de aspecto, tamaño de texto legible en un teléfono. Se miden
-en código, no se opinan — así que esta función **no depende de escribir prompts**.
+Dos decisiones de diseño que importan:
+
+- **El umbral de silencio es relativo al pico de la propia pieza**, no un valor
+  absoluto. Es la misma regla que la corrección 2 de los apuntes: una pieza
+  grabada bajito no es una pieza muda.
+- **Todo corre en el navegador.** El video no se sube a ningún servidor, así que
+  no cuesta nada, no gasta cuota y no hay nada que se quede guardado en otra
+  parte.
+
+### Lo que esta función NO hace, y por qué
+
+- **No edita.** No corta los silencios ni quema los subtítulos. Su editor ya
+  hace eso mejor; lo que nadie le da es la comprobación.
+- **No verifica los subtítulos.** Un video con subtítulos quemados necesitaría
+  OCR para leerlos, y decir "pasa" sin haberlos leído sería mentir.
+- **No opina del contenido.** Si la pieza merece publicarse no es mecánico.
 
 ---
 

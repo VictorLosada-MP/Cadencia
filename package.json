@@ -11,6 +11,7 @@
     "comprobar": "node scripts/comprobar.mjs",
     "secreto": "node scripts/secreto.mjs",
     "clave": "node scripts/clave.mjs",
+    "cortesia": "node scripts/cortesia.mjs",
     "modelos": "node scripts/modelos.mjs"
   },
   "dependencies": {

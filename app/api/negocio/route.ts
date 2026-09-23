@@ -1,3 +1,5 @@
+import { cuotaDe } from "@/lib/cuota";
+import { compararUltimas } from "@/lib/historial";
 import { guardarNegocio, negocioDe, usuarioActual } from "@/lib/negocio";
 import { negocioListo, type Negocio } from "@/types/negocio";
 
@@ -6,7 +8,14 @@ export async function GET() {
   if (!usuario) return Response.json({ error: "Entra a tu cuenta." }, { status: 401 });
 
   try {
-    return Response.json({ negocio: await negocioDe(usuario.id) });
+    const negocio = await negocioDe(usuario.id);
+    // La comparación va aquí y no en su propia ruta: la pantalla la pide en la
+    // misma visita que el negocio, y son dos lecturas de la misma base.
+    const [comparacion, cuota] = await Promise.all([
+      negocio ? compararUltimas(negocio.id) : null,
+      cuotaDe(usuario.id, negocio?.id ?? null),
+    ]);
+    return Response.json({ negocio, comparacion, cuota });
   } catch (e) {
     console.error("negocio GET:", e instanceof Error ? e.message : e);
     return Response.json({ error: "No se pudo leer tu negocio." }, { status: 500 });
