@@ -312,8 +312,9 @@ export default function Diagnostico() {
           Lo que ya publicaste
         </h2>
         <p className="mb-3 mt-0.5 text-sm text-neutral-500">
-          Opcional. No se corrige ni se borra nada: sirve para saber de dónde
-          partes.
+          Opcional, y <strong>lo más reciente</strong> — las últimas tres o
+          cuatro, no las de hace dos años. No se corrige ni se borra nada:
+          sirve para saber de dónde partes.
         </p>
 
         <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -356,8 +357,16 @@ export default function Diagnostico() {
           <p className="mt-5 text-sm text-neutral-600 dark:text-neutral-400">
             <span className="font-semibold">Los textos completos</span> son lo
             único que da tus palabras. Pega los que quieras, separados por una
-            línea en blanco.
+            línea en blanco — o pega el enlace y los leo por ti.
           </p>
+          <PorEnlace
+            onTexto={(t) =>
+              setPublicado((p) => ({
+                ...p,
+                textos: p.textos.trim() ? `${p.textos.trim()}\n\n${t}` : t,
+              }))
+            }
+          />
           <textarea
             value={publicado.textos}
             onChange={(e) => setPublicado({ ...publicado, textos: e.target.value })}
@@ -861,6 +870,58 @@ function Ficha({
   );
 }
 
+/**
+ * Leer una publicación desde su enlace. Funciona porque la página publica sus
+ * propias etiquetas para que cualquier enlace se previsualice — lo mismo que
+ * hace WhatsApp. No siempre lo permiten, y por eso pegar el texto sigue ahí.
+ */
+function PorEnlace({ onTexto }: { onTexto: (t: string) => void }) {
+  const [url, setUrl] = useState("");
+  const [leyendo, setLeyendo] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  async function leer() {
+    setLeyendo(true);
+    setAviso("");
+    try {
+      const r = await fetch("/api/publicacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No pude leer ese enlace.");
+      onTexto(d.texto);
+      setUrl("");
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "No pude leer ese enlace.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="Pega el enlace de una publicación"
+          className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+        />
+        <button
+          onClick={leer}
+          disabled={leyendo || !url.trim()}
+          className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+        >
+          {leyendo ? "leyendo…" : "leer el enlace"}
+        </button>
+      </div>
+      {aviso && <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-500">{aviso}</p>}
+    </div>
+  );
+}
+
 function SubirImagen({
   etiqueta,
   onImagen,
@@ -1018,9 +1079,7 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
       <div className="flex flex-wrap items-baseline gap-5">
         <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
           {r.pasan}
-          <span className="ml-1 font-sans text-sm font-normal text-neutral-500">
-            de {r.evaluados} revisados
-          </span>
+          <span className="text-2xl text-neutral-400">/5</span>
         </span>
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500">
@@ -1033,16 +1092,12 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
         </div>
       </div>
 
-      {noVistos > 0 && (
+      {noVistos + fuera > 0 && (
         <p className="mt-3 text-xs text-neutral-500">
-          {noVistos === 1 ? "Una casilla llegó vacía" : `${noVistos} casillas llegaron vacías`}, así
-          que {noVistos === 1 ? "ese punto no cuenta" : "esos puntos no cuentan"}. Si quieres que
-          entren, escríbelas y vuelve a diagnosticar.
-        </p>
-      )}
-      {fuera > 0 && (
-        <p className="mt-1 text-xs text-neutral-500">
-          {fuera === 1 ? "Un punto no aplica" : `${fuera} puntos no aplican`} en esta red.
+          De los cinco, {noVistos + fuera === 1 ? "uno no se pudo revisar" : `${noVistos + fuera} no se pudieron revisar`}
+          {noVistos > 0 && ` — ${noVistos === 1 ? "una casilla llegó vacía" : `${noVistos} casillas llegaron vacías`}`}
+          {fuera > 0 && `${noVistos > 0 ? " y" : " —"} ${fuera === 1 ? "un punto no aplica" : `${fuera} puntos no aplican`} en esta red`}
+          . Los que no se revisan no cuentan como fallo.
         </p>
       )}
 

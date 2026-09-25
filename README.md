@@ -16,8 +16,8 @@ siguiente — esa es la diferencia entre un sistema y una colección de utilidad
 | 1 | Diagnóstico | La brecha nombrada, con su umbral y la corrección ya escrita |
 | | | Hasta dos redes, y qué cambia entre una y otra |
 | 2 | Banco de la semana | Cinco piezas que suben a tu audiencia un escalón, con el guion de respuesta |
-| 3 | Guion | Golpes con dirección física, cierre y cómo grabarlo |
-| 4 | Pieza publicable | Los ocho chequeos mecánicos, medidos en tu navegador |
+| 3 | La pieza | Guion de video, carrusel o publicación escrita — lo que toque esa semana |
+| 4 | Lista para subir | Las láminas del carrusel dibujadas y listas. El editor de video, en curso |
 
 Las cuatro leen un único **Perfil de Negocio** de seis campos, que el usuario
 llena una vez. Ninguna función pide dos veces el mismo dato.
@@ -140,8 +140,8 @@ desde el panel del proveedor.
 
 | **Función 2 — banco semanal** | **funcionando** |
 | **Función 3 — guion** | **funcionando** |
-| **Función 4 — chequeos mecánicos** | **funcionando** |
-| Función 4 — criterio editorial | espera grabar y editar un video |
+| **Función 4 — carrusel** | **funcionando** |
+| Función 4 — editor de video | en curso |
 
 ## Cómo está armado
 

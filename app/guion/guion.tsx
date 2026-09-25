@@ -4,10 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
-import { FORMATOS, type Formato, type Ganchos, type Guion } from "@/types/guion";
+import {
+  esCarrusel,
+  esGuion,
+  familiaDe,
+  FORMATOS,
+  type Carrusel,
+  type Escrito,
+  type Formato,
+  type Ganchos,
+  type Guion,
+  type Pieza,
+} from "@/types/guion";
 
 /** Lo que dejó la semana al pasar a esta pantalla. Se consume una sola vez. */
-function leerPieza(): { idea?: string; angulo?: string; dia?: string } | null {
+function leerPieza(): {
+  idea?: string;
+  angulo?: string;
+  dia?: string;
+  formato?: string;
+} | null {
   try {
     const crudo = sessionStorage.getItem("cadencia:pieza");
     if (!crudo) return null;
@@ -24,18 +40,20 @@ export default function Guion() {
   // Cuando se llega desde la semana, la idea ya viene puesta: el dueño no
   // tiene que copiar nada de una pantalla a otra.
   const venida = leerPieza();
-  const [formato, setFormato] = useState<Formato | null>(null);
+  const [formato, setFormato] = useState<Formato | null>(
+    (venida?.formato as Formato) ?? null,
+  );
   const [idea, setIdea] = useState(venida?.idea ?? "");
   const [angulo, setAngulo] = useState(venida?.angulo ?? "");
   const [deLaSemana] = useState<string | null>(venida?.dia ?? null);
   const [ganchos, setGanchos] = useState<Ganchos | null>(null);
   const [elegido, setElegido] = useState<string | null>(null);
-  const [guion, setGuion] = useState<Guion | null>(null);
-  const [cargando, setCargando] = useState<"" | "ganchos" | "guion">("");
+  const [pieza, setPieza] = useState<Pieza | null>(null);
+  const [cargando, setCargando] = useState<"" | "ganchos" | "pieza">("");
   const [error, setError] = useState("");
   const [faltaVoz, setFaltaVoz] = useState(false);
 
-  async function pedir(paso: "ganchos" | "guion") {
+  async function pedir(paso: "ganchos" | "pieza") {
     setCargando(paso);
     setError("");
     setFaltaVoz(false);
@@ -60,9 +78,9 @@ export default function Guion() {
       if (paso === "ganchos") {
         setGanchos(d.ganchos);
         setElegido(null);
-        setGuion(null);
+        setPieza(null);
       } else {
-        setGuion(d.guion);
+        setPieza(d.pieza);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado.");
@@ -76,9 +94,9 @@ export default function Guion() {
   if (!sesion) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-20">
-        <h1 className="text-4xl font-bold tracking-tight">El guion</h1>
+        <h1 className="text-4xl font-bold tracking-tight">La pieza</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">
-          Necesitas una cuenta: el guion se escribe con tu voz y tu negocio.
+          Necesitas una cuenta: la pieza se escribe con tu voz y tu negocio.
         </p>
         <Link
           href="/entrar"
@@ -96,13 +114,13 @@ export default function Guion() {
 
       <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
-          Función 3 · Guion listo para grabar
+          Función 3 · La pieza
         </p>
-        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">El guion</h1>
+        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">La pieza</h1>
         <p className="mt-4 max-w-xl text-neutral-600 dark:text-neutral-400">
-          Primero el formato, después el gancho, y el guion al final. En ese orden
-          — porque rechazar tres líneas es barato y rechazar ochocientas palabras
-          no.
+          Primero el formato, después el gancho, y el texto al final. En ese
+          orden — porque rechazar tres líneas es barato y rechazar ochocientas
+          palabras no.
         </p>
       </header>
 
@@ -110,27 +128,35 @@ export default function Guion() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           1 · Qué vas a grabar
         </h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {FORMATOS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFormato(f.id)}
-              className={`rounded border p-4 text-left transition ${
-                formato === f.id
-                  ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
-                  : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
-              }`}
-            >
-              <p className="font-semibold leading-snug">{f.nombre}</p>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{f.que}</p>
-              <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-                {f.golpes}
-              </p>
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-neutral-500">
-          No están VS ni POV a propósito: exigen actuar, y tú no eres actor.
+        {([true, false] as const).map((grabas) => (
+          <div key={String(grabas)} className="mt-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+              {grabas ? "te grabas" : "sin cámara"}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {FORMATOS.filter((f) => f.grabas === grabas).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFormato(f.id)}
+                  className={`rounded border p-4 text-left transition ${
+                    formato === f.id
+                      ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
+                      : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
+                  }`}
+                >
+                  <p className="font-semibold leading-snug">{f.nombre}</p>
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{f.que}</p>
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                    {f.detalle}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <p className="mt-3 text-xs text-neutral-500">
+          La semana no tiene por qué ser toda de video. Si esta semana no te vas
+          a grabar, se publica igual.
         </p>
       </section>
 
@@ -233,11 +259,17 @@ export default function Guion() {
           </div>
 
           <button
-            onClick={() => pedir("guion")}
+            onClick={() => pedir("pieza")}
             disabled={!elegido || cargando !== ""}
             className="mt-4 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
           >
-            {cargando === "guion" ? "Escribiendo…" : "Escribir el guion"}
+            {cargando === "pieza"
+              ? "Escribiendo…"
+              : formato && familiaDe(formato) === "carrusel"
+                ? "Armar el carrusel"
+                : formato && familiaDe(formato) === "escrito"
+                  ? "Escribir la publicación"
+                  : "Escribir el guion"}
           </button>
 
           {ganchos.limites?.length > 0 && (
@@ -250,29 +282,50 @@ export default function Guion() {
         </section>
       )}
 
-      {guion && <Resultado g={guion} />}
+      {pieza && <Resultado p={pieza} />}
     </main>
   );
 }
 
-function Resultado({ g }: { g: Guion }) {
-  const completo = [
-    g.gancho,
-    ...(g.golpes?.map((x) => x.texto) ?? []),
-    g.cierre?.texto,
-  ]
+function Resultado({ p }: { p: Pieza }) {
+  return (
+    <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
+      {esGuion(p) ? <DeVideo g={p} /> : esCarrusel(p) ? <DeCarrusel c={p} /> : <DeEscrito e={p} />}
+
+      {p.valor && (
+        <p className="mt-8 rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-teal-800 dark:text-teal-400">
+            qué mueve esta pieza ·{" "}
+          </span>
+          {p.valor}
+        </p>
+      )}
+
+      {p.limites?.length > 0 && (
+        <ul className="mt-6 space-y-1 border-l-[3px] border-neutral-400 bg-neutral-50 p-3 text-sm text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+          {p.limites.map((l, i) => (
+            <li key={i}>{l}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function DeVideo({ g }: { g: Guion }) {
+  const completo = [g.gancho, ...(g.golpes?.map((x) => x.texto) ?? []), g.cierre?.texto]
     .filter(Boolean)
     .join("\n\n");
 
   return (
-    <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
+    <>
       <div className="flex flex-wrap items-baseline gap-4">
         <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
           {g.duracion_s}
           <span className="text-2xl text-neutral-400">s</span>
         </span>
         <p className="font-mono text-[11px] uppercase tracking-wider text-neutral-500">
-          {g.palabras} palabras · {g.golpes?.length ?? 0} golpes
+          {g.palabras} palabras · {g.golpes?.length ?? 0} frases
         </p>
       </div>
 
@@ -280,7 +333,7 @@ function Resultado({ g }: { g: Guion }) {
         {g.golpes?.map((golpe, i) => (
           <div key={i} className="bg-white p-4 dark:bg-neutral-900">
             <p className="font-mono text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
-              {i === 0 ? "gancho" : `golpe ${i}`}
+              {i === 0 ? "gancho" : `frase ${i}`}
             </p>
             <p className="mt-1.5 leading-relaxed">{golpe.texto}</p>
             <p className="mt-2 border-l-2 border-neutral-300 pl-2.5 text-sm italic text-neutral-500 dark:border-neutral-700">
@@ -335,35 +388,83 @@ function Resultado({ g }: { g: Guion }) {
         </>
       )}
 
-      {g.descripcion && (
+      <PieDePublicacion texto={g.descripcion} />
+    </>
+  );
+}
+
+function DeCarrusel({ c }: { c: Carrusel }) {
+  const todo = c.laminas
+    ?.map((l) => `${l.numero}. ${l.titular}${l.cuerpo ? `\n${l.cuerpo}` : ""}`)
+    .join("\n\n");
+
+  return (
+    <>
+      <p className="font-mono text-[11px] uppercase tracking-wider text-neutral-500">
+        {c.laminas?.length ?? 0} láminas
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {c.laminas?.map((l) => (
+          <article
+            key={l.numero}
+            className="rounded border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <div className="flex items-baseline gap-3 border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
+              <span className="font-mono text-sm font-bold text-teal-700 dark:text-teal-400">
+                {l.numero}
+              </span>
+              <p className="font-semibold leading-snug">{l.titular}</p>
+            </div>
+            <div className="p-4">
+              {l.cuerpo && <p className="text-sm leading-relaxed">{l.cuerpo}</p>}
+              {l.imagen && (
+                <p className="mt-2 border-l-2 border-neutral-300 pl-2.5 text-sm italic text-neutral-500 dark:border-neutral-700">
+                  se ve: {l.imagen}
+                </p>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <Copiable texto={todo ?? ""} etiqueta="copiar todas las láminas" />
+      <PieDePublicacion texto={c.descripcion} />
+    </>
+  );
+}
+
+function DeEscrito({ e }: { e: Escrito }) {
+  return (
+    <>
+      <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+        La publicación
+      </h2>
+      <Copiable texto={e.texto} etiqueta="copiar la publicación" />
+
+      {e.imagen && (
         <>
-          <h2 className="mt-10 font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
-            El pie de la publicación
+          <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+            La foto
           </h2>
-          <p className="mb-1 mt-0.5 text-sm text-neutral-500">
-            Es lo que dices al inicio del video. Los hashtags no mueven la aguja.
+          <p className="mt-2 rounded border border-neutral-200 bg-white p-4 text-sm leading-relaxed dark:border-neutral-800 dark:bg-neutral-900">
+            {e.imagen}
           </p>
-          <Copiable texto={g.descripcion} etiqueta="copiar" />
         </>
       )}
+    </>
+  );
+}
 
-      {g.valor && (
-        <p className="mt-8 rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-teal-800 dark:text-teal-400">
-            qué mueve esta pieza ·{" "}
-          </span>
-          {g.valor}
-        </p>
-      )}
-
-      {g.limites?.length > 0 && (
-        <ul className="mt-6 space-y-1 border-l-[3px] border-neutral-400 bg-neutral-50 p-3 text-sm text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
-          {g.limites.map((l, i) => (
-            <li key={i}>{l}</li>
-          ))}
-        </ul>
-      )}
-    </section>
+function PieDePublicacion({ texto }: { texto?: string }) {
+  if (!texto) return null;
+  return (
+    <>
+      <h2 className="mt-10 font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+        El pie de la publicación
+      </h2>
+      <Copiable texto={texto} etiqueta="copiar" />
+    </>
   );
 }
 
