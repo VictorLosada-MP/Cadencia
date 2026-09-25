@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { BRECHAS, NIVELES, type Banco, type PiezaSemana } from "@/types/banco";
@@ -12,16 +13,30 @@ export default function Semana() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [banco, setBanco] = useState<Banco | null>(null);
+  const [creado, setCreado] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sesion) return;
     let vivo = true;
-    fetch("/api/negocio")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (vivo && d?.negocio?.senales) setSenales(d.negocio.senales);
+
+    // La semana que ya se armó vuelve tal cual. Volver a generarla en cada
+    // visita daría una semana distinta cada vez con los mismos datos, y eso no
+    // es un plan: es una tirada de dados.
+    Promise.all([
+      fetch("/api/negocio").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/ultimo?funcion=2").then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([n, u]) => {
+        if (!vivo) return;
+        const guardadas = u?.corrida?.entrada?.senales ?? n?.negocio?.senales;
+        if (guardadas) setSenales(guardadas);
+        if (u?.corrida?.resultado) {
+          setBanco(u.corrida.resultado);
+          setCreado(u.corrida.creado);
+        }
       })
       .catch(() => {});
+
     return () => {
       vivo = false;
     };
@@ -39,6 +54,7 @@ export default function Semana() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo armar la semana.");
       setBanco(d.banco);
+      setCreado(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado.");
     } finally {
@@ -88,9 +104,9 @@ export default function Semana() {
           Qué te escriben
         </label>
         <p className="mb-2 mt-0.5 text-sm text-neutral-500">
-          Lo que te preguntan por privado o en comentarios. Es lo que dice en qué
-          punto está tu gente — nadie pregunta desde un escalón que no es el suyo.
-          Si lo dejas vacío, se deduce de tu perfil.
+          Lo que te preguntan por privado o en comentarios. Copia dos o tres tal
+          cual, aunque sean cortas. De aquí sale todo lo demás — si esto lo
+          adivino, la semana entera queda adivinada.
         </p>
         <textarea
           id="senales"
@@ -103,11 +119,23 @@ export default function Semana() {
 
         <button
           onClick={armar}
-          disabled={cargando}
+          disabled={cargando || senales.trim().length < 10}
           className="mt-4 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
-          {cargando ? "Armando…" : banco ? "Volver a armar" : "Armar la semana"}
+          {cargando ? "Armando…" : banco ? "Volver a armar la semana" : "Armar la semana"}
         </button>
+        {senales.trim().length < 10 && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Escribe al menos una pregunta que te hayan hecho de verdad.
+          </p>
+        )}
+        {banco && creado && !cargando && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Esta es la semana que armaste el{" "}
+            {new Date(creado).toLocaleDateString("es", { day: "numeric", month: "long" })}. Se
+            queda así hasta que la vuelvas a armar.
+          </p>
+        )}
         {cargando && (
           <p className="mt-3 text-sm text-neutral-500">
             Ubicando a tu audiencia y repartiendo los cinco escalones.
@@ -135,10 +163,11 @@ function Resultado({ b }: { b: Banco }) {
         <p className="mt-1.5 text-lg font-semibold leading-snug">
           {BRECHAS[b.brecha] ?? b.brecha}
         </p>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-wider text-neutral-500">
-          {b.nivel_dominante} · {NIVELES[b.nivel_dominante]?.corto ?? ""}
-          {NIVELES[b.nivel_dominante] && ` — «${NIVELES[b.nivel_dominante].dice}»`}
-        </p>
+        {NIVELES[b.nivel_dominante] && (
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+            {NIVELES[b.nivel_dominante].plano}.
+          </p>
+        )}
         <p className="mt-2.5 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
           {b.por_que_ese_nivel}
         </p>
@@ -207,6 +236,22 @@ function Resultado({ b }: { b: Banco }) {
 
 function Pieza({ p }: { p: PiezaSemana }) {
   const [abierto, setAbierto] = useState(false);
+  const router = useRouter();
+
+  // El puente que faltaba: de la idea al guion sin copiar y pegar nada. La
+  // salida de una función tiene que ser la entrada de la siguiente; si hay que
+  // copiarla a mano, no es un sistema, son dos herramientas sueltas.
+  function escribirla() {
+    try {
+      sessionStorage.setItem(
+        "cadencia:pieza",
+        JSON.stringify({ idea: p.idea, angulo: p.angulo, dia: p.dia }),
+      );
+    } catch {
+      // Sin sessionStorage se llega al guion en blanco, que sigue funcionando.
+    }
+    router.push("/guion?de=semana");
+  }
 
   return (
     <article className="rounded border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
@@ -215,7 +260,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
           {p.dia}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-          {p.nivel} → {p.mueve_a}
+          {NIVELES[p.nivel]?.corto ?? p.nivel} → {NIVELES[p.mueve_a]?.corto ?? p.mueve_a}
         </span>
         <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-neutral-500">
           {p.angulo} · {p.peso_mercado}
@@ -231,6 +276,14 @@ function Pieza({ p }: { p: PiezaSemana }) {
           para que entienda · {p.trabajo}
         </p>
 
+        <button
+          onClick={escribirla}
+          className="mt-4 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+        >
+          Escribir el guion de esta →
+        </button>
+
+        <br />
         <button
           onClick={() => setAbierto(!abierto)}
           className="mt-3 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"

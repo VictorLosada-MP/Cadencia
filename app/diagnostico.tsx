@@ -9,6 +9,7 @@ import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
 import {
   CAMPOS_EXTRA,
   CAMPOS_NUCLEO,
+  CAMPO_VOZ,
   negocioListo,
   type Negocio,
 } from "@/types/negocio";
@@ -95,6 +96,7 @@ export default function Diagnostico() {
   const [negocio, setNegocio] = useState<Negocio>({ oferta: "", cliente: "", despues: "" });
   const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
+  const [creado, setCreado] = useState<string | null>(null);
   const [semilla, setSemilla] = useState(false);
 
   const { data: sesion, isPending: cargandoSesion } = useSession();
@@ -122,6 +124,26 @@ export default function Diagnostico() {
   useEffect(() => {
     if (!sesion) return;
     let vivo = true;
+
+    // El último diagnóstico vuelve tal cual, con lo que se usó para hacerlo. Un
+    // diagnóstico que desaparece al cerrar la pestaña no es un diagnóstico.
+    fetch("/api/ultimo?funcion=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => {
+        if (!vivo || !u?.corrida) return;
+        setDx(u.corrida.resultado);
+        setCreado(u.corrida.creado);
+        const e = u.corrida.entrada;
+        if (Array.isArray(e?.redes) && e.redes.length) setRedes(e.redes);
+        if (e?.publicado)
+          setPublicado((pub) => ({
+            ...pub,
+            textos: e.publicado.textos ?? "",
+            ventana: e.publicado.ventana,
+          }));
+      })
+      .catch(() => {});
+
     fetch("/api/negocio")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -175,6 +197,7 @@ export default function Diagnostico() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Falló el diagnóstico.");
       setDx(d.diagnostico);
+      setCreado(new Date().toISOString());
       if (!conRespuestas) setRespuestas({});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado.");
@@ -383,6 +406,13 @@ export default function Diagnostico() {
         >
           {cargando ? "Revisando…" : dx ? "Volver a diagnosticar" : "Diagnosticar"}
         </button>
+        {dx && creado && !cargando && (
+          <p className="mt-3 text-sm text-neutral-500">
+            Este es el diagnóstico del{" "}
+            {new Date(creado).toLocaleDateString("es", { day: "numeric", month: "long" })}. Se queda
+            así hasta que vuelvas a diagnosticar.
+          </p>
+        )}
         {cargando && (
           <p className="mt-3 text-sm text-neutral-500">
             Leyendo {listas.length > 1 ? "los perfiles" : "el perfil"}
@@ -523,6 +553,30 @@ function BloqueNegocio({
             </div>
           ))}
 
+          <div className="rounded border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
+            <label
+              htmlFor={CAMPO_VOZ.id}
+              className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
+            >
+              {CAMPO_VOZ.etiqueta}
+            </label>
+            <p className="mb-1.5 mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
+              {CAMPO_VOZ.pista}.
+            </p>
+            <p className="mb-2 text-xs text-amber-700 dark:text-amber-500">
+              El diagnóstico funciona sin esto, pero sale en español llano.{" "}
+              <strong>El guion no se escribe sin esto</strong> — es lo que hace que
+              suene a ti y no a cualquiera.
+            </p>
+            <textarea
+              id={CAMPO_VOZ.id}
+              value={negocio.voz ?? ""}
+              onChange={(e) => onCambio({ voz: e.target.value })}
+              rows={CAMPO_VOZ.filas}
+              className="w-full rounded border border-neutral-300 bg-white p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+            />
+          </div>
+
           <button
             onClick={() => setAbierto(!abierto)}
             className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
@@ -585,6 +639,30 @@ function Ficha({
   const [leyendo, setLeyendo] = useState(false);
   const [avisoPrivacidad, setAvisoPrivacidad] = useState(false);
   const [fallo, setFallo] = useState("");
+  const esSitio = red.plataforma === "Sitio web";
+
+  async function leerElSitio() {
+    setLeyendo(true);
+    setFallo("");
+    try {
+      const r = await fetch("/api/sitio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: red.casillas.link }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No pude abrir ese sitio.");
+      onCambio({
+        casillas: { ...red.casillas, ...d.casillas },
+        transcritas: (Object.keys(d.casillas) as Casilla[]).filter((c) => d.casillas[c]),
+        cortadas: d.vacias ?? [],
+      });
+    } catch (e) {
+      setFallo(e instanceof Error ? e.message : "No pude abrir ese sitio.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
   const primeraCortada = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
   // Se pintan las de la plataforma más las que ya tengan algo escrito: cambiar
@@ -667,6 +745,32 @@ function Ficha({
         )}
       </div>
 
+      {esSitio ? (
+        <div className="mt-3 rounded border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Escribe la dirección y leo la página por ti: el nombre, lo que dice
+            arriba y el botón principal.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <input
+              value={red.casillas.link ?? ""}
+              onChange={(e) =>
+                onCambio({ casillas: { ...red.casillas, link: e.target.value } })
+              }
+              placeholder="mantiscapital.net"
+              className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+            />
+            <button
+              onClick={leerElSitio}
+              disabled={leyendo || !red.casillas.link?.trim()}
+              className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+            >
+              {leyendo ? "leyendo…" : "leer el sitio"}
+            </button>
+          </div>
+          {fallo && <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">{fallo}</p>}
+        </div>
+      ) : (
       <div className="mt-3 rounded border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           ¿Prefieres no escribirlo? Sube una captura y se rellenan solas — tú las
@@ -696,6 +800,7 @@ function Ficha({
         )}
         {fallo && <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">{fallo}</p>}
       </div>
+      )}
 
       <div className="mt-3 space-y-2.5">
         {CASILLAS.filter((c) => aplican.includes(c.id)).map((c) => {
@@ -913,7 +1018,9 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
       <div className="flex flex-wrap items-baseline gap-5">
         <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
           {r.pasan}
-          <span className="text-2xl text-neutral-400">/{r.evaluados}</span>
+          <span className="ml-1 font-sans text-sm font-normal text-neutral-500">
+            de {r.evaluados} revisados
+          </span>
         </span>
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500">

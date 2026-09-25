@@ -53,6 +53,24 @@ export async function guardarCorrida(
   }
 }
 
+/**
+ * La última corrida de una función, con lo que se usó para producirla.
+ *
+ * Es lo que hace que al volver a entrar esté todo como se dejó. Un diagnóstico
+ * que se borra al cerrar la pestaña no es un diagnóstico: es una demo.
+ */
+export async function ultimaCorrida(
+  negocioId: string,
+  funcion: 1 | 2 | 3,
+): Promise<{ id: string; creado: string; resultado: unknown; entrada: unknown } | null> {
+  return una(
+    `select id, creado, resultado, entrada from corrida
+      where negocio_id = $1 and funcion = $2
+      order by creado desc limit 1`,
+    [negocioId, funcion],
+  );
+}
+
 export type Movimiento = {
   red: string;
   campo: string;

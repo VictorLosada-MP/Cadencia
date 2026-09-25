@@ -1,20 +1,23 @@
-/** Los cinco niveles de conciencia. El eje de toda la semana. */
-export const NIVELES: Record<string, { corto: string; dice: string }> = {
-  N0: { corto: "Inconsciente", dice: "no sé que tengo un problema" },
-  N1: {
-    corto: "Consciente de la necesidad",
-    dice: "sé que tengo un problema, no sé cómo resolverlo",
-  },
-  N2: { corto: "Encontrando solución", dice: "sé cómo resolverlo" },
-  N3: { corto: "Analizando opciones", dice: "sé con quién resolverlo" },
-  N4: { corto: "Seleccionando", dice: "sé qué producto comprar" },
+/**
+ * Los cinco niveles de conciencia. El eje de toda la semana.
+ *
+ * `plano` es lo único que ve el usuario. "N2 · Encontrando solución" es
+ * vocabulario de dentro: quien llega de internet no lo ha estudiado, y una
+ * pantalla que habla en clave obliga a aprenderse el sistema antes de usarlo.
+ */
+export const NIVELES: Record<string, { plano: string; corto: string }> = {
+  N0: { plano: "Todavía no saben que tienen ese problema", corto: "no lo saben" },
+  N1: { plano: "Saben que lo tienen, pero no cómo resolverlo", corto: "lo saben" },
+  N2: { plano: "Ya saben cómo se resuelve y están viendo cómo hacerlo", corto: "buscan cómo" },
+  N3: { plano: "Están comparando con quién resolverlo", corto: "comparan" },
+  N4: { plano: "Ya saben qué quieren comprar", corto: "deciden" },
 };
 
-/** Las tres razones por las que una venta no ocurre. */
+/** Las tres razones por las que una venta no ocurre, dichas en plano. */
 export const BRECHAS: Record<string, string> = {
-  problema: "Todavía no entiende su problema",
-  costo: "No entiende el costo de no resolverlo",
-  "por-que-tu": "No entiende por qué tú eres la solución",
+  problema: "Tu gente todavía no ve el problema que tú resuelves",
+  costo: "Ven el problema, pero no lo que les cuesta dejarlo así",
+  "por-que-tu": "Ven el problema y el costo — falta que entiendan por qué tú",
 };
 
 export type PiezaSemana = {

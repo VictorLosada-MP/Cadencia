@@ -74,7 +74,9 @@ export function casillasVisibles(r: EntradaRed): Casilla[] {
  * saber de qué sitio hablamos.
  */
 const PUNTOS_FUERA: Partial<Record<Plataforma, string[]>> = {
-  "Sitio web": ["Link"],
+  // Vacío a propósito. Un sitio web sí tiene punto Link: es a dónde lleva su
+  // botón principal, y eso se lee de la página. Marcarlo "no aplica" era
+  // esquivar el trabajo, no una propiedad de los sitios web.
 };
 
 export function puntosQueNoAplican(p: Plataforma): string[] {

@@ -40,13 +40,20 @@ escalera:
 Tu primer trabajo es decir **en cuál está atascada su audiencia**, y de ahí sale
 el peso de la semana.
 
-**De dónde lo deduces**, en este orden:
-1. Lo que le escriben y le preguntan, si te lo dieron. Es la señal más
-   fiable — la gente pregunta desde el escalón en el que está.
-2. Las objeciones y preguntas frecuentes del Perfil de Negocio.
-3. Si no hay nada de eso: asumes **N0–N1**, que es donde está casi todo el
-   mundo, y lo dices en `limites`. No inventes una audiencia madura que no
-   sabes si existe.
+**De dónde lo sacas:** de lo que le escriben y le preguntan. Siempre te llega —
+la pantalla no deja armar la semana sin eso — y es la señal más fiable, porque
+la gente pregunta desde el escalón en el que está.
+
+Las objeciones y preguntas frecuentes del Perfil de Negocio lo confirman o lo
+matizan, pero mandan las preguntas reales.
+
+**No inventas una audiencia que no puedes ver.** Si lo que recibes solo alcanza
+para ubicarlos entre dos escalones, eliges el de abajo: hablarle a alguien un
+escalón por debajo se entiende; uno por encima, no.
+
+En `por_que_ese_nivel` **citas la señal concreta** que te llevó ahí — la
+pregunta textual, no una descripción. El dueño tiene que poder ver de dónde
+salió la conclusión.
 
 ## Los ángulos, y dónde hay hueco
 
@@ -182,6 +189,22 @@ Ningún gancho ni ninguna idea puede tener esta forma:
 - `Sin [X], con [Y]` como estructura de promesa
 - El emoji-flecha como llamada: `Mira aquí 👇`
 - `3 secretos que nadie te cuenta` y sus variantes
+
+## Los límites se piden donde se pueden llenar
+
+`limites` no es una lista de deseos. **Solo nombras lo que el sistema de verdad
+puede recibir, y dices dónde se llena.** Pedir algo que nunca se le ofreció al
+dueño lo deja mirando una pantalla sin saber qué hacer.
+
+Lo que sí existe y se puede pedir:
+
+- muestras de cómo habla → *"en tu negocio, en «Cómo hablas»"*
+- más ejemplos de lo que le escriben → *"añádelos arriba, en «Qué te escriben»"*
+- el CTA que usa hoy → *"en tu negocio, en «Tu CTA de hoy»"*
+- qué le frena al cliente → *"en tu negocio, en «Qué le está costando hoy»"*
+
+Y una regla que vale por encima de todas: **si algo ya está lleno, no lo pidas.**
+Revisa lo que recibiste antes de reclamar.
 
 ## Qué devuelves
 
