@@ -41,6 +41,19 @@ export const CAMPOS_NUCLEO = [
   },
 ];
 
+/**
+ * La voz no va entre lo opcional aunque el diagnóstico pueda correr sin ella.
+ * La Función 3 no escribe sin esto, así que esconderla aquí y exigirla allá es
+ * mandar a alguien a una puerta cerrada sin decirle dónde está la llave.
+ */
+export const CAMPO_VOZ = {
+  id: "voz" as const,
+  etiqueta: "Cómo hablas",
+  pista:
+    "Pega algo tuyo tal cual: un audio que transcribas, un mensaje largo que le mandaste a un cliente, una nota de voz pasada a texto. Cuanto más crudo, mejor",
+  filas: 5,
+};
+
 export const CAMPOS_EXTRA = [
   {
     id: "freno" as const,
@@ -60,13 +73,6 @@ export const CAMPOS_EXTRA = [
     pista:
       "Lo que te preguntan por privado o en comentarios. Es lo que dice en qué punto está tu audiencia — la gente pregunta desde donde está",
     filas: 4,
-  },
-  {
-    id: "voz" as const,
-    etiqueta: "Cómo hablas",
-    pista:
-      "Pega algo tuyo tal cual: un audio transcrito, un mensaje a un cliente. Sin esto las correcciones salen en español llano, no en el tuyo",
-    filas: 5,
   },
 ];
 

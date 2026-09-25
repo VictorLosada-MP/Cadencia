@@ -39,11 +39,20 @@ export async function POST(request: Request) {
 
     // Lo que mande la pantalla gana; si no viene, lo guardado en el negocio.
     const senales = cuerpo.senales?.trim() || contexto.senales;
+    if (!senales) {
+      return Response.json(
+        {
+          error:
+            "Escribe primero qué te preguntan tus clientes. De ahí sale todo lo demás — " +
+            "si lo adivino, la semana entera queda adivinada.",
+          falta: "senales",
+        },
+        { status: 422 },
+      );
+    }
     const texto = [
       "## Lo que le escriben y le preguntan",
-      senales
-        ? senales
-        : "(no lo dijo — dedúcelo de las objeciones del Perfil, y si tampoco hay, asume N0–N1 y dilo en limites)",
+      senales,
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
     const salida = extraerJSON<Banco>(r.texto);
 
     if (contexto.negocioId) {
-      await guardarCorrida(contexto.negocioId, 2, salida, r.modelo);
+      await guardarCorrida(contexto.negocioId, 2, salida, r.modelo, { senales });
     }
 
     return Response.json({

@@ -190,7 +190,10 @@ export async function POST(request: Request) {
     const salida = extraerJSON<Diagnostico>(r.texto);
 
     if (contexto.negocioId) {
-      await guardarCorrida(contexto.negocioId, 1, salida, r.modelo);
+      await guardarCorrida(contexto.negocioId, 1, salida, r.modelo, {
+        redes,
+        publicado: { textos: publicado.textos, ventana: publicado.ventana },
+      });
     }
 
     return Response.json({

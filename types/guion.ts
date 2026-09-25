@@ -2,20 +2,20 @@ export const FORMATOS = [
   {
     id: "camara" as const,
     nombre: "A cámara",
-    que: "Tú hablando al teléfono. Nada más.",
-    golpes: "3–4 golpes",
+    que: "Tú hablando al teléfono. Nada más: ni imágenes ni edición.",
+    golpes: "3 o 4 frases",
   },
   {
     id: "lista" as const,
-    nombre: "Lista con números",
-    que: "Tú hablando, con un número grande por punto.",
-    golpes: "N + 2 golpes",
+    nombre: "Los 3 errores, uno por uno",
+    que: "Cuentas varias cosas seguidas y en pantalla va saliendo 1, 2, 3. Se guarda mucho porque se vuelve a ver.",
+    golpes: "uno por punto, más la apertura y el cierre",
   },
   {
     id: "voz-en-off" as const,
     nombre: "Voz en off + texto",
-    que: "Sin salir en cámara: imágenes, tu voz y texto.",
-    golpes: "4–5 golpes",
+    que: "No sales tú: pones imágenes, tu voz encima y texto. Para cuando no quieres grabarte.",
+    golpes: "4 o 5 frases",
   },
 ];
 
