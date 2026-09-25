@@ -20,19 +20,8 @@ export const BRECHAS: Record<string, string> = {
   "por-que-tu": "Ven el problema y el costo — falta que entiendan por qué tú",
 };
 
-export const CUANTO_VIDEO = [
-  { id: "toda", etiqueta: "Toda la semana video", videos: 5 },
-  { id: "algo", etiqueta: "Dos o tres videos", videos: 3 },
-  { id: "poco", etiqueta: "Un video, no más", videos: 1 },
-  { id: "nada", etiqueta: "Esta semana no me grabo", videos: 0 },
-] as const;
-
-export type CuantoVideo = (typeof CUANTO_VIDEO)[number]["id"];
-
 export type PiezaSemana = {
   dia: string;
-  /** camara · lista · voz-en-off · carrusel · foto · texto */
-  formato: string;
   nivel: string;
   /** El escalón al que sube a quien la vea. Nadie sube dos de una pieza. */
   mueve_a: string;
@@ -45,6 +34,24 @@ export type PiezaSemana = {
   trabajo: string;
   apertura_respuesta: string;
 };
+
+/**
+ * Qué familia de formato le va mejor a cada ángulo.
+ *
+ * Es una sugerencia, no una decisión: quién decide si el martes se graba o no
+ * es el dueño, el martes. Decidirlo por él el domingo es adivinar, y además le
+ * quita la salida el día que no tiene ganas de ponerse delante de la cámara.
+ *
+ * Se calcula aquí y no se le pide al modelo: es una tabla fija, y una tabla no
+ * necesita una llamada a la IA.
+ */
+export function sugerenciaPorAngulo(angulo: string): "video" | "carrusel" | "escrito" {
+  const a = angulo.toLowerCase();
+  if (/historia|error caro|pregunta que duele/.test(a)) return "video";
+  if (/lista|proceso|enseñanza|ensenanza/.test(a)) return "carrusel";
+  if (/contra la corriente|prueba social|invitaci/.test(a)) return "escrito";
+  return "video";
+}
 
 export type Banco = {
   brecha: string;

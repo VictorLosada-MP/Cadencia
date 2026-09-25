@@ -11,6 +11,7 @@ import {
   FORMATOS,
   type Carrusel,
   type Escrito,
+  type Familia,
   type Formato,
   type Ganchos,
   type Guion,
@@ -22,7 +23,7 @@ function leerPieza(): {
   idea?: string;
   angulo?: string;
   dia?: string;
-  formato?: string;
+  familia?: string;
 } | null {
   try {
     const crudo = sessionStorage.getItem("cadencia:pieza");
@@ -40,9 +41,16 @@ export default function Guion() {
   // Cuando se llega desde la semana, la idea ya viene puesta: el dueño no
   // tiene que copiar nada de una pantalla a otra.
   const venida = leerPieza();
-  const [formato, setFormato] = useState<Formato | null>(
-    (venida?.formato as Formato) ?? null,
-  );
+  // Si viene de la semana ya eligió si es video, carrusel o escrito. Aquí solo
+  // queda decidir cuál de los de esa familia — y el carrusel no tiene dónde
+  // elegir, así que se da por elegido.
+  const familiaVenida = venida?.familia as Familia | undefined;
+  const [formato, setFormato] = useState<Formato | null>(() => {
+    if (!familiaVenida) return null;
+    const suyos = FORMATOS.filter((f) => f.familia === familiaVenida);
+    return suyos.length === 1 ? suyos[0].id : null;
+  });
+  const [verTodos, setVerTodos] = useState(!familiaVenida);
   const [idea, setIdea] = useState(venida?.idea ?? "");
   const [angulo, setAngulo] = useState(venida?.angulo ?? "");
   const [deLaSemana] = useState<string | null>(venida?.dia ?? null);
@@ -128,13 +136,20 @@ export default function Guion() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           1 · Qué vas a grabar
         </h2>
-        {([true, false] as const).map((grabas) => (
+        {([true, false] as const).map((grabas) => {
+          const suyos = FORMATOS.filter(
+            (f) =>
+              f.grabas === grabas &&
+              (verTodos || !familiaVenida || f.familia === familiaVenida),
+          );
+          if (!suyos.length) return null;
+          return (
           <div key={String(grabas)} className="mt-3">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
               {grabas ? "te grabas" : "sin cámara"}
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
-              {FORMATOS.filter((f) => f.grabas === grabas).map((f) => (
+              {suyos.map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setFormato(f.id)}
@@ -153,11 +168,21 @@ export default function Guion() {
               ))}
             </div>
           </div>
-        ))}
-        <p className="mt-3 text-xs text-neutral-500">
-          La semana no tiene por qué ser toda de video. Si esta semana no te vas
-          a grabar, se publica igual.
-        </p>
+          );
+        })}
+        {familiaVenida && !verTodos ? (
+          <button
+            onClick={() => setVerTodos(true)}
+            className="mt-3 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+          >
+            ver los otros formatos
+          </button>
+        ) : (
+          <p className="mt-3 text-xs text-neutral-500">
+            La semana no tiene por qué ser toda de video. Si hoy no te vas a
+            grabar, se publica igual.
+          </p>
+        )}
       </section>
 
       <section className="mt-10">
@@ -169,8 +194,8 @@ export default function Guion() {
         </p>
         {deLaSemana && (
           <p className="mb-2 rounded border-l-[3px] border-teal-700 bg-teal-50 p-2.5 text-sm dark:border-teal-400 dark:bg-teal-950/30">
-            Viene de la pieza del <strong>{deLaSemana}</strong> de tu semana. Puedes
-            cambiarla si quieres.
+            Viene de la pieza del <strong>{deLaSemana}</strong> de tu semana.
+            Puedes cambiarla si quieres.
           </p>
         )}
         <textarea

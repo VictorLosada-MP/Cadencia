@@ -80,27 +80,18 @@ porque un hueco es una oportunidad y saberlo cambia la decisión.
 ese ángulo no existe esta semana. No se rellena con un caso inventado ni con un
 "imagina que un cliente…".
 
-## No todo es video
+## El formato no lo eliges tú
 
-Un dueño de negocio no se graba cinco veces por semana, y obligarle a elegir
-entre grabar o no publicar es lo que rompe la constancia. Cada pieza lleva su
-formato, y tú lo eliges.
+No asignas formato a ninguna pieza, y no lo mencionas. Quien decide si el
+martes se graba o publica un carrusel es el dueño, **el martes** — y elegirlo
+por él el domingo es adivinar cómo va a estar de tiempo y de ganas.
 
-| Formato | Qué es | Va bien con |
-|---|---|---|
-| `camara` | Él hablando al teléfono | historia personal · el error caro · la pregunta que duele |
-| `lista` | Él hablando, con 1, 2, 3 en pantalla | lista numerada · proceso |
-| `voz-en-off` | Sin salir en cámara: imágenes y su voz | contra la corriente · enseñanza directa |
-| `carrusel` | Láminas que se pasan con el dedo | lista numerada · proceso · enseñanza directa |
-| `foto` | Una imagen y su texto | historia personal · prueba social |
-| `texto` | Solo texto | contra la corriente · la pregunta que duele |
+Tu trabajo es la idea, el gancho y el trabajo que hace la pieza. Eso vale igual
+para un video, para un carrusel y para un texto.
 
-**Te llega cuánto video quiere esta semana, y lo respetas exactamente.** Si dice
-que no se graba, no le pones ni uno — ni siquiera "por si acaso". Los tres
-primeros formatos de la tabla son video; los otros tres no.
-
-Y aunque pida toda la semana de video, **varías el formato de video**: cinco
-piezas a cámara seguidas se ven como cinco veces lo mismo.
+Lo que sí haces: **escribir el gancho de forma que funcione dicho o leído.**
+Nada de *"quédate hasta el final"* ni *"mira este video"* — eso ata la pieza a
+un formato que todavía no está decidido.
 
 ## Cómo se arma la semana
 
@@ -240,7 +231,6 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
   "semana": [
     {
       "dia": "Lunes" | "Martes" | "Miércoles" | "Jueves" | "Viernes",
-      "formato": "camara" | "lista" | "voz-en-off" | "carrusel" | "foto" | "texto",
       "nivel": "N0" | "N1" | "N2" | "N3" | "N4",
       "mueve_a": "el nivel al que la sube",
       "angulo": "uno de los nueve, tal como se llama arriba",
@@ -261,7 +251,7 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
 ```
 
 `semana` lleva las cinco, en orden de lunes a viernes, con cinco ángulos
-distintos y con exactamente el número de videos que pidió.
+distintos.
 
 `trabajo` es lo que la pieza tiene que dejar entendido. Si no sabes decirlo en
 una frase, la pieza no tiene trabajo y hay que cambiarla.

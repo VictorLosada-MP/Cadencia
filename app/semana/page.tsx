@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
-import { BRECHAS, CUANTO_VIDEO, NIVELES, type Banco, type PiezaSemana } from "@/types/banco";
-import { familiaDe, formatoPorId } from "@/types/guion";
+import {
+  BRECHAS,
+  NIVELES,
+  sugerenciaPorAngulo,
+  type Banco,
+  type PiezaSemana,
+} from "@/types/banco";
 
 export default function Semana() {
   const { data: sesion, isPending } = useSession();
   const [senales, setSenales] = useState("");
-  const [video, setVideo] = useState<string>("algo");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [banco, setBanco] = useState<Banco | null>(null);
@@ -32,7 +36,6 @@ export default function Semana() {
         if (!vivo) return;
         const guardadas = u?.corrida?.entrada?.senales ?? n?.negocio?.senales;
         if (guardadas) setSenales(guardadas);
-        if (u?.corrida?.entrada?.video) setVideo(u.corrida.entrada.video);
         if (u?.corrida?.resultado) {
           setBanco(u.corrida.resultado);
           setCreado(u.corrida.creado);
@@ -52,7 +55,7 @@ export default function Semana() {
       const r = await fetch("/api/banco", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senales, video }),
+        body: JSON.stringify({ senales }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo armar la semana.");
@@ -119,31 +122,6 @@ export default function Semana() {
           placeholder="«¿cuánto cuesta?» · «¿esto me sirve si apenas empiezo?» · «¿y si después no sé usarlo?»"
           className="w-full rounded border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
-
-        <fieldset className="mt-5">
-          <legend className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
-            ¿Cuánto video esta semana?
-          </legend>
-          <p className="mb-2 mt-0.5 text-sm text-neutral-500">
-            No hay que grabarse cinco veces para publicar cinco veces. Lo que
-            elijas aquí se respeta al pie de la letra.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CUANTO_VIDEO.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setVideo(c.id)}
-                className={`rounded border px-3 py-1.5 text-sm transition ${
-                  video === c.id
-                    ? "border-teal-700 bg-teal-50 font-semibold dark:border-teal-400 dark:bg-teal-950/30"
-                    : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
-                }`}
-              >
-                {c.etiqueta}
-              </button>
-            ))}
-          </div>
-        </fieldset>
 
         <button
           onClick={armar}
@@ -266,20 +244,26 @@ function Pieza({ p }: { p: PiezaSemana }) {
   const [abierto, setAbierto] = useState(false);
   const router = useRouter();
 
-  // El puente que faltaba: de la idea al guion sin copiar y pegar nada. La
-  // salida de una función tiene que ser la entrada de la siguiente; si hay que
-  // copiarla a mano, no es un sistema, son dos herramientas sueltas.
-  function escribirla() {
+  // El puente: de la idea a la pieza sin copiar y pegar nada. La salida de una
+  // función es la entrada de la siguiente; si hay que copiarla a mano, no es un
+  // sistema, son dos herramientas sueltas.
+  //
+  // La familia la elige él, aquí, el día que le toca. La misma idea sirve para
+  // grabarse o para un carrusel, y eso depende del tiempo y las ganas de ese
+  // día — no de lo que decidiera el domingo.
+  function hacerla(familia: string) {
     try {
       sessionStorage.setItem(
         "cadencia:pieza",
-        JSON.stringify({ idea: p.idea, angulo: p.angulo, dia: p.dia }),
+        JSON.stringify({ idea: p.idea, angulo: p.angulo, dia: p.dia, familia }),
       );
     } catch {
-      // Sin sessionStorage se llega al guion en blanco, que sigue funcionando.
+      // Sin sessionStorage se llega en blanco, que sigue funcionando.
     }
     router.push("/guion?de=semana");
   }
+
+  const sugerida = sugerenciaPorAngulo(p.angulo ?? "");
 
   return (
     <article className="rounded border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
@@ -290,12 +274,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
         <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
           {NIVELES[p.nivel]?.corto ?? p.nivel} → {NIVELES[p.mueve_a]?.corto ?? p.mueve_a}
         </span>
-        <span className="ml-auto flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-          {formatoPorId(p.formato) && (
-            <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">
-              {formatoPorId(p.formato)!.nombre}
-            </span>
-          )}
+        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-neutral-500">
           {p.angulo} · {p.peso_mercado}
         </span>
       </div>
@@ -309,16 +288,34 @@ function Pieza({ p }: { p: PiezaSemana }) {
           para que entienda · {p.trabajo}
         </p>
 
-        <button
-          onClick={escribirla}
-          className="mt-4 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
-        >
-          {familiaDe(p.formato) === "carrusel"
-            ? "Armar este carrusel →"
-            : familiaDe(p.formato) === "escrito"
-              ? "Escribir esta publicación →"
-              : "Escribir el guion de esta →"}
-        </button>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+          ¿Cómo la haces?
+        </p>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {(
+            [
+              ["video", "Video"],
+              ["carrusel", "Carrusel"],
+              ["escrito", "Escrito"],
+            ] as const
+          ).map(([id, nombre]) => (
+            <button
+              key={id}
+              onClick={() => hacerla(id)}
+              className={`rounded border px-3 py-1.5 text-sm font-semibold transition ${
+                sugerida === id
+                  ? "border-teal-700 bg-teal-700 text-white hover:bg-teal-800 dark:border-teal-500 dark:bg-teal-600 dark:hover:bg-teal-500"
+                  : "border-neutral-300 text-neutral-700 hover:border-teal-700 hover:text-teal-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-teal-400 dark:hover:text-teal-300"
+              }`}
+            >
+              {nombre}
+              {sugerida === id && " ·  va bien aquí"}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-neutral-500">
+          La idea es la misma en los tres. Elige según el día que tengas.
+        </p>
 
         <br />
         <button
