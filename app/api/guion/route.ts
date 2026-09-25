@@ -4,13 +4,13 @@ import { guardarCorrida } from "@/lib/historial";
 import { extraerJSON, generar } from "@/lib/modelo";
 import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
-import { FORMATOS, type Ganchos, type Guion } from "@/types/guion";
+import { familiaDe, formatoPorId, PROMPT_DE, type Ganchos, type Pieza } from "@/types/guion";
 
 export const maxDuration = 300;
 
 type Cuerpo = {
-  /** "ganchos" afila la idea y devuelve tres; "guion" escribe alrededor del elegido. */
-  paso: "ganchos" | "guion";
+  /** "ganchos" afila la idea y devuelve tres; "pieza" produce lo que toque. */
+  paso: "ganchos" | "pieza";
   formato: string;
   idea: string;
   angulo?: string;
@@ -23,7 +23,7 @@ type Cuerpo = {
 export async function POST(request: Request) {
   const usuario = await usuarioActual();
   if (!usuario) {
-    return Response.json({ error: "Entra a tu cuenta para escribir el guion." }, { status: 401 });
+    return Response.json({ error: "Entra a tu cuenta para escribir la pieza." }, { status: 401 });
   }
 
   let cuerpo: Cuerpo;
@@ -33,12 +33,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
 
-  const formato = FORMATOS.find((f) => f.id === cuerpo.formato);
+  const formato = formatoPorId(cuerpo.formato);
   if (!formato) return Response.json({ error: "Elige un formato." }, { status: 400 });
   if (!cuerpo.idea?.trim()) {
     return Response.json({ error: "Dime de qué va la pieza." }, { status: 400 });
   }
-  if (cuerpo.paso === "guion" && !cuerpo.gancho?.trim()) {
+  if (cuerpo.paso === "pieza" && !cuerpo.gancho?.trim()) {
     return Response.json({ error: "Elige uno de los tres ganchos." }, { status: 400 });
   }
 
@@ -51,23 +51,25 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "Para escribir un guion tuyo hacen falta muestras de cómo hablas. " +
+            "Para escribir algo que suene a ti hacen falta muestras de cómo hablas. " +
             "Pega algo tuyo tal cual en «Cómo hablas», dentro de tu negocio: " +
-            "un audio transcrito, un mensaje a un cliente. Sin eso el guion sale " +
-            "correcto y no suena a ti.",
+            "un audio transcrito, un mensaje a un cliente. Sin eso sale correcto " +
+            "y no suena a ti.",
           falta: "voz",
         },
         { status: 422 },
       );
     }
 
+    const familia = familiaDe(formato.id);
     const instrucciones = await cargarPrompt(
-      cuerpo.paso === "ganchos" ? "3-ganchos.md" : "3-guion.md",
+      cuerpo.paso === "ganchos" ? "3-ganchos.md" : PROMPT_DE[familia],
     );
 
     const comun = [
       `## Formato elegido`,
-      `${formato.nombre} — ${formato.que} (${formato.golpes})`,
+      `${formato.nombre} — ${formato.que} (${formato.detalle})`,
+      familia === "escrito" ? `Lleva imagen: ${formato.id === "foto" ? "sí" : "no"}.` : "",
       cuerpo.angulo?.trim() ? `\n## Ángulo\n${cuerpo.angulo.trim()}` : "",
     ];
 
@@ -91,19 +93,22 @@ export async function POST(request: Request) {
     }
 
     const r = await generar({ sistema: instrucciones, estable: contexto.estable, texto });
-    const salida = extraerJSON<Ganchos | Guion>(r.texto);
+    const salida = extraerJSON<Ganchos | Pieza>(r.texto);
 
     // Solo se guarda el guion terminado: los tres ganchos son un paso
     // intermedio y guardarlos llenaría el historial de borradores.
-    if (cuerpo.paso === "guion" && contexto.negocioId) {
+    if (cuerpo.paso === "pieza" && contexto.negocioId) {
       await guardarCorrida(contexto.negocioId, 3, salida, r.modelo, {
         formato: cuerpo.formato,
+        familia,
         idea: cuerpo.idea,
+        gancho: cuerpo.gancho,
       });
     }
 
     return Response.json({
       [cuerpo.paso]: salida,
+      familia,
       meta: { proveedor: r.proveedor, modelo: r.modelo, uso: r.uso },
     });
   } catch (e) {
@@ -112,7 +117,7 @@ export async function POST(request: Request) {
     }
     console.error("guion:", e instanceof Error ? e.message : e);
     return Response.json(
-      { error: "No se pudo escribir el guion. Vuelve a intentarlo." },
+      { error: "No se pudo escribir la pieza. Vuelve a intentarlo." },
       { status: 500 },
     );
   }

@@ -1,3 +1,4 @@
+import { ultimaCorrida } from "@/lib/historial";
 import { negocioDe } from "@/lib/negocio";
 import { cargarPerfil, perfilDesdeNegocio } from "@/lib/perfil";
 
@@ -47,15 +48,35 @@ export async function cargarContexto(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { voz: _fuente, ...nucleo } = perfil.nucleo;
 
+  // Si no declaró un CTA en su negocio, se usa el que ya se leyó de su propio
+  // perfil en el último diagnóstico. El sistema ya tenía el dato: pedírselo
+  // otra vez es hacerle escribir dos veces lo mismo.
+  let accion = perfil.nucleo.accion?.texto?.trim() ?? "";
+  let accionLeida = false;
+  if (!accion && negocioId) {
+    const ultima = await ultimaCorrida(negocioId, 1);
+    const redes = (ultima?.entrada as { redes?: { casillas?: { cta?: string } }[] })?.redes ?? [];
+    const visto = redes.map((r) => r.casillas?.cta?.trim()).find(Boolean);
+    if (visto) {
+      accion = visto;
+      accionLeida = true;
+    }
+  }
+
   return {
     estable: [
       "## Perfil de Negocio",
       JSON.stringify({ ...perfil, nucleo }, null, 2),
       voz ? `\n## Muestras de voz\n\n${voz}` : "\n## Muestras de voz\n\n(ninguna)",
+      accion
+        ? `\n## Su llamada a la acción\n\n«${accion}»${
+            accionLeida ? " — leída de su propio perfil, no declarada por él" : ""
+          }`
+        : "",
     ].join("\n"),
     voz,
     senales,
-    accion: perfil.nucleo.accion?.texto?.trim() ?? "",
+    accion,
     negocioId,
   };
 }

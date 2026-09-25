@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
-import { BRECHAS, NIVELES, type Banco, type PiezaSemana } from "@/types/banco";
+import { BRECHAS, CUANTO_VIDEO, NIVELES, type Banco, type PiezaSemana } from "@/types/banco";
+import { familiaDe, formatoPorId } from "@/types/guion";
 
 export default function Semana() {
   const { data: sesion, isPending } = useSession();
   const [senales, setSenales] = useState("");
+  const [video, setVideo] = useState<string>("algo");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [banco, setBanco] = useState<Banco | null>(null);
@@ -30,6 +32,7 @@ export default function Semana() {
         if (!vivo) return;
         const guardadas = u?.corrida?.entrada?.senales ?? n?.negocio?.senales;
         if (guardadas) setSenales(guardadas);
+        if (u?.corrida?.entrada?.video) setVideo(u.corrida.entrada.video);
         if (u?.corrida?.resultado) {
           setBanco(u.corrida.resultado);
           setCreado(u.corrida.creado);
@@ -49,7 +52,7 @@ export default function Semana() {
       const r = await fetch("/api/banco", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senales }),
+        body: JSON.stringify({ senales, video }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo armar la semana.");
@@ -116,6 +119,31 @@ export default function Semana() {
           placeholder="«¿cuánto cuesta?» · «¿esto me sirve si apenas empiezo?» · «¿y si después no sé usarlo?»"
           className="w-full rounded border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
+
+        <fieldset className="mt-5">
+          <legend className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+            ¿Cuánto video esta semana?
+          </legend>
+          <p className="mb-2 mt-0.5 text-sm text-neutral-500">
+            No hay que grabarse cinco veces para publicar cinco veces. Lo que
+            elijas aquí se respeta al pie de la letra.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CUANTO_VIDEO.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setVideo(c.id)}
+                className={`rounded border px-3 py-1.5 text-sm transition ${
+                  video === c.id
+                    ? "border-teal-700 bg-teal-50 font-semibold dark:border-teal-400 dark:bg-teal-950/30"
+                    : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
+                }`}
+              >
+                {c.etiqueta}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
         <button
           onClick={armar}
@@ -262,7 +290,12 @@ function Pieza({ p }: { p: PiezaSemana }) {
         <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
           {NIVELES[p.nivel]?.corto ?? p.nivel} → {NIVELES[p.mueve_a]?.corto ?? p.mueve_a}
         </span>
-        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+        <span className="ml-auto flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+          {formatoPorId(p.formato) && (
+            <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">
+              {formatoPorId(p.formato)!.nombre}
+            </span>
+          )}
           {p.angulo} · {p.peso_mercado}
         </span>
       </div>
@@ -280,7 +313,11 @@ function Pieza({ p }: { p: PiezaSemana }) {
           onClick={escribirla}
           className="mt-4 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
-          Escribir el guion de esta →
+          {familiaDe(p.formato) === "carrusel"
+            ? "Armar este carrusel →"
+            : familiaDe(p.formato) === "escrito"
+              ? "Escribir esta publicación →"
+              : "Escribir el guion de esta →"}
         </button>
 
         <br />
