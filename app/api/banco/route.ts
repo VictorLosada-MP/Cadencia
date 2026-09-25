@@ -4,13 +4,11 @@ import { revisarCuota } from "@/lib/cuota";
 import { guardarCorrida } from "@/lib/historial";
 import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
-import { CUANTO_VIDEO, type Banco } from "@/types/banco";
+import type { Banco } from "@/types/banco";
 
 export const maxDuration = 300;
 
 type Cuerpo = {
-  /** Cuántos videos quiere esta semana. Se respeta al pie de la letra. */
-  video?: string;
   /**
    * Lo que le escriben y le preguntan. Es la señal más fiable de en qué
    * escalón está su audiencia: la gente pregunta desde donde está.
@@ -52,13 +50,8 @@ export async function POST(request: Request) {
         { status: 422 },
       );
     }
-    const cuanto = CUANTO_VIDEO.find((c) => c.id === cuerpo.video) ?? CUANTO_VIDEO[1];
-
     const texto = [
-      `## Cuánto video quiere esta semana\n${cuanto.videos} de las cinco piezas en video. Las otras ${
-        5 - cuanto.videos
-      }, sin cámara.`,
-      "\n## Lo que le escriben y le preguntan",
+      "## Lo que le escriben y le preguntan",
       senales,
       "\nDevuelve solo el JSON.",
     ].join("\n");
@@ -76,10 +69,7 @@ export async function POST(request: Request) {
     const salida = extraerJSON<Banco>(r.texto);
 
     if (contexto.negocioId) {
-      await guardarCorrida(contexto.negocioId, 2, salida, r.modelo, {
-        senales,
-        video: cuanto.id,
-      });
+      await guardarCorrida(contexto.negocioId, 2, salida, r.modelo, { senales });
     }
 
     return Response.json({
