@@ -69,7 +69,6 @@ export async function POST(request: Request) {
     const comun = [
       `## Formato elegido`,
       `${formato.nombre} — ${formato.que} (${formato.detalle})`,
-      familia === "escrito" ? `Lleva imagen: ${formato.id === "foto" ? "sí" : "no"}.` : "",
       cuerpo.angulo?.trim() ? `\n## Ángulo\n${cuerpo.angulo.trim()}` : "",
     ];
 

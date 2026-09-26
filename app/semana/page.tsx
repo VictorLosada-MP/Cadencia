@@ -296,7 +296,6 @@ function Pieza({ p }: { p: PiezaSemana }) {
             [
               ["video", "Video"],
               ["carrusel", "Carrusel"],
-              ["escrito", "Escrito"],
             ] as const
           ).map(([id, nombre]) => (
             <button
