@@ -1073,14 +1073,21 @@ function Resultado({
 function BloqueRed({ r }: { r: DiagnosticoRed }) {
   const fuera = r.puntos?.filter((p) => p.aplica === false).length ?? 0;
   const noVistos = r.puntos?.filter((p) => p.aplica !== false && !p.visible).length ?? 0;
+  const evaluados = (r.puntos?.length ?? 5) - fuera - noVistos;
 
   return (
     <article className="mt-10 first:mt-0">
       <div className="flex flex-wrap items-baseline gap-5">
-        <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
-          {r.pasan}
-          <span className="text-2xl text-neutral-400">/5</span>
-        </span>
+        {/* Un 0/5 cuando no se pudo revisar nada dice que falló los cinco, y es
+            falso: no se miró ninguno. Sin dato no hay marcador. */}
+        {evaluados > 0 ? (
+          <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
+            {r.pasan}
+            <span className="text-2xl text-neutral-400">/5</span>
+          </span>
+        ) : (
+          <span className="font-mono text-2xl font-bold text-neutral-400">sin revisar</span>
+        )}
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500">
             {r.red}
@@ -1092,7 +1099,14 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
         </div>
       </div>
 
-      {noVistos + fuera > 0 && (
+      {evaluados === 0 && (
+        <p className="mt-3 rounded border-l-[3px] border-amber-500 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+          No pude revisar ningún punto de esta red: las casillas llegaron
+          vacías. Llénalas arriba —o sube la captura— y vuelve a diagnosticar.
+        </p>
+      )}
+
+      {evaluados > 0 && noVistos + fuera > 0 && (
         <p className="mt-3 text-xs text-neutral-500">
           De los cinco, {noVistos + fuera === 1 ? "uno no se pudo revisar" : `${noVistos + fuera} no se pudieron revisar`}
           {noVistos > 0 && ` — ${noVistos === 1 ? "una casilla llegó vacía" : `${noVistos} casillas llegaron vacías`}`}

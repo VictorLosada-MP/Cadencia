@@ -102,15 +102,27 @@ function DeCarrusel({
 }) {
   const lienzos = useRef<(HTMLCanvasElement | null)[]>([]);
   const [bajando, setBajando] = useState(false);
+  // Las fotos viven solo en esta pantalla: no se suben, no se guardan.
+  const [fotos, setFotos] = useState<Record<number, ImageBitmap>>({});
   const paleta: Paleta = (PALETAS.find((p) => p.id === paletaId) ?? PALETAS[0]).p;
   const total = c.laminas?.length ?? 0;
 
   useEffect(() => {
     c.laminas?.forEach((l, i) => {
       const lienzo = lienzos.current[i];
-      if (lienzo) dibujar(lienzo, { ...l, total }, paleta);
+      if (lienzo) dibujar(lienzo, { ...l, total }, paleta, fotos[l.numero]);
     });
-  }, [c.laminas, paleta, total]);
+  }, [c.laminas, paleta, total, fotos]);
+
+  async function ponerFoto(numero: number, archivo: File | undefined | null) {
+    if (!archivo) return;
+    try {
+      const bitmap = await createImageBitmap(archivo);
+      setFotos((f) => ({ ...f, [numero]: bitmap }));
+    } catch {
+      // Si no se puede leer, la lámina se queda sin foto y ya está.
+    }
+  }
 
   async function bajar(i?: number) {
     setBajando(true);
@@ -198,20 +210,45 @@ function DeCarrusel({
               height={ALTO}
               className="w-full rounded border border-neutral-200 dark:border-neutral-800"
             />
-            <div className="mt-1.5 flex items-baseline justify-between gap-2">
+            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                 lámina {l.numero}
               </p>
-              <button
-                onClick={() => bajar(i)}
-                className="font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-              >
-                bajar esta
-              </button>
+              <span className="flex gap-3">
+                <label className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => ponerFoto(l.numero, e.target.files?.[0])}
+                  />
+                  {fotos[l.numero] ? "cambiar foto" : "poner foto"}
+                </label>
+                {fotos[l.numero] && (
+                  <button
+                    onClick={() =>
+                      setFotos((f) =>
+                        Object.fromEntries(
+                          Object.entries(f).filter(([n]) => Number(n) !== l.numero),
+                        ),
+                      )
+                    }
+                    className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
+                  >
+                    quitar
+                  </button>
+                )}
+                <button
+                  onClick={() => bajar(i)}
+                  className="font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+                >
+                  bajar esta
+                </button>
+              </span>
             </div>
-            {l.imagen && (
+            {l.imagen && !fotos[l.numero] && (
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                Si quieres ponerle foto: {l.imagen}
+                Qué foto le va: {l.imagen}
               </p>
             )}
           </div>

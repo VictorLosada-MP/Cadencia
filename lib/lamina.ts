@@ -83,53 +83,127 @@ function encajar(
   };
 }
 
-export function dibujar(lienzo: HTMLCanvasElement, l: LaminaDibujable, p: Paleta): void {
+/** Redondea un rectángulo: los cantos a escuadra se ven a plantilla vieja. */
+function caja(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** Dibuja la foto recortando para llenar la caja, sin deformarla. */
+function llenar(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource & { width: number; height: number },
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const escala = Math.max(w / img.width, h / img.height);
+  const aw = img.width * escala;
+  const ah = img.height * escala;
+  ctx.drawImage(img, x + (w - aw) / 2, y + (h - ah) / 2, aw, ah);
+}
+
+export function dibujar(
+  lienzo: HTMLCanvasElement,
+  l: LaminaDibujable,
+  p: Paleta,
+  foto?: (CanvasImageSource & { width: number; height: number }) | null,
+): void {
   lienzo.width = ANCHO;
   lienzo.height = ALTO;
   const ctx = lienzo.getContext("2d");
   if (!ctx) return;
 
-  const margen = 96;
+  const margen = 88;
   const util = ANCHO - margen * 2;
+  const esPortada = l.numero === 1 || !l.cuerpo?.trim();
 
   ctx.fillStyle = p.fondo;
   ctx.fillRect(0, 0, ANCHO, ALTO);
-
-  // La barra de acento: el 10% de la regla, y de paso marca dónde empieza.
-  ctx.fillStyle = p.acento;
-  ctx.fillRect(margen, margen, 88, 10);
-
   ctx.textBaseline = "top";
-  ctx.fillStyle = p.tinta;
 
-  const esPortada = l.numero === 1 || !l.cuerpo?.trim();
-  const arriba = margen + 64;
-  const abajo = ALTO - margen - 56;
+  // ── La foto ──────────────────────────────────────────────────────────────
+  // En la portada va a sangre con un velo encima para que el texto se lea; en
+  // las de dentro ocupa la mitad de arriba y el texto va debajo.
+  let techo = margen;
+  if (foto && esPortada) {
+    ctx.save();
+    llenar(ctx, foto, 0, 0, ANCHO, ALTO);
+    const velo = ctx.createLinearGradient(0, ALTO * 0.15, 0, ALTO);
+    velo.addColorStop(0, `${p.fondo}00`);
+    velo.addColorStop(0.55, `${p.fondo}E6`);
+    velo.addColorStop(1, p.fondo);
+    ctx.fillStyle = velo;
+    ctx.fillRect(0, 0, ANCHO, ALTO);
+    ctx.restore();
+  } else if (foto) {
+    const alto = Math.round(ALTO * 0.44);
+    ctx.save();
+    caja(ctx, margen, margen, util, alto, 24);
+    ctx.clip();
+    llenar(ctx, foto, margen, margen, util, alto);
+    ctx.restore();
+    techo = margen + alto + 56;
+  }
 
+  // ── El número, que también marca dónde empieza ───────────────────────────
+  if (!esPortada && !foto) {
+    ctx.font = `700 168px ${FUENTE}`;
+    ctx.fillStyle = p.acento;
+    ctx.globalAlpha = 0.16;
+    ctx.fillText(String(l.numero).padStart(2, "0"), margen - 6, margen - 26);
+    ctx.globalAlpha = 1;
+    techo = margen + 128;
+  } else if (!esPortada) {
+    ctx.fillStyle = p.acento;
+    caja(ctx, margen, techo - 8, 64, 8, 4);
+    ctx.fill();
+    techo += 28;
+  } else if (!foto) {
+    ctx.fillStyle = p.acento;
+    caja(ctx, margen, margen, 96, 10, 5);
+    ctx.fill();
+  }
+
+  const suelo = ALTO - margen - 74;
+
+  // ── El texto ─────────────────────────────────────────────────────────────
   if (esPortada) {
-    // La primera lámina hace todo el trabajo: va sola y va grande.
-    const { lineas, tam, interlinea } = encajar(ctx, l.titular, util, abajo - arriba, 110, 48, "700");
-    ctx.font = `700 ${tam}px ${FUENTE}`;
-    const alto = lineas.length * interlinea;
-    let y = arriba + Math.max(0, (abajo - arriba - alto) / 2);
-    for (const linea of lineas) {
+    const arriba = foto ? Math.round(ALTO * 0.42) : margen + 72;
+    const t = encajar(ctx, l.titular, util, suelo - arriba, 116, 52, "700");
+    ctx.font = `700 ${t.tam}px ${FUENTE}`;
+    ctx.fillStyle = p.tinta;
+    let y = foto ? suelo - t.lineas.length * t.interlinea : arriba + Math.max(0, (suelo - arriba - t.lineas.length * t.interlinea) / 2);
+    for (const linea of t.lineas) {
       ctx.fillText(linea, margen, y);
-      y += interlinea;
+      y += t.interlinea;
     }
   } else {
-    const t = encajar(ctx, l.titular, util, 340, 74, 40, "700");
+    const t = encajar(ctx, l.titular, util, 300, 78, 42, "700");
     ctx.font = `700 ${t.tam}px ${FUENTE}`;
-    let y = arriba;
+    ctx.fillStyle = p.tinta;
+    let y = techo;
     for (const linea of t.lineas) {
       ctx.fillText(linea, margen, y);
       y += t.interlinea;
     }
 
-    y += 40;
-    const c = encajar(ctx, l.cuerpo, util, abajo - y, 46, 28, "400");
+    // Una regla corta entre titular y cuerpo: separa sin meter una línea más.
+    y += 26;
+    ctx.fillStyle = p.acento;
+    ctx.fillRect(margen, y, 52, 5);
+    y += 34;
+
+    const c = encajar(ctx, l.cuerpo, util, suelo - y, 48, 30, "400");
     ctx.font = `400 ${c.tam}px ${FUENTE}`;
     ctx.fillStyle = p.tinta;
-    ctx.globalAlpha = 0.82;
+    ctx.globalAlpha = 0.86;
     for (const linea of c.lineas) {
       ctx.fillText(linea, margen, y);
       y += c.interlinea;
@@ -137,17 +211,23 @@ export function dibujar(lienzo: HTMLCanvasElement, l: LaminaDibujable, p: Paleta
     ctx.globalAlpha = 1;
   }
 
-  // El número, abajo. Dice cuánto falta, que es lo que sostiene el pase.
-  ctx.font = `600 30px ${FUENTE}`;
+  // ── El pie ───────────────────────────────────────────────────────────────
+  const pie = ALTO - margen - 34;
+  ctx.fillStyle = p.tinta;
+  ctx.globalAlpha = 0.12;
+  ctx.fillRect(margen, pie - 26, util, 2);
+  ctx.globalAlpha = 1;
+
+  ctx.font = `700 30px ${FUENTE}`;
   ctx.fillStyle = p.acento;
-  ctx.fillText(`${l.numero} / ${l.total}`, margen, ALTO - margen - 20);
+  ctx.fillText(`${String(l.numero).padStart(2, "0")} / ${String(l.total).padStart(2, "0")}`, margen, pie);
 
   if (l.numero < l.total) {
     ctx.font = `600 30px ${FUENTE}`;
     ctx.fillStyle = p.tinta;
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.5;
     const desliza = "desliza →";
-    ctx.fillText(desliza, ANCHO - margen - ctx.measureText(desliza).width, ALTO - margen - 20);
+    ctx.fillText(desliza, ANCHO - margen - ctx.measureText(desliza).width, pie);
     ctx.globalAlpha = 1;
   }
 }

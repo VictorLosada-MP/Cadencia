@@ -360,6 +360,11 @@ function DeVideo({ g }: { g: Guion }) {
             <p className="mt-2 border-l-2 border-neutral-300 pl-2.5 text-sm italic text-neutral-500 dark:border-neutral-700">
               {golpe.direccion}
             </p>
+            {golpe.apoyo && (
+              <p className="mt-1.5 border-l-2 border-teal-700 pl-2.5 text-sm text-neutral-600 dark:border-teal-400 dark:text-neutral-400">
+                se ve: {golpe.apoyo}
+              </p>
+            )}
           </div>
         ))}
         {g.cierre && (

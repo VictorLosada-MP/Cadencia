@@ -3,14 +3,19 @@ import { compararUltimas } from "@/lib/historial";
 import { guardarNegocio, negocioDe, usuarioActual } from "@/lib/negocio";
 import { negocioListo, type Negocio } from "@/types/negocio";
 
-export async function GET() {
+export async function GET(request: Request) {
   const usuario = await usuarioActual();
   if (!usuario) return Response.json({ error: "Entra a tu cuenta." }, { status: 401 });
 
   try {
     const negocio = await negocioDe(usuario.id);
-    // La comparación va aquí y no en su propia ruta: la pantalla la pide en la
-    // misma visita que el negocio, y son dos lecturas de la misma base.
+
+    // Quien solo necesita los campos del negocio no paga la comparación ni la
+    // cuota, que son otras cuatro consultas contra una base que está lejos.
+    if (new URL(request.url).searchParams.get("ligero")) {
+      return Response.json({ negocio });
+    }
+
     const [comparacion, cuota] = await Promise.all([
       negocio ? compararUltimas(negocio.id) : null,
       cuotaDe(usuario.id, negocio?.id ?? null),

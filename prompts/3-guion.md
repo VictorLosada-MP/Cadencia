@@ -13,13 +13,24 @@ frente a un teléfono, así que se escribe para decirse, no para leerse.
 
 ## El formato manda
 
-| Formato | Qué graba | Golpes |
-|---|---|---|
-| **A cámara** | Él hablando al teléfono. Nada más. | 3–4 |
-| **Lista con números** | Él hablando + un número grande por punto | N + 2 |
-| **Voz en off + texto** | Sin salir en cámara: imágenes, su voz, texto | 4–5 |
+| Formato | Qué graba | Frases | Qué lleva encima |
+|---|---|---|---|
+| **A cámara, sencillo** | Él hablando al teléfono | 3–4 | subtítulos y los cortes justos |
+| **A cámara, con producción** | Él hablando | 4–5 | además: imagen de apoyo en cada frase, algún texto animado, transiciones |
+| **Voz en off** | Sin salir en cámara | 4–5 | las imágenes son el video entero |
 
-El número de golpes sale de la tabla. No lo negocias.
+El número de frases sale de la tabla. No lo negocias.
+
+**Si el formato lleva apoyo** —producción o voz en off— cada golpe trae además
+`apoyo`: **qué se ve mientras dice esa frase.** Concreto y grabable o
+descargable: *"su pantalla con el panel abierto"*, *"plano cerrado de la mano
+escribiendo"*, *"el número 3 apareciendo grande sobre fondo liso"*.
+
+Prohibido *"imagen relacionada"*, *"algo que ilustre la idea"* o cualquier cosa
+que describa un banco de imágenes. Si no se puede conseguir con un teléfono o
+buscar en dos minutos, no sirve.
+
+En el formato sencillo, `apoyo` va en cadena vacía: ahí solo está su cara.
 
 ## Los golpes
 
@@ -110,7 +121,8 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
   "golpes": [
     {
       "texto": "lo que dice, palabra por palabra",
-      "direccion": "la acción o expresión física — nunca una emoción"
+      "direccion": "la acción o expresión física — nunca una emoción",
+      "apoyo": "qué se ve mientras lo dice — vacío en el formato sencillo"
     }
   ],
   "cierre": {
@@ -133,6 +145,9 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
 ```
 
 `golpes` lleva el número que manda el formato, y el primero es el gancho.
+
+`apoyo` solo se llena cuando el formato lo pide. Rellenarlo en el sencillo es
+darle trabajo que no pidió.
 
 `palabras` es el conteo real de palabras de gancho + golpes + cierre.
 `duracion_s` es ese número entre 2,5, redondeado.
