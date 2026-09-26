@@ -187,11 +187,7 @@ export default function Diagnostico() {
           ...(semilla ? { perfilId: "victor" } : {}),
           redes: listas,
           publicado,
-          respuestas: conRespuestas
-            ? Object.entries(respuestas)
-                .filter(([, v]) => v.trim())
-                .map(([pregunta, respuesta]) => ({ pregunta, respuesta }))
-            : undefined,
+          respuestas: conRespuestas ? preguntadas : undefined,
         }),
       });
       const d = await r.json();
@@ -207,6 +203,13 @@ export default function Diagnostico() {
   }
 
   const hayRespuestas = Object.values(respuestas).some((v) => v.trim());
+
+  // Todas las que se le ofrecieron, con o sin respuesta: es lo que evita que
+  // la ronda siguiente le vuelva a poner delante lo que ya decidió saltarse.
+  const preguntadas = (dx?.preguntas ?? []).map((q) => ({
+    pregunta: q.pregunta,
+    respuesta: respuestas[q.pregunta] ?? "",
+  }));
   const piezas = contarPiezas(publicado.textos);
 
   if (cargandoSesion) return <main className="mx-auto max-w-3xl px-6 py-14" />;

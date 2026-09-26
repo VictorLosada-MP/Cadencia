@@ -162,11 +162,16 @@ export async function POST(request: Request) {
       bloqueRedes,
       "\n## Lo ya publicado",
       hayPublicado ? bloquePublicado : "(nada — dilo en limites y deja linea_base vacía)",
+      // Van TODAS las que ya se preguntaron, contestadas o no. Si solo viajaran
+      // las contestadas, las que dejó en blanco volverían a salir la ronda
+      // siguiente — y eso es no haberle escuchado.
       cuerpo.respuestas?.length
-        ? "\n## Respuestas del dueño a preguntas anteriores\n\n" +
+        ? "\n## Preguntas que ya le hiciste — no repitas ninguna\n\n" +
           cuerpo.respuestas
-            .filter((r) => r.respuesta.trim())
-            .map((r) => `P: ${r.pregunta}\nR: ${r.respuesta.trim()}`)
+            .map(
+              (r) =>
+                `P: ${r.pregunta}\nR: ${r.respuesta.trim() || "(la dejó en blanco a propósito)"}`,
+            )
             .join("\n\n")
         : "",
       "\nDevuelve solo el JSON.",
