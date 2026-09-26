@@ -16,7 +16,7 @@ siguiente — esa es la diferencia entre un sistema y una colección de utilidad
 | 1 | Diagnóstico | La brecha nombrada, con su umbral y la corrección ya escrita |
 | | | Hasta dos redes, y qué cambia entre una y otra |
 | 2 | Banco de la semana | Cinco piezas que suben a tu audiencia un escalón, con el guion de respuesta |
-| 3 | La pieza | Guion de video, carrusel o publicación escrita — lo que toque esa semana |
+| 3 | La pieza | Guion de video o carrusel — lo que toque ese día |
 | 4 | Lista para subir | Las láminas del carrusel dibujadas y listas. El editor de video, en curso |
 
 Las cuatro leen un único **Perfil de Negocio** de seis campos, que el usuario

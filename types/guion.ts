@@ -38,22 +38,6 @@ export const FORMATOS = [
     detalle: "de 5 a 8 láminas",
     grabas: false,
   },
-  {
-    id: "foto" as const,
-    familia: "escrito" as const,
-    nombre: "Una foto con su texto",
-    que: "Una sola imagen y lo que escribes debajo. Lo más rápido que hay.",
-    detalle: "la imagen y el pie",
-    grabas: false,
-  },
-  {
-    id: "texto" as const,
-    familia: "escrito" as const,
-    nombre: "Solo texto",
-    que: "Sin imagen: una publicación escrita. Para LinkedIn o para una historia.",
-    detalle: "el texto entero",
-    grabas: false,
-  },
 ];
 
 export type Formato = (typeof FORMATOS)[number]["id"];
@@ -66,7 +50,6 @@ export const familiaDe = (id: string): Familia => formatoPorId(id)?.familia ?? "
 export const PROMPT_DE: Record<Familia, string> = {
   video: "3-guion.md",
   carrusel: "3-carrusel.md",
-  escrito: "3-escrito.md",
 };
 
 export type Gancho = {
@@ -116,14 +99,7 @@ export type Carrusel = {
   limites: string[];
 };
 
-export type Escrito = {
-  texto: string;
-  imagen: string;
-  valor: string;
-  limites: string[];
-};
+export type Pieza = Guion | Carrusel;
 
-export type Pieza = Guion | Carrusel | Escrito;
-
-export const esGuion = (p: Pieza): p is Guion => "golpes" in p;
 export const esCarrusel = (p: Pieza): p is Carrusel => "laminas" in p;
+export const esGuion = (p: Pieza): p is Guion => !esCarrusel(p);

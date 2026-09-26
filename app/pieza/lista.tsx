@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
-import { esCarrusel, esGuion, type Carrusel, type Pieza } from "@/types/guion";
+import { esCarrusel, type Carrusel, type Pieza } from "@/types/guion";
 
 export default function Lista() {
   const { data: sesion, isPending } = useSession();
@@ -83,7 +83,7 @@ export default function Lista() {
       ) : esCarrusel(pieza) ? (
         <DeCarrusel c={pieza} paletaId={paleta} onPaleta={setPaleta} creado={creado} />
       ) : (
-        <NoEsCarrusel esVideo={esGuion(pieza)} />
+        <EsVideo />
       )}
     </main>
   );
@@ -232,17 +232,15 @@ function DeCarrusel({
   );
 }
 
-function NoEsCarrusel({ esVideo }: { esVideo: boolean }) {
+function EsVideo() {
   return (
     <section className="mt-9">
       <div className="rounded border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-        <p className="font-semibold">
-          {esVideo ? "Lo último que escribiste es un guion de video" : "Lo último es una publicación escrita"}
-        </p>
+        <p className="font-semibold">Lo último que escribiste es un guion de video</p>
         <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-          {esVideo
-            ? "El editor de video —recortar a 9:16, cortar los silencios y quemar los subtítulos— todavía no está. Es lo siguiente que construyo, y va a correr aquí mismo, en tu navegador."
-            : "Una publicación escrita no necesita armarse: el texto del paso 3 ya se copia y se pega. Si quieres una imagen, la lámina la describe ahí."}
+          El editor de video —recortar a 9:16, cortar los silencios y quemar los
+          subtítulos— todavía no está. Es lo siguiente que construyo, y va a
+          correr aquí mismo, en tu navegador.
         </p>
         <Link
           href="/guion"

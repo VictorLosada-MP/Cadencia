@@ -23,6 +23,7 @@ material de vender, no de analizar.
 | `prompts/2-banco.md` | Apuntes · correcciones 1, 3, 4 y 5 · Reglamento · Función 2 |
 | `prompts/3-ganchos.md` | Reglamento · reglas 3·1, 3·3 y 3·5 |
 | `prompts/3-guion.md` | Reglamento · Función 3 · Apuntes · guía de grabación y fórmula del valor |
+| `prompts/3-carrusel.md` | Apuntes · fórmula del valor · reglas transversales |
 
 Cambiar cómo decide una función es editar su `.md`. Este documento dice **por
 qué** decide así, que es lo que no cabe dentro del prompt.

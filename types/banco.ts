@@ -45,11 +45,9 @@ export type PiezaSemana = {
  * Se calcula aquí y no se le pide al modelo: es una tabla fija, y una tabla no
  * necesita una llamada a la IA.
  */
-export function sugerenciaPorAngulo(angulo: string): "video" | "carrusel" | "escrito" {
+export function sugerenciaPorAngulo(angulo: string): "video" | "carrusel" {
   const a = angulo.toLowerCase();
-  if (/historia|error caro|pregunta que duele/.test(a)) return "video";
   if (/lista|proceso|enseñanza|ensenanza/.test(a)) return "carrusel";
-  if (/contra la corriente|prueba social|invitaci/.test(a)) return "escrito";
   return "video";
 }
 

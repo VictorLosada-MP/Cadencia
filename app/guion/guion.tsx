@@ -6,11 +6,9 @@ import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import {
   esCarrusel,
-  esGuion,
   familiaDe,
   FORMATOS,
   type Carrusel,
-  type Escrito,
   type Familia,
   type Formato,
   type Ganchos,
@@ -292,9 +290,7 @@ export default function Guion() {
               ? "Escribiendo…"
               : formato && familiaDe(formato) === "carrusel"
                 ? "Armar el carrusel"
-                : formato && familiaDe(formato) === "escrito"
-                  ? "Escribir la publicación"
-                  : "Escribir el guion"}
+                : "Escribir el guion"}
           </button>
 
           {ganchos.limites?.length > 0 && (
@@ -315,7 +311,7 @@ export default function Guion() {
 function Resultado({ p }: { p: Pieza }) {
   return (
     <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
-      {esGuion(p) ? <DeVideo g={p} /> : esCarrusel(p) ? <DeCarrusel c={p} /> : <DeEscrito e={p} />}
+      {esCarrusel(p) ? <DeCarrusel c={p} /> : <DeVideo g={p} />}
 
       {p.valor && (
         <p className="mt-8 rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
@@ -455,28 +451,6 @@ function DeCarrusel({ c }: { c: Carrusel }) {
 
       <Copiable texto={todo ?? ""} etiqueta="copiar todas las láminas" />
       <PieDePublicacion texto={c.descripcion} />
-    </>
-  );
-}
-
-function DeEscrito({ e }: { e: Escrito }) {
-  return (
-    <>
-      <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
-        La publicación
-      </h2>
-      <Copiable texto={e.texto} etiqueta="copiar la publicación" />
-
-      {e.imagen && (
-        <>
-          <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
-            La foto
-          </h2>
-          <p className="mt-2 rounded border border-neutral-200 bg-white p-4 text-sm leading-relaxed dark:border-neutral-800 dark:bg-neutral-900">
-            {e.imagen}
-          </p>
-        </>
-      )}
     </>
   );
 }
