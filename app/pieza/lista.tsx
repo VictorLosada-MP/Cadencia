@@ -102,15 +102,28 @@ function DeCarrusel({
 }) {
   const lienzos = useRef<(HTMLCanvasElement | null)[]>([]);
   const [bajando, setBajando] = useState(false);
+  // Las fotos viven solo en esta pantalla: no se suben, no se guardan.
+  const [fotos, setFotos] = useState<Record<number, ImageBitmap>>({});
+  const [buscando, setBuscando] = useState<number | null>(null);
   const paleta: Paleta = (PALETAS.find((p) => p.id === paletaId) ?? PALETAS[0]).p;
   const total = c.laminas?.length ?? 0;
 
   useEffect(() => {
     c.laminas?.forEach((l, i) => {
       const lienzo = lienzos.current[i];
-      if (lienzo) dibujar(lienzo, { ...l, total }, paleta);
+      if (lienzo) dibujar(lienzo, { ...l, total }, paleta, fotos[l.numero]);
     });
-  }, [c.laminas, paleta, total]);
+  }, [c.laminas, paleta, total, fotos]);
+
+  async function ponerFoto(numero: number, archivo: File | undefined | null) {
+    if (!archivo) return;
+    try {
+      const bitmap = await createImageBitmap(archivo);
+      setFotos((f) => ({ ...f, [numero]: bitmap }));
+    } catch {
+      // Si no se puede leer, la lámina se queda sin foto y ya está.
+    }
+  }
 
   async function bajar(i?: number) {
     setBajando(true);
@@ -198,21 +211,62 @@ function DeCarrusel({
               height={ALTO}
               className="w-full rounded border border-neutral-200 dark:border-neutral-800"
             />
-            <div className="mt-1.5 flex items-baseline justify-between gap-2">
+            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                 lámina {l.numero}
               </p>
-              <button
-                onClick={() => bajar(i)}
-                className="font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-              >
-                bajar esta
-              </button>
+              <span className="flex gap-3">
+                <label className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => ponerFoto(l.numero, e.target.files?.[0])}
+                  />
+                  {fotos[l.numero] ? "cambiar mi foto" : "poner mi foto"}
+                </label>
+                <button
+                  onClick={() => setBuscando(buscando === l.numero ? null : l.numero)}
+                  className="font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+                >
+                  buscar foto
+                </button>
+                {fotos[l.numero] && (
+                  <button
+                    onClick={() =>
+                      setFotos((f) =>
+                        Object.fromEntries(
+                          Object.entries(f).filter(([n]) => Number(n) !== l.numero),
+                        ),
+                      )
+                    }
+                    className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-red-700 dark:hover:text-red-400"
+                  >
+                    quitar
+                  </button>
+                )}
+                <button
+                  onClick={() => bajar(i)}
+                  className="font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+                >
+                  bajar esta
+                </button>
+              </span>
             </div>
-            {l.imagen && (
+            {l.imagen && !fotos[l.numero] && (
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                Si quieres ponerle foto: {l.imagen}
+                Qué foto le va: {l.imagen}
               </p>
+            )}
+            {buscando === l.numero && (
+              <Buscador
+                consulta={l.imagen || l.titular}
+                orientacion={l.numero === 1 ? "portrait" : "landscape"}
+                onElegida={(bitmap) => {
+                  setFotos((f) => ({ ...f, [l.numero]: bitmap }));
+                  setBuscando(null);
+                }}
+              />
             )}
           </div>
         ))}
@@ -229,6 +283,119 @@ function DeCarrusel({
         </div>
       )}
     </section>
+  );
+}
+
+type Foto = { id: number; url: string; mini: string; autor: string; origen: string };
+
+/**
+ * Busca fotos de archivo con lo que el prompt escribió que se ve en la lámina.
+ * Gratis, y sin generar nada: son fotos que ya existen.
+ */
+function Buscador({
+  consulta,
+  orientacion,
+  onElegida,
+}: {
+  consulta: string;
+  orientacion: "portrait" | "landscape";
+  onElegida: (b: ImageBitmap) => void;
+}) {
+  const [texto, setTexto] = useState(consulta);
+  const [fotos, setFotos] = useState<Foto[] | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+  const [sinClave, setSinClave] = useState(false);
+
+  async function buscar() {
+    setCargando(true);
+    setError("");
+    try {
+      const r = await fetch(
+        `/api/fotos?q=${encodeURIComponent(texto)}&o=${orientacion}`,
+      );
+      const d = await r.json();
+      if (!r.ok) {
+        setSinClave(Boolean(d.sinClave));
+        throw new Error(d.error ?? "No se pudo buscar.");
+      }
+      setFotos(d.fotos);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo buscar.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function elegir(f: Foto) {
+    try {
+      // Viene por el proxy para que el canvas no quede marcado y se pueda
+      // seguir exportando la lámina.
+      const r = await fetch(`/api/fotos?traer=${encodeURIComponent(f.url)}`);
+      onElegida(await createImageBitmap(await r.blob()));
+    } catch {
+      setError("No se pudo traer esa foto.");
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && buscar()}
+          className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+        />
+        <button
+          onClick={buscar}
+          disabled={cargando || !texto.trim()}
+          className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+        >
+          {cargando ? "buscando…" : "buscar"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
+          {error}
+          {sinClave && (
+            <>
+              {" "}
+              Mientras tanto puedes poner tus propias fotos, o dejar la lámina
+              solo con texto.
+            </>
+          )}
+        </p>
+      )}
+
+      {fotos && fotos.length === 0 && (
+        <p className="mt-2 text-xs text-neutral-500">
+          Nada con esas palabras. Prueba con menos, o en inglés.
+        </p>
+      )}
+
+      {fotos && fotos.length > 0 && (
+        <>
+          <div className="mt-2 grid grid-cols-4 gap-1.5">
+            {fotos.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => elegir(f)}
+                title={`Foto de ${f.autor}`}
+                className="overflow-hidden rounded border border-neutral-300 transition hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.mini} alt="" className="aspect-square w-full object-cover" />
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-neutral-500">
+            Fotos de Pexels. Se pueden usar sin pagar y sin dar crédito.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 

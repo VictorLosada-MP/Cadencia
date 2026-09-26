@@ -73,6 +73,15 @@ lleva `[YOUR-PASSWORD]`, que hay que cambiar por la contraseña de la base.
 No confundir con `https://xxxx.supabase.co`: esa es la dirección de la API y no
 sirve para conectarse a Postgres.
 
+### Fotos de archivo
+
+Opcional. Con una clave de **Pexels** —gratis, sin tarjeta, en pexels.com/api—
+el carrusel busca fotos con la descripción que escribió el propio sistema. Sin
+ella, se ponen fotos propias o las láminas van solo con texto.
+
+No genera imágenes: busca entre las que ya existen. Generar es otro proveedor y
+cuesta por lámina.
+
 ### Planes y cortesías
 
 ```bash

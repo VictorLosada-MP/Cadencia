@@ -116,12 +116,16 @@ export type EntradaRed = {
   cortadas?: Casilla[];
 };
 
+/**
+ * Solo ventanas recientes. Lo de hace un año no es línea base de nada: ni
+ * dice cómo escribe hoy ni con qué ritmo publica ahora. Y "no me acuerdo" era
+ * una opción para no contestar, que deja al sistema sin poder decir nada.
+ */
 export const VENTANAS = [
+  "hoy",
+  "esta semana",
   "este mes",
   "los últimos tres meses",
-  "el último año",
-  "hace más de un año",
-  "no me acuerdo",
 ] as const;
 
 export type Ventana = (typeof VENTANAS)[number];

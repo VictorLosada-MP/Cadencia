@@ -32,7 +32,7 @@ export function Barra() {
   useEffect(() => {
     if (!sesion) return;
     let vivo = true;
-    fetch("/api/negocio")
+    fetch("/api/cuota")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (vivo && d?.cuota) setCuota(d.cuota);

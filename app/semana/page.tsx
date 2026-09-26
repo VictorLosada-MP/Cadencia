@@ -28,18 +28,27 @@ export default function Semana() {
     // La semana que ya se armó vuelve tal cual. Volver a generarla en cada
     // visita daría una semana distinta cada vez con los mismos datos, y eso no
     // es un plan: es una tirada de dados.
-    Promise.all([
-      fetch("/api/negocio").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/ultimo?funcion=2").then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([n, u]) => {
-        if (!vivo) return;
-        const guardadas = u?.corrida?.entrada?.senales ?? n?.negocio?.senales;
-        if (guardadas) setSenales(guardadas);
-        if (u?.corrida?.resultado) {
+    //
+    // Las dos peticiones van sueltas y no en Promise.all: la semana se pinta en
+    // cuanto llega la suya, sin quedarse esperando a la otra.
+    fetch("/api/ultimo?funcion=2")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => {
+        if (!vivo || !u?.corrida) return;
+        if (u.corrida.entrada?.senales) setSenales(u.corrida.entrada.senales);
+        if (u.corrida.resultado) {
           setBanco(u.corrida.resultado);
           setCreado(u.corrida.creado);
         }
+      })
+      .catch(() => {});
+
+    fetch("/api/negocio?ligero=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((n) => {
+        // Solo rellena si lo guardado no trajo nada: lo de la última corrida
+        // manda, porque es lo que de verdad produjo esta semana.
+        if (vivo && n?.negocio?.senales) setSenales((s) => s || n.negocio.senales);
       })
       .catch(() => {});
 

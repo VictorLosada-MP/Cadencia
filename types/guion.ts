@@ -7,28 +7,28 @@
  */
 export const FORMATOS = [
   {
-    id: "camara" as const,
+    id: "sencillo" as const,
     familia: "video" as const,
-    nombre: "A cámara",
-    que: "Tú hablando al teléfono. Nada más: ni imágenes ni edición.",
+    nombre: "A cámara, sencillo",
+    que: "Tú hablando, con subtítulos y los cortes justos. Media hora de edición.",
     detalle: "3 o 4 frases",
     grabas: true,
   },
   {
-    id: "lista" as const,
+    id: "producido" as const,
     familia: "video" as const,
-    nombre: "Los 3 errores, uno por uno",
-    que: "Cuentas varias cosas seguidas y en pantalla va saliendo 1, 2, 3. Se guarda mucho.",
-    detalle: "una frase por punto",
+    nombre: "A cámara, con producción",
+    que: "Lo mismo, más imágenes de apoyo, algún texto animado y transiciones. Se nota, y cuesta más.",
+    detalle: "4 o 5 frases, con apoyo en cada una",
     grabas: true,
   },
   {
     id: "voz-en-off" as const,
     familia: "video" as const,
     nombre: "Voz en off",
-    que: "No sales tú: imágenes, tu voz encima y texto. Para cuando no quieres grabarte.",
+    que: "No sales tú: solo imágenes, tu voz encima y texto. Para cuando no quieres grabarte la cara.",
     detalle: "4 o 5 frases",
-    grabas: true,
+    grabas: false,
   },
   {
     id: "carrusel" as const,
@@ -70,6 +70,8 @@ export type Golpe = {
   texto: string;
   /** Una acción o expresión física. Nunca una emoción abstracta. */
   direccion: string;
+  /** Qué se ve mientras lo dice. Vacío en el formato sencillo. */
+  apoyo?: string;
 };
 
 export type Guion = {
