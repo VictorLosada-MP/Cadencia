@@ -74,7 +74,7 @@ export default function Lista() {
             vuelve — si es un carrusel, aquí salen las láminas listas.
           </p>
           <Link
-            href="/guion"
+            href="/pieza"
             className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
           >
             ir a escribir la pieza →
@@ -410,7 +410,7 @@ function EsVideo() {
           correr aquí mismo, en tu navegador.
         </p>
         <Link
-          href="/guion"
+          href="/pieza"
           className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
         >
           volver al paso 3 →

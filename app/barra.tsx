@@ -10,10 +10,10 @@ import { signOut, useSession } from "@/lib/auth-cliente";
  * herramientas. La barra lo dice: van numeradas y en orden.
  */
 const PASOS = [
-  { href: "/", n: "1", nombre: "Diagnóstico" },
+  { href: "/diagnostico", n: "1", nombre: "Diagnóstico" },
   { href: "/semana", n: "2", nombre: "La semana" },
-  { href: "/guion", n: "3", nombre: "La pieza" },
-  { href: "/pieza", n: "4", nombre: "Lista para subir" },
+  { href: "/pieza", n: "3", nombre: "La pieza" },
+  { href: "/publicar", n: "4", nombre: "Lista para subir" },
 ];
 
 type Cuota = {
@@ -71,12 +71,24 @@ export function Barra() {
             </Link>
           );
         })}
+        <Link
+          href="/negocio"
+          aria-current={aqui === "/negocio" ? "page" : undefined}
+          className={`font-mono text-[11px] uppercase tracking-wider ${
+            aqui === "/negocio"
+              ? "font-bold text-neutral-900 dark:text-neutral-100"
+              : "text-neutral-500 underline underline-offset-4 hover:text-teal-700 hover:no-underline dark:hover:text-teal-400"
+          }`}
+        >
+          Tu negocio
+        </Link>
       </nav>
 
       <span className="ml-auto flex items-center gap-3 text-xs text-neutral-500">
         {cuota?.limite != null && (
-          <span
-            className={`font-mono tabular-nums ${
+          <Link
+            href="/planes"
+            className={`font-mono tabular-nums underline underline-offset-4 hover:no-underline ${
               cerca ? "font-bold text-amber-700 dark:text-amber-500" : ""
             }`}
             title={
@@ -86,8 +98,8 @@ export function Barra() {
             }
           >
             {cuota.usadas}/{cuota.limite}
-            {cuota.cortesia && " ·  cortesía"}
-          </span>
+            {cuota.cortesia && " · cortesía"}
+          </Link>
         )}
         <span className="font-mono">{sesion.user.email}</span>
         <button
