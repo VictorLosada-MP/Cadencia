@@ -205,11 +205,11 @@ export default function Diagnostico() {
   }));
   const piezas = contarPiezas(publicado.textos);
 
-  if (cargandoSesion) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+  if (cargandoSesion) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
   if (!sesion) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-20">
+      <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">Diagnóstico</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">
           Necesitas una cuenta para que tu negocio y tus diagnósticos queden
@@ -218,7 +218,7 @@ export default function Diagnostico() {
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link
             href="/entrar"
-            className="inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+            className="inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
           >
             Entrar o crear cuenta
           </Link>
@@ -234,10 +234,10 @@ export default function Diagnostico() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 1 · Diagnóstico
         </p>
@@ -251,19 +251,26 @@ export default function Diagnostico() {
 
       {comparacion && <Movido c={comparacion} />}
 
-      <section className="mt-9">
+      <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           Tu negocio
         </h2>
         {negocioEnBase && !semilla ? (
-          <div className="mt-1.5 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <p className="text-neutral-700 dark:text-neutral-300">
-              Voy a leer tu perfil contra{" "}
-              <span className="font-semibold">{resumen(negocio)}</span>.
-            </p>
+          <div className="mt-1.5 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                Voy a leer tu perfil contra
+              </p>
+              <p className="mt-1 font-semibold leading-snug">{recortar(negocio.oferta, 90)}</p>
+              {negocio.cliente.trim() && (
+                <p className="mt-0.5 text-sm text-neutral-500">
+                  para {recortar(negocio.cliente, 80)}
+                </p>
+              )}
+            </div>
             <Link
               href="/negocio"
-              className="mt-1.5 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+              className="shrink-0 rounded-full border border-neutral-300 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-neutral-600 transition-colors hover:border-teal-600 hover:text-teal-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-teal-400 dark:hover:text-teal-400"
             >
               cambiarlo →
             </Link>
@@ -289,7 +296,7 @@ export default function Diagnostico() {
         )}
       </section>
 
-      <section className="mt-10">
+      <section className="revela mt-10" style={{ ["--tarda" as string]: "0.08s" }}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           Tu perfil
         </h2>
@@ -324,7 +331,7 @@ export default function Diagnostico() {
         )}
       </section>
 
-      <section className="mt-10">
+      <section className="revela mt-10" style={{ ["--tarda" as string]: "0.12s" }}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           Lo que ya publicaste
         </h2>
@@ -334,7 +341,7 @@ export default function Diagnostico() {
           sirve para saber de dónde partes.
         </p>
 
-        <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             <span className="font-semibold">La cuadrícula</span> da el ritmo, el
             formato y los temas que se repiten.
@@ -346,7 +353,7 @@ export default function Diagnostico() {
                 <img
                   src={fuente(img)}
                   alt={`cuadrícula ${i + 1}`}
-                  className="max-h-32 rounded border border-neutral-300 dark:border-neutral-700"
+                  className="max-h-32 rounded-lg border border-neutral-300 dark:border-neutral-700"
                 />
                 <button
                   onClick={() =>
@@ -389,7 +396,7 @@ export default function Diagnostico() {
             onChange={(e) => setPublicado({ ...publicado, textos: e.target.value })}
             rows={6}
             placeholder={"El texto de una publicación…\n\nEl de otra…"}
-            className="mt-2 w-full rounded border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+            className="mt-2 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
           />
           {piezas > 0 && (
             <p className="mt-1.5 text-xs text-neutral-500">
@@ -409,7 +416,7 @@ export default function Diagnostico() {
               onChange={(e) =>
                 setPublicado({ ...publicado, ventana: (e.target.value || undefined) as Ventana })
               }
-              className="mt-2 block rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+              className="mt-2 block rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
             >
               <option value="">Elige…</option>
               {VENTANAS.map((v) => (
@@ -428,7 +435,7 @@ export default function Diagnostico() {
           disabled={
             cargando || listas.length === 0 || (!semilla && !negocioEnBase)
           }
-          className="rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando ? "Revisando…" : dx ? "Volver a diagnosticar" : "Diagnosticar"}
         </button>
@@ -447,7 +454,7 @@ export default function Diagnostico() {
           </p>
         )}
         {error && (
-          <p className="mt-4 rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <p className="mt-4 rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </p>
         )}
@@ -467,15 +474,10 @@ export default function Diagnostico() {
   );
 }
 
-/** Una linea para reconocer el negocio guardado sin volver a abrir el formulario. */
-function resumen(n: Negocio): string {
-  const recortar = (t: string, max: number) => {
-    const limpio = t.trim().split(/[.\n]/)[0].trim();
-    return limpio.length > max ? `${limpio.slice(0, max).trimEnd()}…` : limpio;
-  };
-  const oferta = recortar(n.oferta, 60);
-  const cliente = recortar(n.cliente, 40);
-  return cliente ? `${oferta} · para ${cliente}` : oferta;
+/** La primera frase, para reconocer el negocio sin reabrir el formulario. */
+function recortar(t: string, max: number): string {
+  const limpio = t.trim().split(/[.\n]/)[0].trim();
+  return limpio.length > max ? `${limpio.slice(0, max).trimEnd()}…` : limpio;
 }
 
 /**
@@ -492,7 +494,7 @@ function Movido({ c }: { c: Comparacion }) {
   if (total === 0) return null;
 
   return (
-    <div className="mt-8 rounded border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
         Desde el {fecha}
       </p>
@@ -600,12 +602,12 @@ function Ficha({
   }
 
   return (
-    <div className="rounded border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={red.plataforma}
           onChange={(e) => onCambio({ plataforma: e.target.value as Plataforma })}
-          className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+          className="rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
         >
           {PLATAFORMAS.map((p) => (
             <option key={p} value={p}>
@@ -619,7 +621,7 @@ function Ficha({
             value={red.otra ?? ""}
             onChange={(e) => onCambio({ otra: e.target.value })}
             placeholder="¿Cuál?"
-            className="w-32 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+            className="w-32 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
           />
         )}
 
@@ -634,7 +636,7 @@ function Ficha({
       </div>
 
       {esSitio ? (
-        <div className="mt-3 rounded border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+        <div className="mt-3 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Escribe la dirección y leo la página por ti: el nombre, lo que dice
             arriba y el botón principal.
@@ -646,12 +648,12 @@ function Ficha({
                 onCambio({ casillas: { ...red.casillas, link: e.target.value } })
               }
               placeholder="mantiscapital.net"
-              className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+              className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
             />
             <button
               onClick={leerElSitio}
               disabled={leyendo || !red.casillas.link?.trim()}
-              className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+              className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
             >
               {leyendo ? "leyendo…" : "leer el sitio"}
             </button>
@@ -659,7 +661,7 @@ function Ficha({
           {fallo && <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">{fallo}</p>}
         </div>
       ) : (
-      <div className="mt-3 rounded border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+      <div className="mt-3 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           ¿Prefieres no escribirlo? Sube una captura y se rellenan solas — tú las
           revisas antes de que se diagnostique nada.
@@ -669,7 +671,7 @@ function Ficha({
           <em>Editar perfil</em> — esa muestra tu correo y tu teléfono.
         </p>
         <label
-          className="mt-2 inline-flex cursor-pointer items-center rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+          className="mt-2 inline-flex cursor-pointer items-center rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
           onMouseEnter={() => setAvisoPrivacidad(true)}
         >
           <input
@@ -704,7 +706,7 @@ function Ficha({
                 cortadas: cortadas.filter((x) => x !== c.id),
               }),
             placeholder: c.pista,
-            className: `mt-1 w-full rounded border bg-neutral-50 p-2 font-mono text-sm outline-none focus:border-teal-700 dark:bg-neutral-950 dark:focus:border-teal-400 ${
+            className: `mt-1 w-full rounded-lg border bg-neutral-50 p-2 font-mono text-sm outline-none focus:border-teal-700 dark:bg-neutral-950 dark:focus:border-teal-400 ${
               cortada
                 ? "border-amber-500 dark:border-amber-500"
                 : "border-neutral-300 dark:border-neutral-700"
@@ -786,12 +788,12 @@ function PorEnlace({ onTexto }: { onTexto: (t: string) => void }) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Pega el enlace de una publicación"
-          className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+          className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
         />
         <button
           onClick={leer}
           disabled={leyendo || !url.trim()}
-          className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+          className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
         >
           {leyendo ? "leyendo…" : "leer el enlace"}
         </button>
@@ -826,7 +828,7 @@ function SubirImagen({
 
   return (
     <div>
-      <label className="flex cursor-pointer items-center rounded border border-dashed border-neutral-400 px-3 py-2 text-sm text-neutral-600 transition hover:border-teal-700 hover:text-teal-800 dark:border-neutral-600 dark:text-neutral-400 dark:hover:border-teal-400 dark:hover:text-teal-300">
+      <label className="flex cursor-pointer items-center rounded-lg border border-dashed border-neutral-400 px-3 py-2 text-sm text-neutral-600 transition hover:border-teal-700 hover:text-teal-800 dark:border-neutral-600 dark:text-neutral-400 dark:hover:border-teal-400 dark:hover:text-teal-300">
         <input
           type="file"
           accept="image/*"
@@ -856,12 +858,12 @@ function Resultado({
   reDiagnosticar: () => void;
 }) {
   return (
-    <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
+    <section className="revela mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800" style={{ ["--tarda" as string]: "0.16s" }}>
       {dx.redes?.map((r) => <BloqueRed key={r.id ?? r.red} r={r} />)}
 
       {dx.coherencia && (
         <div
-          className={`mt-10 rounded border-l-[3px] p-4 ${
+          className={`mt-10 rounded-lg border-l-[3px] p-4 ${
             dx.coherencia.dicen_lo_mismo
               ? "border-green-700 bg-green-50 dark:bg-green-950/30"
               : "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
@@ -880,7 +882,7 @@ function Resultado({
       )}
 
       {dx.linea_base && (
-        <div className="mt-10 rounded border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="mt-10 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
             De dónde partes
           </p>
@@ -907,7 +909,7 @@ function Resultado({
             {dx.preguntas.map((q, i) => (
               <div
                 key={i}
-                className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+                className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
               >
                 <p className="font-semibold leading-snug">{q.pregunta}</p>
                 <p className="mt-1 text-sm text-neutral-500">{q.para_que}</p>
@@ -918,7 +920,7 @@ function Resultado({
                   }
                   rows={2}
                   placeholder="Tu respuesta, si quieres"
-                  className="mt-2 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+                  className="mt-2 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
                 />
               </div>
             ))}
@@ -926,7 +928,7 @@ function Resultado({
           <button
             onClick={reDiagnosticar}
             disabled={cargando || !hayRespuestas}
-            className="mt-3 rounded border border-teal-700 px-5 py-2.5 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+            className="mt-3 rounded-lg border border-teal-700 px-5 py-2.5 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
           >
             {cargando ? "Afinando…" : "Afinar con mis respuestas"}
           </button>
@@ -979,7 +981,7 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
       </div>
 
       {evaluados === 0 && (
-        <p className="mt-3 rounded border-l-[3px] border-amber-500 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+        <p className="mt-3 rounded-lg border-l-[3px] border-amber-500 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
           No pude revisar ningún punto de esta red: las casillas llegaron
           vacías. Llénalas arriba —o sube la captura— y vuelve a diagnosticar.
         </p>
@@ -1007,7 +1009,7 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
         </ul>
       )}
 
-      <div className="mt-5 divide-y divide-neutral-200 overflow-hidden rounded border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+      <div className="mt-5 divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
         {r.puntos?.map((p) => {
           const estado =
             p.aplica === false ? "no aplica" : !p.visible ? "sin dato" : p.pasa ? "pasa" : "no pasa";
@@ -1050,7 +1052,7 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
             {r.bios.map((b, i) => (
               <div
                 key={i}
-                className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+                className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
               >
                 <p className="font-mono text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
                   {b.angulo}
@@ -1068,7 +1070,7 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
 function Copiable({ texto }: { texto: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
-    <div className="mt-2 rounded border-l-2 border-teal-700 bg-neutral-50 p-3 dark:border-teal-400 dark:bg-neutral-950">
+    <div className="mt-2 rounded-lg border-l-2 border-teal-700 bg-neutral-50 p-3 dark:border-teal-400 dark:bg-neutral-950">
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{texto}</p>
       <button
         onClick={() => {

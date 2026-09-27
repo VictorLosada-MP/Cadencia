@@ -22,6 +22,23 @@ function precio(p: Plan): string {
   return Number.isFinite(n) && n > 0 ? `US$${n % 1 === 0 ? n : n.toFixed(2)}` : "Gratis";
 }
 
+const NOTAS = [
+  {
+    titulo: "Una corrida",
+    texto:
+      "es cada vez que el sistema escribe algo: un diagnóstico, una semana, una pieza. Afinar un diagnóstico con tus respuestas cuenta como otra, porque cuesta lo mismo que la primera.",
+  },
+  {
+    titulo: "Si una corrida falla, no se te cuenta.",
+    texto: "El contador solo suma lo que terminó bien.",
+  },
+  {
+    titulo: "Lo ya entregado se lee siempre,",
+    texto:
+      "con plan o sin él. Tus correcciones y tus piezas no se quedan encerradas cuando se acaba el mes.",
+  },
+];
+
 export function Planes({
   planes,
   actual,
@@ -32,54 +49,85 @@ export function Planes({
 }) {
   if (planes.length === 0) {
     return (
-      <p className="rounded border-l-[3px] border-amber-600 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+      <p className="rounded-lg border-l-[3px] border-amber-600 bg-amber-50 p-4 text-sm dark:bg-amber-950/30">
         Los planes no cargaron. Recarga la página en un momento — lo demás de
         esta página sigue siendo cierto.
       </p>
     );
   }
 
+  // El del medio se destaca cuando no hay uno propio que destacar. Es una
+  // señal de por dónde empezar, no un truco: tiene el mismo producto dentro.
+  const sugerido = actual ? null : planes[Math.floor(planes.length / 2)]?.id;
+
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {planes.map((p) => {
+      <div className="grid gap-5 lg:grid-cols-3">
+        {planes.map((p, i) => {
           const gratis = Number(p.precio_mes) === 0;
           const esteEs = actual === p.id;
+          const destaca = esteEs || sugerido === p.id;
+
           return (
             <div
               key={p.id}
-              className={`flex flex-col rounded border p-5 ${
-                esteEs
-                  ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
-                  : "border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+              className={`revela tarjeta relative flex flex-col rounded-xl border p-8 ${
+                destaca
+                  ? "border-teal-600 bg-[var(--background)] shadow-[0_18px_50px_-30px_rgb(15_118_110/0.55)] lg:-my-3 lg:py-11 dark:border-teal-400"
+                  : "border-neutral-200 bg-[var(--background)] dark:border-neutral-800"
               }`}
+              style={{ ["--tarda" as string]: `${i * 0.1}s` }}
             >
-              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+              {destaca && (
+                <span className="absolute -top-3 left-8 rounded-full bg-teal-700 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-white dark:bg-teal-500 dark:text-neutral-900">
+                  {esteEs ? "tu plan de hoy" : "por aquí se empieza"}
+                </span>
+              )}
+
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-500">
                 {p.nombre}
               </p>
-              <p className="mt-2 text-3xl font-bold tracking-tight">
-                {precio(p)}
+
+              <p className="mt-4 flex items-baseline gap-1.5">
+                <span className="text-5xl font-bold tracking-tight">{precio(p)}</span>
                 {!gratis && (
-                  <span className="text-sm font-normal text-neutral-500"> / mes</span>
+                  <span className="text-sm text-neutral-500">/ mes</span>
                 )}
               </p>
-              <p className="mt-3 text-sm text-neutral-700 dark:text-neutral-300">{limite(p)}</p>
-              <p className="mt-1.5 text-sm text-neutral-600 dark:text-neutral-400">
-                Las cuatro funciones, completas. Nada se recorta por plan.
-              </p>
 
-              <div className="mt-5 pt-1">
+              <div className="my-7 h-px bg-neutral-200 dark:bg-neutral-800" />
+
+              <ul className="space-y-3 text-[15px] leading-relaxed">
+                <li className="flex gap-3">
+                  <span className="mt-2 block h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600 dark:bg-teal-400" />
+                  <span className="font-semibold">{limite(p)}</span>
+                </li>
+                <li className="flex gap-3 text-neutral-600 dark:text-neutral-400">
+                  <span className="mt-2 block h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600 dark:bg-teal-400" />
+                  Las cuatro funciones, completas
+                </li>
+                <li className="flex gap-3 text-neutral-600 dark:text-neutral-400">
+                  <span className="mt-2 block h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600 dark:bg-teal-400" />
+                  Lo ya entregado se lee siempre
+                </li>
+                <li className="flex gap-3 text-neutral-600 dark:text-neutral-400">
+                  <span className="mt-2 block h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600 dark:bg-teal-400" />
+                  Sin contraseñas de tus redes
+                </li>
+              </ul>
+
+              <div className="mt-8 pt-1">
                 {esteEs ? (
-                  <span className="font-mono text-[11px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                    tu plan de hoy
+                  <span className="block rounded-full border border-neutral-300 px-5 py-3 text-center font-mono text-[11px] uppercase tracking-wider text-neutral-500 dark:border-neutral-700">
+                    en vigor
                   </span>
                 ) : (
                   <Link
                     href="/entrar"
-                    className={`inline-block rounded px-4 py-2 text-sm font-semibold transition ${
-                      gratis
-                        ? "bg-teal-700 text-white hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
-                        : "border border-teal-700 text-teal-700 hover:bg-teal-50 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+                    className={`empuja block rounded-full px-5 py-3 text-center font-semibold ${
+                      destaca || gratis
+                        ? "bg-teal-700 text-white dark:bg-teal-600"
+                        : "border border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
                     }`}
                   >
                     {gratis ? "Empezar gratis" : "Quiero este plan"}
@@ -91,27 +139,23 @@ export function Planes({
         })}
       </div>
 
-      <div className="mt-5 space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
-        <p>
-          <strong>Una corrida</strong> es cada vez que el sistema escribe algo:
-          un diagnóstico, una semana, una pieza. Afinar un diagnóstico con tus
-          respuestas cuenta como otra, porque cuesta lo mismo que la primera.
-        </p>
-        <p>
-          Si una corrida falla, no se te cuenta. El contador solo suma lo que
-          terminó bien.
-        </p>
-        <p>
-          <strong>Lo ya entregado se lee siempre</strong>, con plan o sin él.
-          Tus correcciones y tus piezas no se quedan encerradas cuando se acaba
-          el mes.
-        </p>
-        <p className="border-l-[3px] border-amber-600 pl-3">
-          El cobro automático todavía no está conectado. Crea tu cuenta, empieza
-          por la prueba, y si quieres un plan de pago escríbeme y te lo activo a
-          mano.
-        </p>
+      <div className="revela mt-14 grid gap-6 border-t border-neutral-200 pt-10 sm:grid-cols-3 dark:border-neutral-800">
+        {NOTAS.map((n) => (
+          <p
+            key={n.titulo}
+            className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400"
+          >
+            <strong className="text-neutral-900 dark:text-neutral-100">{n.titulo}</strong>{" "}
+            {n.texto}
+          </p>
+        ))}
       </div>
+
+      <p className="revela mt-8 border-l-[3px] border-amber-600 pl-4 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+        El cobro automático todavía no está conectado. Crea tu cuenta, empieza
+        por la prueba, y si quieres un plan de pago escríbeme y te lo activo a
+        mano.
+      </p>
     </>
   );
 }

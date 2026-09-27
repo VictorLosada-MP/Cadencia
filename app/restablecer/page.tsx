@@ -48,7 +48,7 @@ function Formulario() {
         </p>
         <Link
           href="/entrar"
-          className="mt-6 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+          className="mt-6 inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
         >
           Volver a entrar
         </Link>
@@ -64,7 +64,7 @@ function Formulario() {
       <h1 className="mt-3 text-3xl font-bold tracking-tight">Elige una contraseña nueva</h1>
 
       {listo ? (
-        <p className="mt-6 rounded border-l-[3px] border-green-700 bg-green-50 p-3 text-sm dark:bg-green-950/30">
+        <p className="mt-6 rounded-lg border-l-[3px] border-green-700 bg-green-50 p-3 text-sm dark:bg-green-950/30">
           Cambiada. Te llevo a entrar…
         </p>
       ) : (
@@ -82,7 +82,7 @@ function Formulario() {
               value={clave}
               autoComplete="new-password"
               onChange={(e) => setClave(e.target.value)}
-              className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+              className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
             />
             <p className="mt-1 text-xs text-neutral-500">Diez caracteres o más</p>
           </div>
@@ -90,13 +90,13 @@ function Formulario() {
           <button
             type="submit"
             disabled={cargando || clave.trim().length < 10}
-            className="w-full rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+            className="w-full empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
           >
             {cargando ? "Cambiando…" : "Cambiar contraseña"}
           </button>
 
           {error && (
-            <p className="rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+            <p className="rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </p>
           )}

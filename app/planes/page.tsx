@@ -17,7 +17,7 @@ export default async function PaginaPlanes() {
 
   if (!usuario) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-14">
+      <main className="mx-auto max-w-5xl px-6 py-14">
         <h1 className="text-4xl font-bold tracking-tight">Planes</h1>
         <div className="mt-8">
           <Planes planes={planes} />
@@ -36,10 +36,10 @@ export default async function PaginaPlanes() {
   const cuota = await cuotaDe(usuario.id, negocio?.id ?? null).catch(() => null);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Tu plan
         </p>
@@ -63,7 +63,7 @@ export default async function PaginaPlanes() {
         )}
       </header>
 
-      <section className="mt-9">
+      <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
         <Planes planes={planes} actual={cuota?.plan.id} />
       </section>
     </main>

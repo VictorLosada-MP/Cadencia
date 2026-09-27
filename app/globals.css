@@ -3,11 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* El papel no es blanco puro: a pantalla completa cansa. */
+  --papel: #fbfaf8;
+  --linea: #e5e5e5;
+  --acento: #0f766e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-papel: var(--papel);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,11 +21,167 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --papel: #121212;
+    --linea: #262626;
+    --acento: #2dd4bf;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Geist se carga en el layout. Antes esto lo pisaba con Arial y la fuente
+     que se descargaba no se usaba en ninguna parte. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Movimiento
+
+   Todo dura menos de un segundo y nada se mueve más de 24px. Una página que
+   se anuncia con volteretas cansa a la segunda visita, y quien entra a
+   trabajar entra a trabajar.
+
+   Todo se apaga con prefers-reduced-motion — y se apaga dejando el contenido
+   VISIBLE, que es el error que se comete siempre: si la animación es lo que
+   revela el texto, apagarla lo esconde para siempre.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@keyframes sube {
+  from { opacity: 0; transform: translate3d(0, 18px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes entra-izq {
+  from { opacity: 0; transform: translate3d(-14px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes crece {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes deriva {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(3%, -4%, 0) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes raya {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes late {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* Lo que entra solo, al cargar. El retraso lo pone quien lo usa con --tarda. */
+.entra {
+  animation: sube 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tarda, 0s);
+}
+.entra-lado {
+  animation: entra-izq 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tarda, 0s);
+}
+.entra-caja {
+  animation: crece 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tarda, 0s);
+}
+
+/* La raya de la cabecera se dibuja de izquierda a derecha. */
+.raya {
+  transform-origin: left;
+  animation: raya 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+/* Lo que espera a que lo mires. El observador le pone data-visible. */
+.revela {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--tarda, 0s);
+}
+.revela[data-visible="si"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Las manchas de color del fondo del héroe. */
+.deriva {
+  animation: deriva 22s ease-in-out infinite;
+  animation-delay: var(--tarda, 0s);
+}
+
+.late {
+  animation: late 2.6s ease-in-out infinite;
+}
+
+/* Un botón que responde al dedo antes de que llegue la página siguiente. */
+.empuja {
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+.empuja:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px -10px rgb(15 118 110 / 0.55);
+}
+.empuja:active {
+  transform: translateY(0);
+}
+
+/* Las tarjetas se levantan un poco al pasar por encima. */
+.tarjeta {
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.tarjeta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px -22px rgb(0 0 0 / 0.35);
+}
+
+/* El número de cada paso se pinta cuando la fila entra en pantalla. */
+.cuenta {
+  transition: color 0.4s ease 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entra,
+  .entra-lado,
+  .entra-caja,
+  .raya,
+  .deriva,
+  .late {
+    animation: none !important;
+  }
+  .revela {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .empuja,
+  .tarjeta,
+  .cuenta {
+    transition: none !important;
+  }
+  .empuja:hover,
+  .tarjeta:hover {
+    transform: none !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
 }

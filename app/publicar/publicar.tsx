@@ -33,16 +33,16 @@ export default function Lista() {
     };
   }, [sesion]);
 
-  if (isPending) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+  if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
   if (!sesion) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-20">
+      <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">Lista para subir</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">Entra a tu cuenta para usarla.</p>
         <Link
           href="/entrar"
-          className="mt-6 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+          className="mt-6 inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
         >
           Entrar o crear cuenta
         </Link>
@@ -51,10 +51,10 @@ export default function Lista() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 4 · Lista para subir
         </p>
@@ -68,7 +68,7 @@ export default function Lista() {
       {cargando ? (
         <p className="mt-9 text-sm text-neutral-500">Buscando lo último que escribiste…</p>
       ) : !pieza ? (
-        <div className="mt-9 rounded border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="mt-9 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
             Todavía no hay nada que armar. Escribe una pieza en el paso 3 y
             vuelve — si es un carrusel, aquí salen las láminas listas.
@@ -149,7 +149,7 @@ function DeCarrusel({
   }
 
   return (
-    <section className="mt-9">
+    <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-wider text-neutral-500">
@@ -165,7 +165,7 @@ function DeCarrusel({
         <button
           onClick={() => bajar()}
           disabled={bajando}
-          className="rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {bajando ? "Bajando…" : "Bajar las láminas"}
         </button>
@@ -183,7 +183,7 @@ function DeCarrusel({
             <button
               key={p.id}
               onClick={() => onPaleta(p.id)}
-              className={`flex items-center gap-2 rounded border px-3 py-1.5 text-sm transition ${
+              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
                 paletaId === p.id
                   ? "border-teal-700 font-semibold dark:border-teal-400"
                   : "border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
@@ -209,7 +209,7 @@ function DeCarrusel({
               }}
               width={ANCHO}
               height={ALTO}
-              className="w-full rounded border border-neutral-200 dark:border-neutral-800"
+              className="w-full rounded-lg border border-neutral-200 dark:border-neutral-800"
             />
             <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
@@ -277,7 +277,7 @@ function DeCarrusel({
           <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
             El pie, para pegar al subirlo
           </h2>
-          <p className="mt-2 whitespace-pre-wrap rounded border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
+          <p className="mt-2 whitespace-pre-wrap rounded-lg border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
             {c.descripcion}
           </p>
         </div>
@@ -339,18 +339,18 @@ function Buscador({
   }
 
   return (
-    <div className="mt-2 rounded border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-950">
+    <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-950">
       <div className="flex flex-wrap gap-2">
         <input
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && buscar()}
-          className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+          className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
         <button
           onClick={buscar}
           disabled={cargando || !texto.trim()}
-          className="rounded border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+          className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
         >
           {cargando ? "buscando…" : "buscar"}
         </button>
@@ -383,7 +383,7 @@ function Buscador({
                 key={f.id}
                 onClick={() => elegir(f)}
                 title={`Foto de ${f.autor}`}
-                className="overflow-hidden rounded border border-neutral-300 transition hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
+                className="overflow-hidden rounded-lg border border-neutral-300 transition hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={f.mini} alt="" className="aspect-square w-full object-cover" />
@@ -401,8 +401,8 @@ function Buscador({
 
 function EsVideo() {
   return (
-    <section className="mt-9">
-      <div className="rounded border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+    <section className="revela mt-9" style={{ ["--tarda" as string]: "0.08s" }}>
+      <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <p className="font-semibold">Lo último que escribiste es un guion de video</p>
         <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
           El editor de video —recortar a 9:16, cortar los silencios y quemar los
