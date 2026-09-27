@@ -42,7 +42,7 @@ export default function Entrar() {
       );
       return;
     }
-    router.push("/");
+    router.push("/diagnostico");
     router.refresh();
   }
 

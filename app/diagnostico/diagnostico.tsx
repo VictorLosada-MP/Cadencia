@@ -1,18 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/auth-cliente";
-import { Barra } from "./barra";
+import { Barra } from "../barra";
 import type { Imagen } from "@/lib/modelo";
 import type { Comparacion } from "@/lib/historial";
 import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
-import {
-  CAMPOS_EXTRA,
-  CAMPOS_NUCLEO,
-  CAMPO_VOZ,
-  negocioListo,
-  type Negocio,
-} from "@/types/negocio";
+import type { Negocio } from "@/types/negocio";
+import { BloqueNegocio, NEGOCIO_VACIO, desdeBase } from "../negocio/negocio";
 import {
   CASILLAS,
   CASILLAS_VACIAS,
@@ -93,11 +89,16 @@ export default function Diagnostico() {
     textos: guardado?.textos ?? "",
     ventana: guardado?.ventana,
   }));
-  const [negocio, setNegocio] = useState<Negocio>({ oferta: "", cliente: "", despues: "" });
+  const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
   const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
   const [creado, setCreado] = useState<string | null>(null);
   const [semilla, setSemilla] = useState(false);
+  // El perfil semilla lee `perfiles/victor.json`, que es el negocio de quien
+  // construyó esto. Sirve para probar el sistema en la máquina de uno; en el
+  // producto desplegado le ofrecería a un desconocido diagnosticarse contra un
+  // negocio ajeno, y eso no es una opción: es una fuga.
+  const enPruebas = process.env.NODE_ENV !== "production";
 
   const { data: sesion, isPending: cargandoSesion } = useSession();
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
@@ -148,15 +149,7 @@ export default function Diagnostico() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!vivo || !d?.negocio) return;
-        const n = d.negocio;
-        setNegocio({
-          oferta: n.oferta ?? "",
-          cliente: n.cliente ?? "",
-          despues: n.despues ?? "",
-          freno: n.freno ?? "",
-          accion: n.accion ?? "",
-          voz: n.voz ?? "",
-        });
+        setNegocio(desdeBase(d.negocio));
         setNegocioEnBase(true);
         if (d.comparacion) setComparacion(d.comparacion);
       })
@@ -217,21 +210,25 @@ export default function Diagnostico() {
   if (!sesion) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-20">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
-          Función 1 · Diagnóstico
+        <h1 className="text-4xl font-bold tracking-tight">Diagnóstico</h1>
+        <p className="mt-4 text-neutral-600 dark:text-neutral-400">
+          Necesitas una cuenta para que tu negocio y tus diagnósticos queden
+          guardados de una visita a la otra.
         </p>
-        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Cadencia</h1>
-        <p className="mt-5 max-w-xl text-neutral-600 dark:text-neutral-400">
-          Qué le está costando conversaciones a tu perfil, con el texto ya
-          corregido. Necesitas una cuenta para que tu negocio y tus diagnósticos
-          queden guardados de una visita a la otra.
-        </p>
-        <a
-          href="/entrar"
-          className="mt-7 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
-        >
-          Entrar o crear cuenta
-        </a>
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <Link
+            href="/entrar"
+            className="inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+          >
+            Entrar o crear cuenta
+          </Link>
+          <Link
+            href="/"
+            className="font-mono text-[11px] uppercase tracking-wider underline underline-offset-4 hover:no-underline"
+          >
+            qué es Cadencia →
+          </Link>
+        </div>
       </main>
     );
   }
@@ -244,7 +241,7 @@ export default function Diagnostico() {
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 1 · Diagnóstico
         </p>
-        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Cadencia</h1>
+        <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Diagnóstico</h1>
         <p className="mt-4 max-w-xl text-neutral-600 dark:text-neutral-400">
           Qué le está costando conversaciones a tu perfil, con el texto ya
           corregido. Escribe las casillas o rellénalas desde una captura — lo
@@ -258,21 +255,38 @@ export default function Diagnostico() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           Tu negocio
         </h2>
-        <p className="mb-3 mt-0.5 text-sm text-neutral-500">
-          Esto se llena una vez. Sin ello, las correcciones se escriben sobre un
-          negocio que no es el tuyo.
-        </p>
-        <BloqueNegocio
-          negocio={negocio}
-          onCambio={(c) => {
-            setNegocio({ ...negocio, ...c });
-            setNegocioEnBase(false);
-          }}
-          guardado={negocioEnBase}
-          onGuardado={() => setNegocioEnBase(true)}
-          semilla={semilla}
-          onSemilla={setSemilla}
-        />
+        {negocioEnBase && !semilla ? (
+          <div className="mt-1.5 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <p className="text-neutral-700 dark:text-neutral-300">
+              Voy a leer tu perfil contra{" "}
+              <span className="font-semibold">{resumen(negocio)}</span>.
+            </p>
+            <Link
+              href="/negocio"
+              className="mt-1.5 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+            >
+              cambiarlo →
+            </Link>
+          </div>
+        ) : (
+          <>
+            <p className="mb-3 mt-0.5 text-sm text-neutral-500">
+              Esto se llena una vez y lo usan las cuatro funciones. Sin ello, las
+              correcciones se escriben sobre un negocio que no es el tuyo.
+            </p>
+            <BloqueNegocio
+              negocio={negocio}
+              onCambio={(c) => {
+                setNegocio({ ...negocio, ...c });
+                setNegocioEnBase(false);
+              }}
+              guardado={negocioEnBase}
+              onGuardado={() => setNegocioEnBase(true)}
+              semilla={enPruebas ? semilla : undefined}
+              onSemilla={enPruebas ? setSemilla : undefined}
+            />
+          </>
+        )}
       </section>
 
       <section className="mt-10">
@@ -453,6 +467,17 @@ export default function Diagnostico() {
   );
 }
 
+/** Una linea para reconocer el negocio guardado sin volver a abrir el formulario. */
+function resumen(n: Negocio): string {
+  const recortar = (t: string, max: number) => {
+    const limpio = t.trim().split(/[.\n]/)[0].trim();
+    return limpio.length > max ? `${limpio.slice(0, max).trimEnd()}…` : limpio;
+  };
+  const oferta = recortar(n.oferta, 60);
+  const cliente = recortar(n.cliente, 40);
+  return cliente ? `${oferta} · para ${cliente}` : oferta;
+}
+
 /**
  * Lo que se movió desde la corrida anterior. Es una cuenta, no un veredicto: se
  * calcula comparando dos instantáneas guardadas, sin pedirle nada al modelo. Y
@@ -483,155 +508,6 @@ function Movido({ c }: { c: Comparacion }) {
         <p className="mt-1 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
           Cambiaste el texto de {c.cambiados.map((m) => `${m.campo} en ${m.red}`).join(", ")}.
         </p>
-      )}
-    </div>
-  );
-}
-
-function BloqueNegocio({
-  negocio,
-  onCambio,
-  guardado,
-  onGuardado,
-  semilla,
-  onSemilla,
-}: {
-  negocio: Negocio;
-  onCambio: (c: Partial<Negocio>) => void;
-  guardado: boolean;
-  onGuardado: () => void;
-  semilla: boolean;
-  onSemilla: (v: boolean) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const [guardando, setGuardando] = useState(false);
-  const [fallo, setFallo] = useState("");
-
-  async function guardar() {
-    setGuardando(true);
-    setFallo("");
-    try {
-      const r = await fetch("/api/negocio", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(negocio),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "No se pudo guardar.");
-      onGuardado();
-    } catch (e) {
-      setFallo(e instanceof Error ? e.message : "No se pudo guardar.");
-    } finally {
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <div className="rounded border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
-      <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-        <input
-          type="checkbox"
-          checked={semilla}
-          onChange={(e) => onSemilla(e.target.checked)}
-          className="accent-teal-700"
-        />
-        Usar el perfil de prueba del repositorio
-      </label>
-
-      {semilla ? (
-        <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
-          Con esto marcado, el diagnóstico lee el negocio de{" "}
-          <code className="font-mono">perfiles/victor.json</code> — sirve para
-          probar el sistema, no para diagnosticar otro negocio.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-3">
-          {CAMPOS_NUCLEO.map((c) => (
-            <div key={c.id}>
-              <label
-                htmlFor={c.id}
-                className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
-              >
-                {c.etiqueta}
-              </label>
-              <textarea
-                id={c.id}
-                value={negocio[c.id] ?? ""}
-                onChange={(e) => onCambio({ [c.id]: e.target.value })}
-                rows={c.filas}
-                placeholder={c.pista}
-                className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-              />
-            </div>
-          ))}
-
-          <div className="rounded border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
-            <label
-              htmlFor={CAMPO_VOZ.id}
-              className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
-            >
-              {CAMPO_VOZ.etiqueta}
-            </label>
-            <p className="mb-1.5 mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
-              {CAMPO_VOZ.pista}.
-            </p>
-            <p className="mb-2 text-xs text-amber-700 dark:text-amber-500">
-              El diagnóstico funciona sin esto, pero sale en español llano.{" "}
-              <strong>El guion no se escribe sin esto</strong> — es lo que hace que
-              suene a ti y no a cualquiera.
-            </p>
-            <textarea
-              id={CAMPO_VOZ.id}
-              value={negocio.voz ?? ""}
-              onChange={(e) => onCambio({ voz: e.target.value })}
-              rows={CAMPO_VOZ.filas}
-              className="w-full rounded border border-neutral-300 bg-white p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
-            />
-          </div>
-
-          <button
-            onClick={() => setAbierto(!abierto)}
-            className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-          >
-            {abierto ? "− ocultar lo opcional" : "+ afinar más (opcional)"}
-          </button>
-
-          {abierto &&
-            CAMPOS_EXTRA.map((c) => (
-              <div key={c.id}>
-                <label
-                  htmlFor={c.id}
-                  className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
-                >
-                  {c.etiqueta}
-                </label>
-                <textarea
-                  id={c.id}
-                  value={negocio[c.id] ?? ""}
-                  onChange={(e) => onCambio({ [c.id]: e.target.value })}
-                  rows={c.filas}
-                  placeholder={c.pista}
-                  className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-                />
-              </div>
-            ))}
-
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
-              onClick={guardar}
-              disabled={guardando || guardado || !negocioListo(negocio)}
-              className="rounded border border-teal-700 px-4 py-2 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
-            >
-              {guardando ? "Guardando…" : guardado ? "Guardado" : "Guardar mi negocio"}
-            </button>
-            {guardado && (
-              <span className="text-xs text-neutral-500">
-                Se llena una vez. La próxima visita ya está aquí.
-              </span>
-            )}
-          </div>
-          {fallo && <p className="text-xs text-red-700 dark:text-red-400">{fallo}</p>}
-        </div>
       )}
     </div>
   );

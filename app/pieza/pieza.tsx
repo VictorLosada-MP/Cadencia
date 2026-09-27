@@ -223,7 +223,7 @@ export default function Guion() {
             <p>{error}</p>
             {faltaVoz && (
               <Link
-                href="/"
+                href="/negocio"
                 className="mt-2 inline-block font-mono text-[11px] uppercase tracking-wider underline underline-offset-4"
               >
                 ir a llenar mi voz →

@@ -269,7 +269,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
     } catch {
       // Sin sessionStorage se llega en blanco, que sigue funcionando.
     }
-    router.push("/guion?de=semana");
+    router.push("/pieza?de=semana");
   }
 
   const sugerida = sugerenciaPorAngulo(p.angulo ?? "");
