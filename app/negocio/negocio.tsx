@@ -72,7 +72,7 @@ export function BloqueNegocio({
   }
 
   return (
-    <div className="rounded border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       {onSemilla && (
         <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
           <input
@@ -107,12 +107,12 @@ export function BloqueNegocio({
                 onChange={(e) => onCambio({ [c.id]: e.target.value })}
                 rows={c.filas}
                 placeholder={c.pista}
-                className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+                className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
               />
             </div>
           ))}
 
-          <div className="rounded border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
+          <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
             <label
               htmlFor={CAMPO_VOZ.id}
               className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
@@ -132,7 +132,7 @@ export function BloqueNegocio({
               value={negocio.voz ?? ""}
               onChange={(e) => onCambio({ voz: e.target.value })}
               rows={CAMPO_VOZ.filas}
-              className="w-full rounded border border-neutral-300 bg-white p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+              className="w-full rounded-lg border border-neutral-300 bg-white p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
             />
           </div>
 
@@ -158,7 +158,7 @@ export function BloqueNegocio({
                   onChange={(e) => onCambio({ [c.id]: e.target.value })}
                   rows={c.filas}
                   placeholder={c.pista}
-                  className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+                  className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
                 />
               </div>
             ))}
@@ -167,7 +167,7 @@ export function BloqueNegocio({
             <button
               onClick={guardar}
               disabled={guardando || guardado || !negocioListo(negocio)}
-              className="rounded border border-teal-700 px-4 py-2 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+              className="empuja rounded-lg border border-teal-700 px-4 py-2 font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
             >
               {guardando ? "Guardando…" : guardado ? "Guardado" : "Guardar mi negocio"}
             </button>

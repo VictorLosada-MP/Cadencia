@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
  */
 const Diagnostico = dynamic(() => import("./diagnostico"), {
   ssr: false,
-  loading: () => <main className="mx-auto max-w-3xl px-6 py-14" />,
+  loading: () => <main className="mx-auto max-w-5xl px-6 py-14" />,
 });
 
 export default function PaginaDiagnostico() {

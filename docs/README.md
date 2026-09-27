@@ -54,6 +54,23 @@ las corridas. `plan.negocios` y `plan.historial_meses` existen como columnas y
 todavía no los hace cumplir nadie: hasta que los haga cumplir alguien, no se
 ponen en una página de precios.
 
+## El movimiento
+
+Está todo en `app/globals.css` y son cinco clases: `entra` / `entra-lado` /
+`entra-caja` (animación CSS pura, entra al cargar), `revela` (espera a que la
+mires, la enciende `app/revela.tsx` con un IntersectionObserver), `empuja` y
+`tarjeta` (responden al ratón), `deriva` y `late` (el fondo).
+
+Sin librería de scroll: son unas líneas de JavaScript, no añaden un kilo a una
+portada y no atan el producto a que alguien siga manteniendo su paquete.
+
+Nada dura más de un segundo ni se mueve más de 24px. Y hay tres salidas para
+que el texto no dependa nunca de que la animación corra:
+
+- `prefers-reduced-motion` apaga todo **dejando el contenido visible**
+- sin `IntersectionObserver`, `revela` enciende todo de golpe
+- sin JavaScript, un `<noscript>` en el layout hace lo mismo
+
 ## Pendientes
 
 - El teardown del producto de referencia y los planos siguen fuera del

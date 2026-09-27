@@ -95,18 +95,18 @@ export default function Guion() {
     }
   }
 
-  if (isPending) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+  if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
   if (!sesion) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-20">
+      <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">La pieza</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">
           Necesitas una cuenta: la pieza se escribe con tu voz y tu negocio.
         </p>
         <Link
           href="/entrar"
-          className="mt-6 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+          className="mt-6 inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
         >
           Entrar o crear cuenta
         </Link>
@@ -115,10 +115,10 @@ export default function Guion() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 3 · La pieza
         </p>
@@ -130,7 +130,7 @@ export default function Guion() {
         </p>
       </header>
 
-      <section className="mt-9">
+      <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           1 · Qué vas a grabar
         </h2>
@@ -151,7 +151,7 @@ export default function Guion() {
                 <button
                   key={f.id}
                   onClick={() => setFormato(f.id)}
-                  className={`rounded border p-4 text-left transition ${
+                  className={`rounded-lg border p-4 text-left transition ${
                     formato === f.id
                       ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
                       : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
@@ -183,7 +183,7 @@ export default function Guion() {
         )}
       </section>
 
-      <section className="mt-10">
+      <section className="revela mt-10" style={{ ["--tarda" as string]: "0.08s" }}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           2 · De qué va
         </h2>
@@ -191,7 +191,7 @@ export default function Guion() {
           La idea, como la dirías.
         </p>
         {deLaSemana && (
-          <p className="mb-2 rounded border-l-[3px] border-teal-700 bg-teal-50 p-2.5 text-sm dark:border-teal-400 dark:bg-teal-950/30">
+          <p className="mb-2 rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-2.5 text-sm dark:border-teal-400 dark:bg-teal-950/30">
             Viene de la pieza del <strong>{deLaSemana}</strong> de tu semana.
             Puedes cambiarla si quieres.
           </p>
@@ -201,25 +201,25 @@ export default function Guion() {
           onChange={(e) => setIdea(e.target.value)}
           rows={3}
           placeholder="Lo que quieres que quede claro en esta pieza"
-          className="w-full rounded border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+          className="w-full rounded-lg border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
         <input
           value={angulo}
           onChange={(e) => setAngulo(e.target.value)}
           placeholder="El ángulo, si ya lo tienes (opcional)"
-          className="mt-2 w-full rounded border border-neutral-300 bg-white p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+          className="mt-2 w-full rounded-lg border border-neutral-300 bg-white p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
 
         <button
           onClick={() => pedir("ganchos")}
           disabled={!formato || !idea.trim() || cargando !== ""}
-          className="mt-4 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="mt-4 empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando === "ganchos" ? "Afilando…" : ganchos ? "Otros tres ganchos" : "Afilar y darme tres ganchos"}
         </button>
 
         {error && (
-          <div className="mt-4 rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <div className="mt-4 rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
             <p>{error}</p>
             {faltaVoz && (
               <Link
@@ -234,19 +234,19 @@ export default function Guion() {
       </section>
 
       {ganchos && (
-        <section className="mt-10">
+        <section className="revela mt-10" style={{ ["--tarda" as string]: "0.12s" }}>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
             3 · La idea con filo
           </h2>
           <p className="mt-2 text-lg font-semibold leading-snug">{ganchos.idea_afilada}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm dark:bg-red-950/30">
+            <div className="rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm dark:bg-red-950/30">
               <p className="font-mono text-[10px] uppercase tracking-wider text-red-700 dark:text-red-400">
                 así no
               </p>
               <p className="mt-1.5 leading-relaxed">{ganchos.asi_no}</p>
             </div>
-            <div className="rounded border-l-[3px] border-green-700 bg-green-50 p-3 text-sm dark:bg-green-950/30">
+            <div className="rounded-lg border-l-[3px] border-green-700 bg-green-50 p-3 text-sm dark:bg-green-950/30">
               <p className="font-mono text-[10px] uppercase tracking-wider text-green-700 dark:text-green-400">
                 así sí
               </p>
@@ -266,7 +266,7 @@ export default function Guion() {
               <button
                 key={i}
                 onClick={() => setElegido(g.texto)}
-                className={`block w-full rounded border p-4 text-left transition ${
+                className={`block w-full rounded-lg border p-4 text-left transition ${
                   elegido === g.texto
                     ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
                     : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
@@ -284,7 +284,7 @@ export default function Guion() {
           <button
             onClick={() => pedir("pieza")}
             disabled={!elegido || cargando !== ""}
-            className="mt-4 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+            className="mt-4 empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
           >
             {cargando === "pieza"
               ? "Escribiendo…"
@@ -310,11 +310,11 @@ export default function Guion() {
 
 function Resultado({ p }: { p: Pieza }) {
   return (
-    <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
+    <section className="revela mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800" style={{ ["--tarda" as string]: "0.16s" }}>
       {esCarrusel(p) ? <DeCarrusel c={p} /> : <DeVideo g={p} />}
 
       {p.valor && (
-        <p className="mt-8 rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
+        <p className="mt-8 rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
           <span className="font-mono text-[10px] uppercase tracking-wider text-teal-800 dark:text-teal-400">
             qué mueve esta pieza ·{" "}
           </span>
@@ -350,7 +350,7 @@ function DeVideo({ g }: { g: Guion }) {
         </p>
       </div>
 
-      <div className="mt-6 divide-y divide-neutral-200 overflow-hidden rounded border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+      <div className="mt-6 divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
         {g.golpes?.map((golpe, i) => (
           <div key={i} className="bg-white p-4 dark:bg-neutral-900">
             <p className="font-mono text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
@@ -394,7 +394,7 @@ function DeVideo({ g }: { g: Guion }) {
           <h2 className="mt-10 font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
             Cómo grabarlo
           </h2>
-          <dl className="mt-3 divide-y divide-neutral-200 overflow-hidden rounded border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+          <dl className="mt-3 divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {(
               [
                 ["Luz", g.como_grabar.luz],
@@ -434,7 +434,7 @@ function DeCarrusel({ c }: { c: Carrusel }) {
         {c.laminas?.map((l) => (
           <article
             key={l.numero}
-            className="rounded border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+            className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="flex items-baseline gap-3 border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
               <span className="font-mono text-sm font-bold text-teal-700 dark:text-teal-400">
@@ -475,7 +475,7 @@ function PieDePublicacion({ texto }: { texto?: string }) {
 function Copiable({ texto, etiqueta }: { texto: string; etiqueta: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
-    <div className="mt-3 rounded border-l-2 border-teal-700 bg-neutral-50 p-3 dark:border-teal-400 dark:bg-neutral-950">
+    <div className="mt-3 rounded-lg border-l-2 border-teal-700 bg-neutral-50 p-3 dark:border-teal-400 dark:bg-neutral-950">
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{texto}</p>
       <button
         onClick={() => {

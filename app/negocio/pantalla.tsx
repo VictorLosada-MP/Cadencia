@@ -42,11 +42,11 @@ export default function PantallaNegocio() {
     };
   }, [sesion]);
 
-  if (isPending) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+  if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
   if (!sesion) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-20">
+      <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-3xl font-bold tracking-tight">Tu negocio</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">
           Entra a tu cuenta para llenarlo. Se guarda una vez y lo usan las
@@ -54,7 +54,7 @@ export default function PantallaNegocio() {
         </p>
         <a
           href="/entrar"
-          className="mt-7 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="mt-7 inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           Entrar o crear cuenta
         </a>
@@ -63,10 +63,10 @@ export default function PantallaNegocio() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Tu negocio
         </p>
@@ -83,7 +83,7 @@ export default function PantallaNegocio() {
       {cargando ? (
         <p className="mt-9 text-sm text-neutral-500">Buscando lo que ya guardaste…</p>
       ) : (
-        <section className="mt-9">
+        <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
           <BloqueNegocio
             negocio={negocio}
             onCambio={(c) => {

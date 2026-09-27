@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { requestPasswordReset, signIn, signUp } from "@/lib/auth-cliente";
@@ -47,11 +48,24 @@ export default function Entrar() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-20">
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
+    <main className="relative flex min-h-svh items-center justify-center overflow-hidden px-6 py-16">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div className="deriva absolute -left-[20%] top-[-25%] h-[60vw] w-[60vw] rounded-full bg-teal-400/18 blur-[110px] dark:bg-teal-500/10" />
+        <div
+          className="deriva absolute -right-[18%] bottom-[-30%] h-[52vw] w-[52vw] rounded-full bg-amber-300/18 blur-[120px] dark:bg-amber-500/8"
+          style={{ ["--tarda" as string]: "-8s" }}
+        />
+      </div>
+
+      <div className="entra-caja w-full max-w-md rounded-xl border border-neutral-200 bg-[var(--background)]/80 p-8 shadow-[0_30px_80px_-50px_rgb(0_0_0/0.4)] backdrop-blur-sm sm:p-10 dark:border-neutral-800">
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-teal-700 dark:text-teal-400"
+      >
+        <span className="late block h-2 w-2 rounded-full bg-teal-600 dark:bg-teal-400" />
         Cadencia
-      </p>
-      <h1 className="mt-3 text-3xl font-bold tracking-tight">
+      </Link>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight">
         {olvidado ? "Recupera tu cuenta" : creando ? "Crea tu cuenta" : "Entra a tu cuenta"}
       </h1>
       <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
@@ -62,7 +76,7 @@ export default function Entrar() {
 
       {pedido ? (
         <div className="mt-8">
-          <p className="rounded border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm dark:border-teal-400 dark:bg-teal-950/30">
+          <p className="rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm dark:border-teal-400 dark:bg-teal-950/30">
             Si esa cuenta existe, el enlace ya va en camino. Revisa tu correo.
           </p>
           <p className="mt-3 text-xs text-neutral-500">
@@ -115,7 +129,7 @@ export default function Entrar() {
         <button
           type="submit"
           disabled={cargando || !correo.trim() || (!olvidado && !clave.trim())}
-          className="w-full rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="w-full empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando
             ? "Un momento…"
@@ -127,7 +141,7 @@ export default function Entrar() {
         </button>
 
         {error && (
-          <p className="rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <p className="rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </p>
         )}
@@ -158,6 +172,7 @@ export default function Entrar() {
           )}
         </div>
       )}
+      </div>
     </main>
   );
 }
@@ -193,7 +208,7 @@ function Campo({
         value={valor}
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+        className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
       />
       {nota && <p className="mt-1 text-xs text-neutral-500">{nota}</p>}
     </div>

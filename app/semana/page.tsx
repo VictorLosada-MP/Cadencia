@@ -77,18 +77,18 @@ export default function Semana() {
     }
   }
 
-  if (isPending) return <main className="mx-auto max-w-3xl px-6 py-14" />;
+  if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
   if (!sesion) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-20">
+      <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-4xl font-bold tracking-tight">La semana</h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400">
           Necesitas una cuenta: la semana se arma con tu Perfil de Negocio.
         </p>
         <Link
           href="/entrar"
-          className="mt-6 inline-block rounded bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+          className="mt-6 inline-block empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
         >
           Entrar o crear cuenta
         </Link>
@@ -97,10 +97,10 @@ export default function Semana() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
+    <main className="mx-auto max-w-5xl px-6 py-14">
       <Barra />
 
-      <header className="border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
+      <header className="entra border-b-2 border-neutral-900 pb-7 dark:border-neutral-100">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
           Función 2 · Banco de la semana
         </p>
@@ -111,7 +111,7 @@ export default function Semana() {
         </p>
       </header>
 
-      <section className="mt-9">
+      <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
         <label
           htmlFor="senales"
           className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500"
@@ -129,13 +129,13 @@ export default function Semana() {
           onChange={(e) => setSenales(e.target.value)}
           rows={5}
           placeholder="«¿cuánto cuesta?» · «¿esto me sirve si apenas empiezo?» · «¿y si después no sé usarlo?»"
-          className="w-full rounded border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
+          className="w-full rounded-lg border border-neutral-300 bg-white p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
 
         <button
           onClick={armar}
           disabled={cargando || senales.trim().length < 10}
-          className="mt-4 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
+          className="mt-4 empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando ? "Armando…" : banco ? "Volver a armar la semana" : "Armar la semana"}
         </button>
@@ -157,7 +157,7 @@ export default function Semana() {
           </p>
         )}
         {error && (
-          <p className="mt-4 rounded border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <p className="mt-4 rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </p>
         )}
@@ -170,8 +170,8 @@ export default function Semana() {
 
 function Resultado({ b }: { b: Banco }) {
   return (
-    <section className="mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800">
-      <div className="rounded border-l-[3px] border-teal-700 bg-teal-50 p-4 dark:border-teal-400 dark:bg-teal-950/30">
+    <section className="revela mt-12 border-t border-neutral-200 pt-10 dark:border-neutral-800" style={{ ["--tarda" as string]: "0.08s" }}>
+      <div className="rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-4 dark:border-teal-400 dark:bg-teal-950/30">
         <p className="font-mono text-[10px] uppercase tracking-wider text-teal-800 dark:text-teal-400">
           Dónde está tu gente
         </p>
@@ -196,7 +196,7 @@ function Resultado({ b }: { b: Banco }) {
       </div>
 
       {b.donde_no_hay_competencia && (
-        <div className="mt-8 rounded border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
             Dónde no hay competencia
           </p>
@@ -216,7 +216,7 @@ function Resultado({ b }: { b: Banco }) {
             {b.guion_respuesta.las_tres_preguntas?.map((q, i) => (
               <li
                 key={i}
-                className="rounded border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900"
+                className="rounded-lg border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900"
               >
                 <span className="mr-2 font-mono text-[11px] font-bold text-teal-700 dark:text-teal-400">
                   {i + 1}
@@ -226,7 +226,7 @@ function Resultado({ b }: { b: Banco }) {
             ))}
           </ol>
           {b.guion_respuesta.cuando_ofrecer && (
-            <p className="mt-3 rounded border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
+            <p className="mt-3 rounded-lg border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
               {b.guion_respuesta.cuando_ofrecer}
             </p>
           )}
@@ -275,7 +275,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
   const sugerida = sugerenciaPorAngulo(p.angulo ?? "");
 
   return (
-    <article className="rounded border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <article className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-neutral-200 p-4 dark:border-neutral-800">
         <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
           {p.dia}
@@ -310,7 +310,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
             <button
               key={id}
               onClick={() => hacerla(id)}
-              className={`rounded border px-3 py-1.5 text-sm font-semibold transition ${
+              className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
                 sugerida === id
                   ? "border-teal-700 bg-teal-700 text-white hover:bg-teal-800 dark:border-teal-500 dark:bg-teal-600 dark:hover:bg-teal-500"
                   : "border-neutral-300 text-neutral-700 hover:border-teal-700 hover:text-teal-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-teal-400 dark:hover:text-teal-300"
@@ -333,7 +333,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
           {abierto ? "− ocultar la respuesta" : "+ si te escriben por esta"}
         </button>
         {abierto && (
-          <p className="mt-2 rounded border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
+          <p className="mt-2 rounded-lg border-l-2 border-teal-700 bg-neutral-50 p-3 text-sm leading-relaxed dark:border-teal-400 dark:bg-neutral-950">
             {p.apertura_respuesta}
           </p>
         )}
