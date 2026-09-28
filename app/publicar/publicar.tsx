@@ -6,6 +6,7 @@ import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
 import { esCarrusel, type Carrusel, type Guion, type Pieza } from "@/types/guion";
+import { apuntarHecho } from "@/lib/hecho";
 import { Editor } from "./editor";
 
 export default function Lista() {
@@ -13,6 +14,7 @@ export default function Lista() {
   const [pieza, setPieza] = useState<Pieza | null>(null);
   const [paleta, setPaleta] = useState(PALETAS[0].id);
   const [creado, setCreado] = useState<string | null>(null);
+  const [corridaId, setCorridaId] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function Lista() {
         if (d?.corrida?.resultado) {
           setPieza(d.corrida.resultado);
           setCreado(d.corrida.creado);
+          setCorridaId(d.corrida.id ?? null);
         }
       })
       .catch(() => {})
@@ -82,9 +85,15 @@ export default function Lista() {
           </Link>
         </div>
       ) : esCarrusel(pieza) ? (
-        <DeCarrusel c={pieza} paletaId={paleta} onPaleta={setPaleta} creado={creado} />
+        <DeCarrusel
+          c={pieza}
+          paletaId={paleta}
+          onPaleta={setPaleta}
+          creado={creado}
+          corridaId={corridaId}
+        />
       ) : (
-        <EsVideo guion={pieza as Guion} />
+        <EsVideo guion={pieza as Guion} corridaId={corridaId} />
       )}
     </main>
   );
@@ -95,14 +104,17 @@ function DeCarrusel({
   paletaId,
   onPaleta,
   creado,
+  corridaId,
 }: {
   c: Carrusel;
   paletaId: string;
   onPaleta: (id: string) => void;
   creado: string | null;
+  corridaId: string | null;
 }) {
   const lienzos = useRef<(HTMLCanvasElement | null)[]>([]);
   const [bajando, setBajando] = useState(false);
+  const [bajado, setBajado] = useState(false);
   // Las fotos viven solo en esta pantalla: no se suben, no se guardan.
   const [fotos, setFotos] = useState<Record<number, ImageBitmap>>({});
   const [buscando, setBuscando] = useState<number | null>(null);
@@ -144,6 +156,15 @@ function DeCarrusel({
         // bloquea las siguientes creyendo que es una avalancha.
         await new Promise((r) => setTimeout(r, 250));
       }
+      if (i === undefined) {
+        void apuntarHecho({
+          tipo: "carrusel",
+          titulo: c.laminas[0]?.titular ?? "",
+          detalle: `${total} láminas`,
+          corridaId,
+        });
+        setBajado(true);
+      }
     } finally {
       setBajando(false);
     }
@@ -168,9 +189,11 @@ function DeCarrusel({
           disabled={bajando}
           className="empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
-          {bajando ? "Bajando…" : "Bajar las láminas"}
+          {bajando ? "Bajando…" : bajado ? "Volver a bajarlas" : "Bajar las láminas"}
         </button>
       </div>
+
+      {bajado && <Siguiente que="El carrusel ya está en tu carpeta de descargas." />}
 
       <fieldset className="mt-5">
         <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
@@ -400,7 +423,7 @@ function Buscador({
   );
 }
 
-function EsVideo({ guion }: { guion: Guion }) {
+function EsVideo({ guion, corridaId }: { guion: Guion; corridaId: string | null }) {
   return (
     <section className="revela mt-9" style={{ ["--tarda" as string]: "0.08s" }}>
       <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -429,7 +452,39 @@ function EsVideo({ guion }: { guion: Guion }) {
         </details>
       </div>
 
-      <Editor guion={guion} />
+      <Editor guion={guion} corridaId={corridaId} />
     </section>
+  );
+}
+
+/**
+ * Qué hacer después.
+ *
+ * La pantalla se acababa en un botón de descargar: se bajaba el archivo y el
+ * sistema se quedaba callado, como si la cadena terminara ahí. La cadena
+ * termina cuando hay otra pieza escrita.
+ */
+export function Siguiente({ que }: { que: string }) {
+  return (
+    <div className="mt-6 rounded-lg border border-teal-700/30 bg-teal-50/60 p-5 dark:border-teal-400/25 dark:bg-teal-950/20">
+      <p className="font-semibold">{que}</p>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+        Ya cuenta como hecho. Lo siguiente es la pieza del día que viene.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href="/semana"
+          className="empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+        >
+          Escribir la siguiente
+        </Link>
+        <Link
+          href="/hecho"
+          className="rounded-full border border-neutral-300 px-5 py-2.5 font-semibold transition-colors hover:border-teal-700 hover:text-teal-700 dark:border-neutral-700 dark:hover:border-teal-400 dark:hover:text-teal-400"
+        >
+          Ver lo que llevo hecho
+        </Link>
+      </div>
+    </div>
   );
 }
