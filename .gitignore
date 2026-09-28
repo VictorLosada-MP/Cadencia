@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# el nucleo de ffmpeg.wasm son 32 MB: se copia de node_modules al instalar
+/public/ffmpeg/

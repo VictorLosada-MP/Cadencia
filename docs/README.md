@@ -54,6 +54,64 @@ las corridas. `plan.negocios` y `plan.historial_meses` existen como columnas y
 todavía no los hace cumplir nadie: hasta que los haga cumplir alguien, no se
 ponen en una página de precios.
 
+## El editor de video
+
+Vive en `/publicar` cuando lo último que se escribió es un guion. Corta los
+silencios, recorta a 9:16 y quema los subtítulos, y devuelve un MP4 H.264 +
+AAC, que es lo que aceptan Reels y TikTok sin volver a comprimir.
+
+**Todo corre en el navegador menos una cosa**, y esa cosa está señalada en la
+pantalla donde se decide, no en la letra pequeña: los subtítulos mandan el
+audio —solo el audio, ya bajado a mono y a 16 kHz, nunca el video— a
+transcribir. El montaje entero funciona sin pasar por ahí.
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| `lib/audio.ts` | navegador | Decodifica una vez: de ahí salen la onda y el WAV |
+| `lib/silencios.ts` | navegador | RMS por ventana de 20 ms, umbral, tramos |
+| `lib/subtitulos.ts` | navegador | Palabras → líneas → ASS |
+| `lib/video.ts` | navegador | ffmpeg.wasm: medir, sacar audio, montar |
+| `app/api/voz` | servidor | Whisper con tiempos por palabra |
+
+### Por qué ffmpeg.wasm y no WebCodecs
+
+WebCodecs codifica con el hardware y sería mucho más rápido. Pero en este
+entorno **no se puede comprobar**: el Chromium que se usa para probar no trae
+H.264 ni AAC, así que un camino de WebCodecs se habría subido sin una sola
+ejecución real detrás. ffmpeg.wasm corre igual en todas partes y se probó de
+punta a punta. Cuando haya con qué comprobarlo, WebCodecs es la vía rápida y
+ffmpeg.wasm se queda de respaldo.
+
+Es la versión de **un solo hilo** a propósito: la de varios necesita
+SharedArrayBuffer, que obliga a poner cabeceras COOP/COEP en todo el sitio —
+y esas cabeceras romperían las fotos de Pexels del carrusel, que vienen de
+otro dominio.
+
+El núcleo son 32 MB y **no está en el repositorio**: `scripts/ffmpeg.mjs` lo
+copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
+sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
+a que un tercero siga publicándolo.
+
+### Los dos caminos de iPhone
+
+Los iPhone graban en HEVC cuando están en "Alta eficiencia", y Chrome en
+escritorio no siempre sabe decodificar eso. Sin arreglo, un video de iPhone
+perdía **las dos cosas que valen de este editor**: ni se medía ni se le sacaba
+el audio, así que ni cortes ni subtítulos.
+
+Por eso hay dos respaldos, los dos comprobados con un MOV/HEVC de verdad:
+`medirConMotor` saca ancho, alto y duración de lo que ffmpeg escribe por
+consola, y `extraerAudio` saca el audio a WAV, que sí abre cualquier navegador.
+Lo único que se pierde es la vista previa, y la pantalla lo dice.
+
+### Los subtítulos no gastan una corrida
+
+Es una decisión, no un olvido. Una corrida es el sistema **escribiendo** algo;
+transcribir copia lo que el dueño ya dijo y cuesta dos órdenes de magnitud
+menos. Cobrarlo como corrida se comería de un golpe la única que trae el plan
+de prueba. El tope va aparte, en `uso_voz`: veinte minutos de audio al día por
+negocio, que es lo que se corresponde con el cargo real.
+
 ## El movimiento
 
 Está todo en `app/globals.css` y son cinco clases: `entra` / `entra-lado` /

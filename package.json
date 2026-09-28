@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/ffmpeg.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "migrar": "node scripts/migrar.mjs",
@@ -12,10 +12,14 @@
     "secreto": "node scripts/secreto.mjs",
     "clave": "node scripts/clave.mjs",
     "cortesia": "node scripts/cortesia.mjs",
-    "modelos": "node scripts/modelos.mjs"
+    "modelos": "node scripts/modelos.mjs",
+    "ffmpeg": "node scripts/ffmpeg.mjs",
+    "postinstall": "node scripts/ffmpeg.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "better-auth": "^1.7.3",
     "next": "16.3.4",
     "openai": "^7.13.0",
@@ -24,6 +28,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@ffmpeg/core": "^0.12.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

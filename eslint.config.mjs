@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // El nucleo de ffmpeg.wasm: son 112 KB de salida de Emscripten copiados de
+    // node_modules, no codigo de este proyecto.
+    "public/ffmpeg/**",
   ]),
 ]);
 

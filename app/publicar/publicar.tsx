@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
-import { esCarrusel, type Carrusel, type Pieza } from "@/types/guion";
+import { esCarrusel, type Carrusel, type Guion, type Pieza } from "@/types/guion";
+import { Editor } from "./editor";
 
 export default function Lista() {
   const { data: sesion, isPending } = useSession();
@@ -83,7 +84,7 @@ export default function Lista() {
       ) : esCarrusel(pieza) ? (
         <DeCarrusel c={pieza} paletaId={paleta} onPaleta={setPaleta} creado={creado} />
       ) : (
-        <EsVideo />
+        <EsVideo guion={pieza as Guion} />
       )}
     </main>
   );
@@ -399,23 +400,36 @@ function Buscador({
   );
 }
 
-function EsVideo() {
+function EsVideo({ guion }: { guion: Guion }) {
   return (
     <section className="revela mt-9" style={{ ["--tarda" as string]: "0.08s" }}>
       <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-        <p className="font-semibold">Lo último que escribiste es un guion de video</p>
+        <p className="font-semibold">Tu guion de video, listo para montar</p>
         <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-          El editor de video —recortar a 9:16, cortar los silencios y quemar los
-          subtítulos— todavía no está. Es lo siguiente que construyo, y va a
-          correr aquí mismo, en tu navegador.
+          Graba con el teléfono y súbelo aquí. Se cortan los silencios, se
+          recorta a 9:16 y se queman los subtítulos —todo dentro de tu
+          navegador— y sale el MP4 que subes a Instagram o TikTok.
         </p>
-        <Link
-          href="/pieza"
-          className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-        >
-          volver al paso 3 →
-        </Link>
+        <details className="mt-3">
+          <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
+            ver el guion mientras grabo
+          </summary>
+          <div className="mt-3 space-y-2 border-l-2 border-neutral-200 pl-4 text-sm dark:border-neutral-800">
+            <p className="font-semibold">{guion.gancho}</p>
+            {guion.golpes.map((g, i) => (
+              <p key={i} className="text-neutral-700 dark:text-neutral-300">
+                {g.texto}
+                {g.direccion && (
+                  <span className="block text-xs italic text-neutral-500">{g.direccion}</span>
+                )}
+              </p>
+            ))}
+            <p className="text-neutral-700 dark:text-neutral-300">{guion.cierre.texto}</p>
+          </div>
+        </details>
       </div>
+
+      <Editor guion={guion} />
     </section>
   );
 }
