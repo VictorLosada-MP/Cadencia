@@ -140,9 +140,17 @@ export function Barra() {
         />
 
         <Link
+          href="/hecho"
+          aria-current={aqui === "/hecho" ? "page" : undefined}
+          style={{ ["--tarda" as string]: "0.3s" }}
+          className={`entra-lado ${PASTILLA} ${aqui === "/hecho" ? ACTIVA : QUIETA}`}
+        >
+          Lo hecho
+        </Link>
+        <Link
           href="/negocio"
           aria-current={aqui === "/negocio" ? "page" : undefined}
-          style={{ ["--tarda" as string]: "0.3s" }}
+          style={{ ["--tarda" as string]: "0.35s" }}
           className={`entra-lado ${PASTILLA} ${aqui === "/negocio" ? ACTIVA : QUIETA}`}
         >
           Tu negocio

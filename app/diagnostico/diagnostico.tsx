@@ -66,6 +66,20 @@ type Guardado = {
   redes?: EntradaRed[];
   textos?: string;
   ventana?: Ventana;
+  /**
+   * Las respuestas a medio escribir.
+   *
+   * Sin esto, irse a la semana y volver —o recargar— las borraba todas. Son lo
+   * más caro de recuperar de esta pantalla: lo demás se copia de un perfil en
+   * un minuto, y esto hay que volver a pensarlo.
+   */
+  respuestas?: Record<string, string>;
+  /**
+   * A qué diagnóstico pertenecen esas respuestas, por su fecha. Si el
+   * diagnóstico que vuelve del servidor es otro, las preguntas ya no son las
+   * mismas y arrastrarlas sería pegar respuestas debajo de preguntas ajenas.
+   */
+  para?: string;
 };
 
 function leerGuardado(): Guardado | null {
@@ -79,7 +93,9 @@ function leerGuardado(): Guardado | null {
 }
 
 export default function Diagnostico() {
-  const guardado = leerGuardado();
+  // Se lee una sola vez, al montar. Antes se leía en cada render, así que en
+  // cuanto se guardaba algo dejaba de significar "lo que había al abrir".
+  const [guardado] = useState(leerGuardado);
   const [redes, setRedes] = useState<EntradaRed[]>(
     () =>
       guardado?.redes ?? [{ id: "red-1", plataforma: "Instagram", casillas: { ...CASILLAS_VACIAS } }],
@@ -89,6 +105,7 @@ export default function Diagnostico() {
     textos: guardado?.textos ?? "",
     ventana: guardado?.ventana,
   }));
+  const [respuestasGuardadas] = useState(() => guardado?.respuestas ?? {});
   const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
   const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
@@ -101,7 +118,7 @@ export default function Diagnostico() {
   const enPruebas = process.env.NODE_ENV !== "production";
 
   const { data: sesion, isPending: cargandoSesion } = useSession();
-  const [respuestas, setRespuestas] = useState<Record<string, string>>({});
+  const [respuestas, setRespuestas] = useState<Record<string, string>>(() => respuestasGuardadas);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [dx, setDx] = useState<Diagnostico | null>(null);
@@ -115,12 +132,14 @@ export default function Diagnostico() {
           redes: sinImagenes,
           textos: publicado.textos,
           ventana: publicado.ventana,
-        }),
+          respuestas,
+          para: creado ?? undefined,
+        } satisfies Guardado),
       );
     } catch {
       // Sin espacio o en incógnito: se sigue trabajando, solo no se recuerda.
     }
-  }, [redes, publicado.textos, publicado.ventana]);
+  }, [redes, publicado.textos, publicado.ventana, respuestas, creado]);
 
   useEffect(() => {
     if (!sesion) return;
@@ -134,14 +153,28 @@ export default function Diagnostico() {
         if (!vivo || !u?.corrida) return;
         setDx(u.corrida.resultado);
         setCreado(u.corrida.creado);
+
+        // Lo de la corrida anterior solo rellena lo que está en blanco.
+        //
+        // Antes lo pisaba siempre, y eso borraba lo que se estaba escribiendo
+        // cada vez que la pantalla se volvía a montar: bastaba con ir a la
+        // semana y volver para que una bio a medio corregir regresara a la
+        // versión vieja.
         const e = u.corrida.entrada;
-        if (Array.isArray(e?.redes) && e.redes.length) setRedes(e.redes);
-        if (e?.publicado)
+        if (Array.isArray(e?.redes) && e.redes.length && !guardado?.redes?.length) {
+          setRedes(e.redes);
+        }
+        if (e?.publicado && !guardado?.textos) {
           setPublicado((pub) => ({
             ...pub,
             textos: e.publicado.textos ?? "",
             ventana: e.publicado.ventana,
           }));
+        }
+
+        // Y las respuestas a medio escribir solo vuelven si son de ESTE
+        // diagnóstico. Si es otro, las preguntas cambiaron.
+        if (guardado?.para && guardado.para !== u.corrida.creado) setRespuestas({});
       })
       .catch(() => {});
 
@@ -159,7 +192,7 @@ export default function Diagnostico() {
     return () => {
       vivo = false;
     };
-  }, [sesion]);
+  }, [sesion, guardado]);
 
   const listas = redes.filter(tieneContenido);
   const usadas = redes.map((r) => r.plataforma);
@@ -947,6 +980,22 @@ function Resultado({
           </ul>
         </div>
       )}
+
+      {/* La cadena sigue. Antes el diagnóstico se acababa y el sistema se
+          quedaba callado, como si corregir el perfil fuera el final. */}
+      <div className="mt-12 rounded-lg border border-teal-700/30 bg-teal-50/60 p-5 dark:border-teal-400/25 dark:bg-teal-950/20">
+        <p className="font-semibold">Con el perfil corregido, ya se puede armar la semana</p>
+        <p className="mt-1 max-w-xl text-sm text-neutral-600 dark:text-neutral-400">
+          Cinco piezas de lunes a viernes, cada una hablándole a alguien que
+          está en un punto distinto. Usa lo que acabas de corregir.
+        </p>
+        <Link
+          href="/semana"
+          className="empuja mt-4 inline-block rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+        >
+          Armar mi semana →
+        </Link>
+      </div>
     </section>
   );
 }

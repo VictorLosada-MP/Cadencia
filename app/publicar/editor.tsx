@@ -27,7 +27,9 @@ import {
   montar,
   recorteDe,
 } from "@/lib/video";
+import { apuntarHecho } from "@/lib/hecho";
 import { Onda } from "./onda";
+import { Siguiente } from "./publicar";
 
 type Fuente = {
   archivo: File;
@@ -53,7 +55,21 @@ const reloj = (s: number) => {
  * 16 kHz— a transcribir. El video no sale nunca de la máquina, y el montaje
  * entero funciona sin pasar por ahí.
  */
-export function Editor({ guion }: { guion?: { descripcion?: string } }) {
+export function Editor({
+  guion,
+  corridaId,
+}: {
+  guion?: {
+    descripcion?: string;
+    gancho?: string;
+    golpes?: { texto: string; apoyo?: string }[];
+  };
+  corridaId?: string | null;
+}) {
+  // El guion pide imágenes de apoyo cuando el formato es "con producción" o
+  // "voz en off". El editor todavía no las coloca solo, así que lo dice y las
+  // pone delante: es lo que hace falta tener a mano mientras se graba.
+  const apoyos = (guion?.golpes ?? []).filter((g) => g.apoyo?.trim());
   const [fuente, setFuente] = useState<Fuente | null>(null);
   const [fallo, setFallo] = useState("");
   const [analizando, setAnalizando] = useState(false);
@@ -73,6 +89,7 @@ export function Editor({ guion }: { guion?: { descripcion?: string } }) {
   const [montando, setMontando] = useState(false);
   const [avance, setAvance] = useState({ parte: 0, mensaje: "" });
   const [resultado, setResultado] = useState<{ url: string; bytes: number } | null>(null);
+  const [bajado, setBajado] = useState(false);
 
   const video = useRef<HTMLVideoElement>(null);
   const [cabeza, setCabeza] = useState<number | null>(null);
@@ -255,6 +272,34 @@ export function Editor({ guion }: { guion?: { descripcion?: string } }) {
 
   return (
     <div className="mt-9 space-y-10">
+      {apoyos.length > 0 && (
+        <div className="rounded-lg border-l-[3px] border-amber-600 bg-amber-50/70 p-5 dark:bg-amber-950/25">
+          <p className="font-semibold">Este guion se escribió con imágenes de apoyo</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+            El editor hace los cortes, el 9:16 y los subtítulos.{" "}
+            <strong>Colocar el apoyo todavía no lo hace solo</strong> — lo de
+            abajo es la lista para que lo tengas delante mientras grabas o
+            mientras lo montas tú. Si no quieres ese trabajo, vuelve al paso 3 y
+            escribe la pieza en <em>«A cámara, sencillo»</em>: ese formato está
+            entero.
+          </p>
+          <ol className="mt-4 space-y-2">
+            {apoyos.map((g, i) => (
+              <li key={i} className="flex gap-3 text-sm">
+                <span className="mt-0.5 shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span>
+                  <span className="text-neutral-500">mientras dices</span>{" "}
+                  «{g.texto}» <span className="text-neutral-500">se ve:</span>{" "}
+                  <strong>{g.apoyo}</strong>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {/* ── 1 · El archivo ── */}
       <Paso n="1" titulo="El video que grabaste" hecho={Boolean(fuente)}>
         <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 p-6 text-center transition-colors hover:border-teal-600 dark:border-neutral-700 dark:hover:border-teal-400">
@@ -549,6 +594,15 @@ export function Editor({ guion }: { guion?: { descripcion?: string } }) {
                   <a
                     href={resultado.url}
                     download="cadencia.mp4"
+                    onClick={() => {
+                      void apuntarHecho({
+                        tipo: "video",
+                        titulo: guion?.gancho ?? "",
+                        detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
+                        corridaId,
+                      });
+                      setBajado(true);
+                    }}
                     className="empuja mt-4 inline-block rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
                   >
                     Descargar el MP4
@@ -566,6 +620,8 @@ export function Editor({ guion }: { guion?: { descripcion?: string } }) {
                 </div>
               </div>
             )}
+
+            {bajado && <Siguiente que="El video ya está en tu carpeta de descargas." />}
           </Paso>
         </>
       )}

@@ -329,6 +329,28 @@ function Resultado({ p }: { p: Pieza }) {
           ))}
         </ul>
       )}
+
+      {/* El paso 4. Antes la pieza salía escrita y ahí se acababa todo: había
+          que acordarse de que existía otra pestaña donde se convierte en
+          archivo. */}
+      <div className="mt-12 rounded-lg border border-teal-700/30 bg-teal-50/60 p-5 dark:border-teal-400/25 dark:bg-teal-950/20">
+        <p className="font-semibold">
+          {esCarrusel(p)
+            ? "Ya se puede armar en láminas"
+            : "Ya se puede grabar y montar"}
+        </p>
+        <p className="mt-1 max-w-xl text-sm text-neutral-600 dark:text-neutral-400">
+          {esCarrusel(p)
+            ? "Salen las imágenes listas para subir, montadas en tu navegador."
+            : "Grabas con el teléfono, lo subes ahí y se cortan los silencios, se recorta a 9:16 y se queman los subtítulos."}
+        </p>
+        <Link
+          href="/publicar"
+          className="empuja mt-4 inline-block rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+        >
+          {esCarrusel(p) ? "Armar las láminas →" : "Ir a montarlo →"}
+        </Link>
+      </div>
     </section>
   );
 }

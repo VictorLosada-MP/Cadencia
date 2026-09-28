@@ -41,6 +41,7 @@ corren las cuatro, así que tiene pantalla propia y no vive dentro de ninguna.
 | `/entrar` | Entrar, crear cuenta, pedir clave nueva | Cualquiera |
 | `/negocio` | El Perfil de Negocio: oferta, cliente, después, voz | Con cuenta |
 | `/diagnostico` | Función 1 | Con cuenta |
+| `/hecho` | Lo que ya se descargó | Con cuenta |
 | `/semana` | Función 2 | Con cuenta |
 | `/pieza` | Función 3 | Con cuenta |
 | `/publicar` | Función 4 | Con cuenta |
@@ -53,6 +54,17 @@ Lo que se anuncia en esos planes es **solo lo que el código cobra**, que hoy so
 las corridas. `plan.negocios` y `plan.historial_meses` existen como columnas y
 todavía no los hace cumplir nadie: hasta que los haga cumplir alguien, no se
 ponen en una página de precios.
+
+## Qué cuenta como "hecho"
+
+Hecho es **el archivo en la mano**, no la pieza escrita. La fila de `entregado`
+se escribe al DESCARGAR, no al generar: una pieza escrita y nunca bajada se
+quedó en la pantalla, y contarla convertiría `/hecho` en un inventario de
+buenas intenciones.
+
+Tampoco hay columna de "publicado en": el sistema no se conecta a ninguna red y
+no puede saberlo. Una casilla de "ya lo subí" que el dueño marca a mano es
+pedirle trabajo para alimentar una estadística que no le ayuda a vender.
 
 ## El editor de video
 
