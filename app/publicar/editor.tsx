@@ -36,7 +36,8 @@ import {
 import { apuntarHecho } from "@/lib/hecho";
 import { efecto } from "@/lib/sonido";
 import { insertosDe, useApoyos } from "./apoyo";
-import { buscarFrase } from "@/lib/apoyos";
+import { apoyosDe } from "@/lib/apoyos";
+import { planos } from "@/lib/ritmo";
 import { Onda } from "./onda";
 import { Siguiente } from "./publicar";
 
@@ -137,8 +138,10 @@ export function Editor({
    */
   const transiciones = useMemo(() => {
     if (!palabras?.length || !guion?.golpes?.length) return [];
-    const momentos = apoyosDeGolpes(guion.golpes, palabras);
-    return momentos
+    // Los mismos momentos que los apoyos: se reparten aunque no se encuentre
+    // la frase literal. Antes usaban el buscador estricto y, como solo el
+    // gancho casa palabra por palabra, salía UNA transición en todo el video.
+    return apoyosDeGolpes(guion.golpes, palabras)
       .map((m) => {
         const t = reubicar(m, tramos);
         return t === null ? null : { en: t, sonido: efecto("whoosh") };
@@ -148,6 +151,26 @@ export function Editor({
       .filter((t) => t.en > 0.4)
       .slice(0, MAX_TRANSICIONES);
   }, [palabras, guion, tramos]);
+
+  /**
+   * El ritmo, en tiempos del video ya cortado.
+   *
+   * Sale de medir tres reels de referencia: un corte cada 2,0–5,1 segundos y
+   * el plano mediano entre 1,9 y 3,4. Sin esto el video salía de una sola
+   * toma quieta de principio a fin, por muy bien que estuvieran los
+   * subtítulos.
+   */
+  const ritmo = useMemo(() => {
+    if (!fuente) return [];
+    const enCorte = (palabras ?? [])
+      .map((p) => {
+        const d = reubicar(p.desde, tramos);
+        const h = reubicar(p.hasta, tramos);
+        return d === null || h === null ? null : { ...p, desde: d, hasta: h };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+    return planos(enCorte, duracionDe(tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }]));
+  }, [palabras, tramos, fuente]);
 
   const puestos = useMemo(
     () => (fuente ? insertosDe(apoyos, tramos, fuente.duracion) : []),
@@ -300,6 +323,7 @@ export function Editor({
           // En la edición base no hay transiciones ni efecto: es el corte
           // limpio, los subtítulos y el apoyo, y nada más.
           transiciones: nivel === "completa" ? transiciones : [],
+          ritmo,
         },
         setAvance,
       );
@@ -633,10 +657,24 @@ export function Editor({
                           <strong>{a.pide}</strong>
                         </p>
                         <p className="mt-0.5 text-xs text-neutral-500">
-                          {a.momento
-                            ? `mientras dices «${a.texto.slice(0, 48)}${a.texto.length > 48 ? "…" : ""}» · ${reloj(a.momento.desde)}`
-                            : "no encontré esa frase en lo que dijiste — no se coloca"}
+                          {a.momento ? (
+                            <>
+                              {reloj(a.momento.desde)} ·{" "}
+                              {a.exacto ? (
+                                <>mientras dices «{a.texto.slice(0, 44)}{a.texto.length > 44 ? "…" : ""}»</>
+                              ) : (
+                                <span className="text-amber-700 dark:text-amber-500">
+                                  sitio aproximado — no dijiste esa frase igual que el guion
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            "no se coloca"
+                          )}
                         </p>
+                        {a.fallo && (
+                          <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">{a.fallo}</p>
+                        )}
 
                         <div className="mt-2 flex flex-wrap items-center gap-3">
                           {esTuya(guion, a.golpe) ? (
@@ -645,7 +683,13 @@ export function Editor({
                             </span>
                           ) : (
                             <button
-                              onClick={() => void buscar(a.golpe, a.pide)}
+                              onClick={() =>
+                                void buscar(
+                                  a.golpe,
+                                  a.pide,
+                                  a.vista ? { candidatas: a.candidatas, cual: a.cual } : undefined,
+                                )
+                              }
                               disabled={a.buscando}
                               className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline disabled:opacity-40 dark:text-teal-400"
                             >
@@ -925,15 +969,15 @@ const NIVELES = [
  * palabra suelta del principio.
  */
 function apoyosDeGolpes(golpes: { texto: string }[], palabras: Palabra[]): number[] {
-  const salida: number[] = [];
-  let cursor = 0;
-  for (const g of golpes) {
-    const h = buscarFrase(g.texto, palabras, cursor);
-    if (!h) continue;
-    cursor = h.fin;
-    salida.push(h.momento.desde);
-  }
-  return salida;
+  // Se reutiliza el mismo repartidor de los apoyos, poniéndole un apoyo
+  // ficticio a cada golpe: así los que no se encuentran se colocan igual, en
+  // vez de desaparecer.
+  return apoyosDe(
+    golpes.map((g) => ({ texto: g.texto, apoyo: "x" })),
+    palabras,
+  )
+    .map((a) => a.momento?.desde)
+    .filter((t): t is number => t !== undefined && t !== null);
 }
 
 /** Si el guion marcó ese apoyo como material suyo, no se busca: se le pide. */

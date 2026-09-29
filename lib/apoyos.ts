@@ -100,6 +100,8 @@ export type Apoyo = {
   pide: string;
   texto: string;
   momento: Momento | null;
+  /** Falso cuando el sitio es aproximado porque no se encontró la frase. */
+  exacto?: boolean;
 };
 
 /**
@@ -111,28 +113,89 @@ export type Apoyo = {
  * no ponerla, y la pantalla lo dice.
  */
 export function apoyosDe(golpes: Golpe[], palabras: Palabra[]): Apoyo[] {
+  const conApoyo = golpes
+    .map((g, i) => ({ ...g, i }))
+    .filter((g) => g.apoyo?.trim());
+  if (conApoyo.length === 0) return [];
+
+  // Primero, los que se encuentran de verdad.
   const salida: Apoyo[] = [];
   let cursor = 0;
-
-  golpes.forEach((g, i) => {
-    if (!g.apoyo?.trim()) return;
+  for (const g of conApoyo) {
     const hallado = buscarFrase(g.texto, palabras, cursor);
     if (hallado) cursor = hallado.fin;
     salida.push({
-      golpe: i,
-      pide: g.apoyo.trim(),
+      golpe: g.i,
+      pide: g.apoyo!.trim(),
       texto: g.texto,
       momento: hallado?.momento ?? null,
+      exacto: Boolean(hallado),
     });
-  });
+  }
 
+  // Y después, los que no.
+  //
+  // Nadie lee un guion palabra por palabra: se cambia el orden, se salta una
+  // muletilla, se dice a su manera. El primer golpe ES el gancho literal, así
+  // que ese casa siempre y los demás no — por eso antes solo se colocaba UNA
+  // imagen, la del principio, y el resto del video se quedaba tal cual.
+  //
+  // Los encontrados hacen de ancla y los perdidos se reparten entre medias.
+  // Un sitio aproximado dentro de la frase correcta vale mucho más que no
+  // poner nada, y la pantalla dice cuáles son aproximados.
+  rellenar(salida, duracionTotal(palabras));
   return salida;
+}
+
+function duracionTotal(palabras: Palabra[]): number {
+  return palabras.length ? palabras[palabras.length - 1].hasta : 0;
+}
+
+/** Reparte los que no se encontraron entre los que sí, en proporción. */
+function rellenar(lista: Apoyo[], duracion: number) {
+  if (duracion <= 0) return;
+
+  for (let i = 0; i < lista.length; i++) {
+    if (lista[i].momento) continue;
+
+    // Entre el anterior encontrado y el siguiente encontrado.
+    let antes = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      if (lista[j].momento) { antes = lista[j].momento!.hasta; break; }
+    }
+    let despues = duracion;
+    for (let j = i + 1; j < lista.length; j++) {
+      if (lista[j].momento) { despues = lista[j].momento!.desde; break; }
+    }
+    if (despues <= antes) despues = duracion;
+
+    // Cuántos perdidos hay en ese hueco, y cuál de ellos es este.
+    let huecos = 0, mio = 0;
+    for (let j = 0; j < lista.length; j++) {
+      if (lista[j].momento && j < i) continue;
+      if (lista[j].momento) break;
+      if (j === i) mio = huecos;
+      if (!lista[j].momento && j >= i - huecos) huecos++;
+    }
+    huecos = Math.max(1, huecos);
+
+    const paso = (despues - antes) / (huecos + 1);
+    const desde = antes + paso * (mio + 1);
+    lista[i].momento = { desde, hasta: Math.min(duracion, desde + 2), confianza: 0 };
+  }
 }
 
 /** Lo más corto que aguanta una imagen en pantalla sin parecer un parpadeo. */
 export const MIN_S = 0.8;
-/** Y lo más largo, para que un golpe de diez segundos no tape el video entero. */
-export const MAX_S = 5;
+/**
+ * Y lo más largo que se queda una imagen.
+ *
+ * 2,8 segundos, medido: en las referencias el B-roll ocupa cerca de la mitad
+ * del tiempo y **alterna cada dos segundos**, no se queda cinco segundos
+ * quieto. Con el tope en 5 tapaba el 58% del video de una sentada y la cara
+ * desaparecía.
+ */
+export const MAX_S = 2.8;
 
 export function acotar(m: Momento, tope: number): { desde: number; hasta: number } {
   const desde = Math.max(0, m.desde);
