@@ -32,6 +32,24 @@ buscar en dos minutos, no sirve.
 
 En el formato sencillo, `apoyo` va en cadena vacía: ahí solo está su cara.
 
+### Solo le pides material cuando no hay otra
+
+Cada apoyo lleva además `apoyo_tuyo`. Y el valor por defecto es **false**.
+
+`apoyo_tuyo: true` solo cuando esa imagen **no existe en ningún banco de fotos
+porque es suya**: una foto con ese cliente concreto, una captura de sus propios
+números, el antes y el después de un trabajo que hizo él. Es decir: solo cuando
+la pieza cuenta una historia propia o de la mano de un cliente.
+
+`apoyo_tuyo: false` en todo lo demás, y entonces lo describes **como se busca
+en un banco de fotos**: en pocas palabras, concreto y visual — *"manos
+escribiendo en un portátil en una mesa de madera"*, no *"la sensación de estar
+perdido con tu contenido"*. El sistema lo busca y lo coloca sin molestarle.
+
+Pedirle una foto que podría salir de un banco es trabajo que le estás pasando a
+él por no pensarlo tú. Cada `apoyo_tuyo: true` de más es una razón para que
+cierre la pestaña.
+
 ## Los golpes
 
 Cada golpe lleva **lo que se dice** y **la dirección**.
@@ -154,7 +172,8 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
     {
       "texto": "lo que dice, palabra por palabra",
       "direccion": "la acción o expresión física — nunca una emoción",
-      "apoyo": "qué se ve mientras lo dice — vacío en el formato sencillo"
+      "apoyo": "qué se ve mientras lo dice — vacío en el formato sencillo",
+      "apoyo_tuyo": false
     }
   ],
   "cierre": {

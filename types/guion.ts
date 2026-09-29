@@ -72,6 +72,13 @@ export type Golpe = {
   direccion: string;
   /** Qué se ve mientras lo dice. Vacío en el formato sencillo. */
   apoyo?: string;
+  /**
+   * Verdad solo cuando ese apoyo **no se puede resolver con una foto de
+   * archivo**: una foto suya con ese cliente, una captura de sus propios
+   * números. Falso —lo normal— cuando describe algo que existe en cualquier
+   * banco, y entonces el sistema lo busca solo sin pedirle nada.
+   */
+  apoyo_tuyo?: boolean;
 };
 
 export type Guion = {

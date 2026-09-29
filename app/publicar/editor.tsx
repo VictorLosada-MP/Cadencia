@@ -6,6 +6,7 @@ import {
   AJUSTES,
   duracionDe,
   envolvente,
+  reubicar,
   tramosAudibles,
   umbralSugerido,
   type Ajustes,
@@ -25,6 +26,7 @@ import {
 import {
   MAX_BYTES,
   MAX_SEGUNDOS,
+  MAX_TRANSICIONES,
   SALIDA,
   extraerAudio,
   medirConMotor,
@@ -32,6 +34,9 @@ import {
   recorteDe,
 } from "@/lib/video";
 import { apuntarHecho } from "@/lib/hecho";
+import { efecto } from "@/lib/sonido";
+import { insertosDe, useApoyos } from "./apoyo";
+import { buscarFrase } from "@/lib/apoyos";
 import { Onda } from "./onda";
 import { Siguiente } from "./publicar";
 
@@ -66,14 +71,15 @@ export function Editor({
   guion?: {
     descripcion?: string;
     gancho?: string;
-    golpes?: { texto: string; apoyo?: string }[];
+    golpes?: { texto: string; apoyo?: string; apoyo_tuyo?: boolean }[];
   };
   corridaId?: string | null;
 }) {
+  const [nivel, setNivel] = useState<"base" | "completa">("completa");
   // El guion pide imágenes de apoyo cuando el formato es "con producción" o
   // "voz en off". El editor todavía no las coloca solo, así que lo dice y las
   // pone delante: es lo que hace falta tener a mano mientras se graba.
-  const apoyos = (guion?.golpes ?? []).filter((g) => g.apoyo?.trim());
+  const conApoyo = (guion?.golpes ?? []).filter((g) => g.apoyo?.trim());
   const [fuente, setFuente] = useState<Fuente | null>(null);
   const [fallo, setFallo] = useState("");
   const [analizando, setAnalizando] = useState(false);
@@ -102,6 +108,9 @@ export function Editor({
   const [resultado, setResultado] = useState<{ url: string; bytes: number } | null>(null);
   const [bajado, setBajado] = useState(false);
 
+  const { lista: apoyos, buscar, poner, alternar } = useApoyos(guion?.golpes, palabras);
+
+
   const video = useRef<HTMLVideoElement>(null);
   const [cabeza, setCabeza] = useState<number | null>(null);
   const [saltando, setSaltando] = useState(false);
@@ -117,6 +126,33 @@ export function Editor({
     // su subtítulo: el arranque de una ese suave cae por debajo del umbral.
     return palabras?.length ? protegerPalabras(crudos, palabras) : crudos;
   }, [env, fuente, ajustes, cortar, palabras]);
+
+  /**
+   * Dónde va cada transición.
+   *
+   * Al principio de cada bloque del guion, no en cada corte de silencio. Un
+   * corte de silencio tiene que ser invisible: señalarlo con un efecto delata
+   * cada respiración que se quitó, y en un reel de treinta segundos serían
+   * quince. Los bloques son tres o cuatro.
+   */
+  const transiciones = useMemo(() => {
+    if (!palabras?.length || !guion?.golpes?.length) return [];
+    const momentos = apoyosDeGolpes(guion.golpes, palabras);
+    return momentos
+      .map((m) => {
+        const t = reubicar(m, tramos);
+        return t === null ? null : { en: t, sonido: efecto("whoosh") };
+      })
+      .filter((t): t is { en: number; sonido: Blob } => t !== null)
+      // La primera del video no: no hay de dónde venir.
+      .filter((t) => t.en > 0.4)
+      .slice(0, MAX_TRANSICIONES);
+  }, [palabras, guion, tramos]);
+
+  const puestos = useMemo(
+    () => (fuente ? insertosDe(apoyos, tramos, fuente.duracion) : []),
+    [apoyos, tramos, fuente],
+  );
 
   const duracionFinal = tramos.length ? duracionDe(tramos) : (fuente?.duracion ?? 0);
   const cortes = Math.max(0, tramos.length - 1);
@@ -260,6 +296,10 @@ export function Editor({
           encuadre: { ancho: fuente.ancho, alto: fuente.alto, posicion },
           ass: lineas.length ? aASS(lineas, animacion) : null,
           conAudio,
+          insertos: puestos,
+          // En la edición base no hay transiciones ni efecto: es el corte
+          // limpio, los subtítulos y el apoyo, y nada más.
+          transiciones: nivel === "completa" ? transiciones : [],
         },
         setAvance,
       );
@@ -298,34 +338,6 @@ export function Editor({
 
   return (
     <div className="mt-9 space-y-10">
-      {apoyos.length > 0 && (
-        <div className="rounded-lg border-l-[3px] border-amber-600 bg-amber-50/70 p-5 dark:bg-amber-950/25">
-          <p className="font-semibold">Este guion se escribió con imágenes de apoyo</p>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-            El editor hace los cortes, el 9:16 y los subtítulos.{" "}
-            <strong>Colocar el apoyo todavía no lo hace solo</strong> — lo de
-            abajo es la lista para que lo tengas delante mientras grabas o
-            mientras lo montas tú. Si no quieres ese trabajo, vuelve al paso 3 y
-            escribe la pieza en <em>«A cámara, sencillo»</em>: ese formato está
-            entero.
-          </p>
-          <ol className="mt-4 space-y-2">
-            {apoyos.map((g, i) => (
-              <li key={i} className="flex gap-3 text-sm">
-                <span className="mt-0.5 shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span>
-                  <span className="text-neutral-500">mientras dices</span>{" "}
-                  «{g.texto}» <span className="text-neutral-500">se ve:</span>{" "}
-                  <strong>{g.apoyo}</strong>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
       {/* ── 1 · El archivo ── */}
       <Paso n="1" titulo="El video que grabaste" hecho={Boolean(fuente)}>
         <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 p-6 text-center transition-colors hover:border-teal-600 dark:border-neutral-700 dark:hover:border-teal-400">
@@ -580,6 +592,99 @@ export function Editor({
             )}
           </Paso>
 
+          {/* ── El apoyo, que ahora coloca el sistema ── */}
+          {conApoyo.length > 0 && (
+            <Paso
+              n="3b"
+              titulo="Las imágenes de apoyo"
+              hecho={apoyos.some((a) => a.imagen && a.usar)}
+              nota={
+                palabras
+                  ? "El sistema busca y coloca solo lo que se puede sacar de un banco. Solo te pide lo que es tuyo de verdad."
+                  : "Saca primero los subtítulos: sin ellos no se sabe en qué segundo dices cada frase."
+              }
+            >
+              {!palabras ? (
+                <p className="text-sm text-neutral-500">
+                  {conApoyo.length}{" "}
+                  {conApoyo.length === 1 ? "imagen pendiente" : "imágenes pendientes"}.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {apoyos.map((a) => (
+                    <li
+                      key={a.golpe}
+                      className="flex flex-wrap items-start gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
+                    >
+                      <div className="h-20 w-14 shrink-0 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-900">
+                        {a.vista ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={a.vista} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full items-center justify-center text-[10px] text-neutral-400">
+                            {a.buscando ? "…" : "—"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm leading-snug">
+                          <span className="text-neutral-500">se ve:</span>{" "}
+                          <strong>{a.pide}</strong>
+                        </p>
+                        <p className="mt-0.5 text-xs text-neutral-500">
+                          {a.momento
+                            ? `mientras dices «${a.texto.slice(0, 48)}${a.texto.length > 48 ? "…" : ""}» · ${reloj(a.momento.desde)}`
+                            : "no encontré esa frase en lo que dijiste — no se coloca"}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          {esTuya(guion, a.golpe) ? (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                              tiene que ser tuya
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => void buscar(a.golpe, a.pide)}
+                              disabled={a.buscando}
+                              className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline disabled:opacity-40 dark:text-teal-400"
+                            >
+                              {a.buscando ? "buscando…" : a.vista ? "buscar otra" : "buscar en el banco"}
+                            </button>
+                          )}
+                          <label className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:no-underline">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) poner(a.golpe, f);
+                                e.target.value = "";
+                              }}
+                            />
+                            subir la mía
+                          </label>
+                          {a.momento && a.imagen && (
+                            <label className="flex items-center gap-1.5 text-xs text-neutral-500">
+                              <input
+                                type="checkbox"
+                                checked={a.usar}
+                                onChange={() => alternar(a.golpe, a.usar)}
+                                className="accent-teal-700"
+                              />
+                              usarla
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Paso>
+          )}
+
           {/* ── 4 · El encuadre y la prueba ── */}
           <Paso n="4" titulo="El encuadre" hecho>
             <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
@@ -648,7 +753,37 @@ export function Editor({
           </Paso>
 
           {/* ── 5 · Montar ── */}
-          <Paso n="5" titulo="Montarlo" hecho={Boolean(resultado)}>
+          <Paso
+            n="5"
+            titulo="Montarlo"
+            hecho={Boolean(resultado)}
+            nota="Cuánto se edita lo decides aquí, no en cómo te grabaste."
+          >
+            <fieldset className="mb-5 grid gap-2 sm:grid-cols-2">
+              {NIVELES.map((n) => (
+                <label
+                  key={n.id}
+                  className={`tarjeta cursor-pointer rounded-lg border p-4 ${
+                    nivel === n.id
+                      ? "border-teal-600 bg-teal-50/60 dark:border-teal-400 dark:bg-teal-950/25"
+                      : "border-neutral-200 hover:border-neutral-400 dark:border-neutral-800"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="nivel"
+                    className="sr-only"
+                    checked={nivel === n.id}
+                    onChange={() => setNivel(n.id)}
+                  />
+                  <span className="block font-semibold">{n.nombre}</span>
+                  <span className="mt-1 block text-sm leading-snug text-neutral-500">
+                    {n.que}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+
             <button
               onClick={() => void armar()}
               disabled={montando}
@@ -701,6 +836,24 @@ export function Editor({
                       no={`Ya venía en 9:16 (${fuente.ancho}×${fuente.alto}): no hubo nada que recortar`}
                     />
                     <Hizo
+                      si={puestos.length > 0}
+                      hecho={`${puestos.length} ${puestos.length === 1 ? "imagen de apoyo colocada" : "imágenes de apoyo colocadas"} en su sitio`}
+                      no={
+                        conApoyo.length > 0
+                          ? "Sin imágenes de apoyo — no llegaste a elegirlas"
+                          : "Este guion no pedía imágenes de apoyo"
+                      }
+                    />
+                    <Hizo
+                      si={nivel === "completa" && transiciones.length > 0}
+                      hecho={`${transiciones.length} ${transiciones.length === 1 ? "transición" : "transiciones"} entre bloques, con sonido`}
+                      no={
+                        nivel === "base"
+                          ? "Sin transiciones — elegiste la edición base"
+                          : "Sin transiciones — no encontré dónde cambian los bloques"
+                      }
+                    />
+                    <Hizo
                       si={lineas.length > 0}
                       hecho={`${lineas.length} ${lineas.length === 1 ? "línea quemada" : "líneas quemadas"} · ${ANIMACIONES.find((a) => a.id === animacion)?.nombre.toLowerCase()}`}
                       no="Sin subtítulos"
@@ -742,6 +895,53 @@ export function Editor({
       )}
     </div>
   );
+}
+
+/**
+ * Los dos niveles de edición.
+ *
+ * Se elige aquí y no en el paso 3 a propósito: cómo te grabaste no debería
+ * decidir cuánto se edita. El guion de video siempre trae las imágenes de
+ * apoyo; este paso decide qué se hace con ellas.
+ */
+const NIVELES = [
+  {
+    id: "base" as const,
+    nombre: "Edición base",
+    que: "Cortes limpios, 9:16, subtítulos animados y las imágenes de apoyo. Sin efectos: el corte no se nota.",
+  },
+  {
+    id: "completa" as const,
+    nombre: "Edición completa",
+    que: "Todo lo anterior, más transiciones con sonido entre los bloques del guion. Más llamativa, y tarda más en montarse.",
+  },
+];
+
+/**
+ * El segundo en que arranca cada frase del guion, en el video original.
+ *
+ * Se buscan en orden y cada una empieza donde acabó la anterior: los golpes
+ * van seguidos, y usar ese orden evita que la frase tres se enganche a una
+ * palabra suelta del principio.
+ */
+function apoyosDeGolpes(golpes: { texto: string }[], palabras: Palabra[]): number[] {
+  const salida: number[] = [];
+  let cursor = 0;
+  for (const g of golpes) {
+    const h = buscarFrase(g.texto, palabras, cursor);
+    if (!h) continue;
+    cursor = h.fin;
+    salida.push(h.momento.desde);
+  }
+  return salida;
+}
+
+/** Si el guion marcó ese apoyo como material suyo, no se busca: se le pide. */
+function esTuya(
+  guion: { golpes?: { apoyo_tuyo?: boolean }[] } | undefined,
+  golpe: number,
+): boolean {
+  return Boolean(guion?.golpes?.[golpe]?.apoyo_tuyo);
 }
 
 /** Una línea del recibo: lo que se hizo, o por qué no se hizo. */

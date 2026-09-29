@@ -104,6 +104,47 @@ copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
 sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
 a que un tercero siga publicándolo.
 
+### El sistema edita, no lista tareas
+
+Hubo una temporada en que el editor hacía cortes, 9:16 y subtítulos, y para el
+apoyo te daba **una lista de deberes**. Eso convertía "a cámara con producción"
+en un formato que costaba más trabajo y entregaba lo mismo que el sencillo.
+
+Ahora el sistema coloca el apoyo solo: `lib/apoyos.ts` casa cada frase del
+guion con el segundo en que se dice —usando los tiempos por palabra— y el
+editor busca la imagen en el banco y la mete ahí con un zoom lento.
+
+**Solo se le pide material cuando no hay otra.** Cada apoyo del guion lleva
+`apoyo_tuyo`, y por defecto es falso. Va en verdadero solo cuando la imagen no
+existe en ningún banco porque es suya: una foto con ese cliente, una captura de
+sus propios números. Pedirle una foto que podía salir de un banco es trabajo
+que se le pasa por no pensarlo nosotros.
+
+### Los dos niveles de edición
+
+Se eligen en el paso 4, **no en el 3**: cómo te grabaste no debería decidir
+cuánto se edita. El guion de video siempre trae el apoyo; el editor decide qué
+hace con él.
+
+| | Base | Completa |
+|---|---|---|
+| Cortes, 9:16, subtítulos, apoyo | ✓ | ✓ |
+| Transiciones con sonido entre bloques | — | ✓ |
+
+**Las transiciones van entre BLOQUES del guion, no en cada corte de silencio.**
+Un corte de silencio tiene que ser invisible: señalarlo con un efecto delata
+cada respiración que se quitó, y en un reel de treinta segundos serían quince.
+Los bloques son tres o cuatro.
+
+El efecto de sonido se **sintetiza** en `lib/sonido.ts` — un whoosh es ruido
+filtrado con una envolvente, y son treinta líneas. No es por gusto: un banco de
+efectos mete la licencia de un tercero dentro de los videos del dueño, y si
+mañana cambia sus términos el problema es de él, que ya publicó.
+
+Sobre el destello: se hace con `drawbox` y `enable`, no con `fade`. `fade=in`
+deja en blanco **todo lo anterior** a su arranque, así que un destello a mitad
+del video lo blanqueaba entero. Se descubrió mirando los fotogramas.
+
 ### Los subtítulos: se corrigen y se mueven
 
 Tres modos, y no son tres decoraciones: son tres formas distintas de sostener
