@@ -104,6 +104,34 @@ copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
 sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
 a que un tercero siga publicándolo.
 
+### Los subtítulos: se corrigen y se mueven
+
+Tres modos, y no son tres decoraciones: son tres formas distintas de sostener
+la mirada. *Palabra a palabra* (la línea entera se ve y cada palabra se
+enciende cuando se dice), *una sola palabra* (grande y centrada, la que más
+engancha y la que más cansa) y *línea de golpe*.
+
+Se hace con etiquetas dentro de la propia línea del ASS —un evento por
+palabra— y no con karaoke `\k`: `\k` depende de que el reproductor lo
+entienda, y aquí el reproductor es libass quemando píxeles.
+
+**Cada línea se puede corregir a mano**, porque la transcripción se come
+palabras. Si el número de palabras no cambia se conservan sus tiempos; si
+cambia, el tiempo de la línea se reparte según lo que ocupa cada palabra. Las
+correcciones se guardan por el SITIO de la palabra en la transcripción, no por
+su tiempo: así mover los deslizadores de silencio no las borra.
+
+### Ningún corte parte una palabra
+
+Era la causa de "se come palabras". El detector mira la onda y no sabe qué es
+una palabra: el arranque de una ese suave queda por debajo del umbral, el corte
+entra ahí, y en el video se oye media palabra que además pierde su subtítulo
+porque su tiempo cayó dentro del trozo quitado.
+
+Con la transcripción hecha ya se sabe dónde empieza y acaba cada palabra, y
+`protegerPalabras` estira los tramos hasta el borde de la palabra antes de
+cortar. Por eso conviene transcribir **antes** de montar.
+
 ### Los dos caminos de iPhone
 
 Los iPhone graban en HEVC cuando están en "Alta eficiencia", y Chrome en

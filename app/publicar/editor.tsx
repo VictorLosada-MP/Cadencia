@@ -12,9 +12,13 @@ import {
   type Tramo,
 } from "@/lib/silencios";
 import {
+  ANIMACIONES,
   aASS,
   enLineas,
+  protegerPalabras,
+  rehacerLinea,
   reubicarPalabras,
+  type Animacion,
   type Linea,
   type Palabra,
 } from "@/lib/subtitulos";
@@ -83,6 +87,13 @@ export function Editor({
   const [palabras, setPalabras] = useState<Palabra[] | null>(null);
   const [transcribiendo, setTranscribiendo] = useState(false);
   const [subtitular, setSubtitular] = useState(true);
+  const [animacion, setAnimacion] = useState<Animacion>("palabra");
+  /**
+   * Lo que el dueño corrigió a mano, por el sitio de la primera palabra de la
+   * línea en la transcripción. Por el sitio y no por el tiempo: así mover los
+   * deslizadores de silencio no le borra las correcciones.
+   */
+  const [correcciones, setCorrecciones] = useState<Record<number, string>>({});
 
   const [posicion, setPosicion] = useState(0.5);
 
@@ -100,16 +111,28 @@ export function Editor({
   const tramos: Tramo[] = useMemo(() => {
     if (!env || !fuente) return [];
     if (!cortar) return [{ desde: 0, hasta: fuente.duracion }];
-    return tramosAudibles(env, fuente.duracion, ajustes);
-  }, [env, fuente, ajustes, cortar]);
+    const crudos = tramosAudibles(env, fuente.duracion, ajustes);
+    // En cuanto hay transcripción, ningún corte puede partir una palabra. Es
+    // lo que hacía que el video dijera media palabra y además se quedara sin
+    // su subtítulo: el arranque de una ese suave cae por debajo del umbral.
+    return palabras?.length ? protegerPalabras(crudos, palabras) : crudos;
+  }, [env, fuente, ajustes, cortar, palabras]);
 
   const duracionFinal = tramos.length ? duracionDe(tramos) : (fuente?.duracion ?? 0);
   const cortes = Math.max(0, tramos.length - 1);
 
   const lineas: Linea[] = useMemo(() => {
     if (!palabras || !subtitular) return [];
-    return enLineas(reubicarPalabras(palabras, tramos));
-  }, [palabras, tramos, subtitular]);
+    const crudas = enLineas(reubicarPalabras(palabras, tramos));
+    // Y encima se aplican las correcciones que ya hizo a mano.
+    return crudas
+      .map((l) => {
+        const sitio = l.palabras[0]?.i;
+        const texto = sitio === undefined ? undefined : correcciones[sitio];
+        return texto === undefined ? l : rehacerLinea(l, texto);
+      })
+      .filter((l): l is Linea => l !== null);
+  }, [palabras, tramos, subtitular, correcciones]);
 
   const recorte = fuente
     ? recorteDe({ ancho: fuente.ancho, alto: fuente.alto, posicion })
@@ -212,7 +235,10 @@ export function Editor({
       const r = await fetch("/api/voz", { method: "POST", body: cuerpo });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo transcribir.");
-      setPalabras(d.palabras ?? []);
+      setPalabras(
+        ((d.palabras ?? []) as Palabra[]).map((p, i) => ({ ...p, i })),
+      );
+      setCorrecciones({});
       setSubtitular(true);
     } catch (e) {
       setFallo(e instanceof Error ? e.message : "No se pudo transcribir.");
@@ -232,7 +258,7 @@ export function Editor({
           video: fuente.archivo,
           tramos: tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }],
           encuadre: { ancho: fuente.ancho, alto: fuente.alto, posicion },
-          ass: lineas.length ? aASS(lineas) : null,
+          ass: lineas.length ? aASS(lineas, animacion) : null,
           conAudio,
         },
         setAvance,
@@ -376,6 +402,20 @@ export function Editor({
                   </p>
                 </div>
 
+                {cortes === 0 && cortar && (
+                  <p className="mt-3 rounded-lg border-l-[3px] border-amber-600 bg-amber-50 p-3 text-sm leading-relaxed dark:bg-amber-950/25">
+                    <strong>No hay nada por debajo del umbral</strong>, así que el
+                    video sale con la misma duración. Suele ser el cuarto: si se
+                    oye la nevera, el aire o la calle, tus silencios no son
+                    silencio para el medidor.{" "}
+                    <strong>Sube «qué cuenta como silencio»</strong> hasta que
+                    veas rojo en la onda entre frase y frase.
+                  </p>
+                )}
+
+                <div>
+                </div>
+
                 <div className="mt-4">
                   <Onda
                     env={env}
@@ -461,24 +501,81 @@ export function Editor({
                   Quemar los subtítulos en el video
                 </label>
                 {subtitular && (
-                  <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-                    {lineas.map((l, i) => (
-                      <p
-                        key={i}
-                        className="flex gap-3 border-b border-neutral-100 px-3 py-1.5 text-sm last:border-0 dark:border-neutral-900"
-                      >
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
-                          {reloj(l.desde)}
-                        </span>
-                        {l.texto}
+                  <>
+                    <fieldset className="mt-4">
+                      <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                        Cómo se mueven
+                      </legend>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                        {ANIMACIONES.map((a) => (
+                          <label
+                            key={a.id}
+                            className={`tarjeta cursor-pointer rounded-lg border p-3 ${
+                              animacion === a.id
+                                ? "border-teal-600 bg-teal-50/60 dark:border-teal-400 dark:bg-teal-950/25"
+                                : "border-neutral-200 hover:border-neutral-400 dark:border-neutral-800"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="animacion"
+                              className="sr-only"
+                              checked={animacion === a.id}
+                              onChange={() => setAnimacion(a.id)}
+                            />
+                            <span className="block text-sm font-semibold">{a.nombre}</span>
+                            <span className="mt-0.5 block text-xs leading-snug text-neutral-500">
+                              {a.que}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+
+                    <div className="mt-4">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                        Lo que vas a quemar — corrígelo si falta algo
                       </p>
-                    ))}
-                  </div>
+                      <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                        {lineas.map((l, i) => {
+                          const sitio = l.palabras[0]?.i;
+                          return (
+                            <div key={sitio ?? i} className="flex items-center gap-2">
+                              <span className="w-12 shrink-0 font-mono text-[11px] tabular-nums text-neutral-400">
+                                {reloj(l.desde)}
+                              </span>
+                              <input
+                                value={l.texto}
+                                onChange={(e) => {
+                                  if (sitio === undefined) return;
+                                  setCorrecciones((c) => ({ ...c, [sitio]: e.target.value }));
+                                }}
+                                aria-label={`Subtítulo en ${reloj(l.desde)}`}
+                                className="w-full rounded border border-transparent bg-neutral-50 px-2 py-1 text-sm outline-none hover:border-neutral-300 focus:border-teal-700 dark:bg-neutral-950 dark:hover:border-neutral-700 dark:focus:border-teal-400"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <p className="text-xs text-neutral-500">
+                        {lineas.length} {lineas.length === 1 ? "línea" : "líneas"}. Los
+                        tiempos ya vienen corridos por los cortes del paso 2, y ningún
+                        corte parte una palabra.
+                      </p>
+                      {Object.keys(correcciones).length > 0 && (
+                        <button
+                          onClick={() => setCorrecciones({})}
+                          className="font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:no-underline"
+                        >
+                          deshacer mis correcciones
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
-                <p className="mt-2 text-xs text-neutral-500">
-                  {lineas.length} {lineas.length === 1 ? "línea" : "líneas"}. Los tiempos
-                  ya vienen corridos por los cortes del paso 2.
-                </p>
               </>
             )}
           </Paso>
@@ -591,6 +688,24 @@ export function Editor({
                     {SALIDA.ancho}×{SALIDA.alto} · {reloj(duracionFinal)} ·{" "}
                     {(resultado.bytes / 1e6).toFixed(1)} MB
                   </p>
+
+                  <ul className="mt-4 space-y-1 text-sm">
+                    <Hizo
+                      si={cortes > 0}
+                      hecho={`Cortados ${cortes} ${cortes === 1 ? "silencio" : "silencios"}: ${reloj(fuente.duracion)} → ${reloj(duracionFinal)}`}
+                      no="Sin cortar silencios — no había nada por debajo del umbral"
+                    />
+                    <Hizo
+                      si={hayQueEncuadrar}
+                      hecho={`Recortado de ${fuente.ancho}×${fuente.alto} a 9:16`}
+                      no={`Ya venía en 9:16 (${fuente.ancho}×${fuente.alto}): no hubo nada que recortar`}
+                    />
+                    <Hizo
+                      si={lineas.length > 0}
+                      hecho={`${lineas.length} ${lineas.length === 1 ? "línea quemada" : "líneas quemadas"} · ${ANIMACIONES.find((a) => a.id === animacion)?.nombre.toLowerCase()}`}
+                      no="Sin subtítulos"
+                    />
+                  </ul>
                   <a
                     href={resultado.url}
                     download="cadencia.mp4"
@@ -626,6 +741,18 @@ export function Editor({
         </>
       )}
     </div>
+  );
+}
+
+/** Una línea del recibo: lo que se hizo, o por qué no se hizo. */
+function Hizo({ si, hecho, no }: { si: boolean; hecho: string; no: string }) {
+  return (
+    <li className={`flex gap-2 ${si ? "" : "text-neutral-500"}`}>
+      <span className={si ? "text-teal-700 dark:text-teal-400" : "text-neutral-400"}>
+        {si ? "✓" : "—"}
+      </span>
+      {si ? hecho : no}
+    </li>
   );
 }
 
