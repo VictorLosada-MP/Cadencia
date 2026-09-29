@@ -1,6 +1,7 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 import type { Tramo } from "@/lib/silencios";
+import { expresionZoom, type Plano } from "@/lib/ritmo";
 
 /**
  * El montaje, dentro del navegador.
@@ -79,6 +80,7 @@ export function filtros(
   conSubtitulos: boolean,
   insertos: Inserto[] = [],
   transiciones: Transicion[] = [],
+  ritmo: Plano[] = [],
 ): string {
   const usados = tramos.slice(0, MAX_TRAMOS);
   const partes: string[] = [];
@@ -102,9 +104,17 @@ export function filtros(
     `${entradas}concat=n=${usados.length}:v=1:a=${conAudio ? 1 : 0}[vc]${conAudio ? "[ac]" : ""}`,
   );
 
+  // El ritmo: un acercamiento sobre el mismo plano cada dos segundos y pico.
+  // Es lo que hacen las referencias, y se puede hacer con una sola toma —
+  // que es lo único que el dueño graba.
+  const zoom = expresionZoom(ritmo);
+  const acercar = zoom
+    ? `,zoompan=z='${zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${SALIDA.ancho}x${SALIDA.alto}:fps=30`
+    : "";
+
   partes.push(
     `[vc]crop=${recorte.ancho}:${recorte.alto}:${recorte.x}:${recorte.y},` +
-      `scale=${SALIDA.ancho}:${SALIDA.alto}:flags=lanczos,setsar=1[base]`,
+      `scale=${SALIDA.ancho}:${SALIDA.alto}:flags=lanczos,setsar=1${acercar}[base]`,
   );
 
   // Los insertos tapan el video entero mientras dura la frase, con un zoom
@@ -306,6 +316,8 @@ export type Montaje = {
   /** Las imágenes de apoyo, ya resueltas y en tiempos del video ya cortado. */
   insertos?: Inserto[];
   transiciones?: Transicion[];
+  /** Los cambios de encuadre. Es lo que da el ritmo de las referencias. */
+  ritmo?: Plano[];
 };
 
 /** Cuánto dura el desenfoque de una transición. Más y se nota el truco. */
@@ -373,7 +385,15 @@ export async function montar(
     const recorte = recorteDe(m.encuadre);
     const audio = filtrosAudio(conSonido, 1 + insertos.length);
     const grafo = [
-      filtros(m.tramos, recorte, m.conAudio, Boolean(m.ass), insertos, m.transiciones ?? []),
+      filtros(
+        m.tramos,
+        recorte,
+        m.conAudio,
+        Boolean(m.ass),
+        insertos,
+        m.transiciones ?? [],
+        m.ritmo ?? [],
+      ),
       ...(audio ? [audio] : []),
     ].join(";");
 

@@ -104,6 +104,29 @@ copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
 sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
 a que un tercero siga publicándolo.
 
+### El ritmo sale de medir, no de opinar
+
+Tres reels de referencia (`evidencia/referencias/` en `main`) medidos con
+ffmpeg, no mirados por encima:
+
+| | ref1 | ref2 | ref3 | **Cadencia** |
+|---|---|---|---|---|
+| Un corte cada | 5,1s | 2,9s | 2,0s | **3,0s** |
+| Plano mediano | 3,1s | 3,4s | 1,9s | **2,3s** |
+| Planos < 3s | 47% | 43% | 83% | **75%** |
+| Subtítulo, centro | 63% | 64% | 62% | **63%** |
+| Subtítulo, letra | 2,3% | 2,1% | 2,0% | **2,2%** |
+
+El hallazgo que lo cambió todo: **la mayoría de esos cortes no son cortes.**
+Son acercamientos sobre la misma toma — la misma grabación, más cerca. Por eso
+se pueden hacer con el único video que el dueño sube, y por eso `lib/ritmo.ts`
+existe: cambia el encuadre cada 2,6 segundos, siempre en el hueco entre dos
+palabras, nunca en mitad de una.
+
+Los tamaños de subtítulo que había antes se eligieron a ojo dos veces seguidas
+—primero pequeños, luego el doble de grandes— y las dos veces estaban mal. Los
+de ahora salen de medir píxeles en las referencias.
+
 ### El sistema edita, no lista tareas
 
 Hubo una temporada en que el editor hacía cortes, 9:16 y subtítulos, y para el

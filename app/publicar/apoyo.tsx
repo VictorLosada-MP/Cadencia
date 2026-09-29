@@ -24,6 +24,11 @@ export type Resuelto = Apoyo & {
   origen: "banco" | "tuya" | null;
   buscando: boolean;
   usar: boolean;
+  /** Qué salió mal al buscar, si salió mal. */
+  fallo?: string;
+  /** Las que devolvió el banco y por cuál va, para poder pasar a la siguiente. */
+  candidatas?: string[];
+  cual?: number;
 };
 
 /**
@@ -34,6 +39,18 @@ export type Resuelto = Apoyo & {
  * sistema y lo coloca sin molestarle: pedirle una foto que podía salir de un
  * banco es trabajo que se le pasa por no pensarlo nosotros.
  */
+const VACIO = { imagen: null, vista: null, origen: null, buscando: false } as const;
+
+/** Trae la imagen por el proxy del servidor, que es el único origen permitido. */
+async function traer(url: string): Promise<Blob | null> {
+  try {
+    const r = await fetch(`/api/fotos?traer=${encodeURIComponent(url)}`);
+    return r.ok ? await r.blob() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra[] | null) {
   /**
    * Lo que sale del guion y de la transcripción se calcula, no se guarda: es
@@ -51,8 +68,14 @@ export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra
     origen: "banco" | "tuya" | null;
     buscando: boolean;
     usar?: boolean;
+    /** Las ocho que devolvió el banco, para poder pasar a la siguiente. */
+    candidatas?: string[];
+    /** Por cuál va. "Buscar otra" avanza este número, no repite la consulta. */
+    cual?: number;
+    /** Qué salió mal, para poder decirlo en vez de no hacer nada. */
+    fallo?: string;
   };
-  const VACIO: Encima = { imagen: null, vista: null, origen: null, buscando: false };
+
   const [encima, setEncima] = useState<Record<number, Encima>>({});
 
   const lista: Resuelto[] = useMemo(
@@ -65,6 +88,9 @@ export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra
           vista: e?.vista ?? null,
           origen: e?.origen ?? null,
           buscando: e?.buscando ?? false,
+          fallo: e?.fallo,
+          candidatas: e?.candidatas,
+          cual: e?.cual,
           usar: e?.usar ?? a.momento !== null,
         };
       }),
@@ -78,26 +104,54 @@ export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra
     }));
   }, []);
 
-  /** Busca en el banco lo que no es suyo. Lo suyo no se busca: se pide. */
+  /**
+   * Busca en el banco lo que no es suyo. Lo suyo no se busca: se pide.
+   *
+   * Las candidatas se guardan enteras y "buscar otra" solo avanza el índice.
+   * Antes se quedaba siempre con la primera de las ocho, así que pulsar
+   * "buscar otra" repetía exactamente la misma foto y parecía que la pantalla
+   * no hacía nada.
+   */
   const buscar = useCallback(
-    async (golpe: number, consulta: string) => {
-      tocar(golpe, { buscando: true });
+    async (golpe: number, consulta: string, ya?: { candidatas?: string[]; cual?: number }) => {
+      // Si ya hay candidatas, pasar a la siguiente no toca la red.
+      if (ya?.candidatas?.length) {
+        const cual = ((ya.cual ?? 0) + 1) % ya.candidatas.length;
+        tocar(golpe, { buscando: true, cual, fallo: undefined });
+        const blob = await traer(ya.candidatas[cual]);
+        tocar(
+          golpe,
+          blob
+            ? { imagen: blob, vista: URL.createObjectURL(blob), origen: "banco", buscando: false }
+            : { buscando: false, fallo: "No se pudo traer esa foto." },
+        );
+        return;
+      }
+
+      tocar(golpe, { buscando: true, fallo: undefined });
       try {
         const r = await fetch(`/api/fotos?q=${encodeURIComponent(consulta)}&o=portrait`);
         const d = await r.json();
-        const foto = d?.fotos?.[0];
-        if (!foto?.url) throw new Error(d?.error ?? "sin resultados");
-        const img = await fetch(`/api/fotos?traer=${encodeURIComponent(foto.url)}`);
-        if (!img.ok) throw new Error("no se pudo traer");
-        const blob = await img.blob();
+        const urls: string[] = (d?.fotos ?? []).map((f: { url: string }) => f.url).filter(Boolean);
+        if (!urls.length) {
+          // Decirlo. Antes se tragaba el error y la pantalla se quedaba igual.
+          throw new Error(d?.error ?? `El banco no tiene nada para «${consulta}».`);
+        }
+        const blob = await traer(urls[0]);
+        if (!blob) throw new Error("No se pudo traer la foto.");
         tocar(golpe, {
           imagen: blob,
           vista: URL.createObjectURL(blob),
           origen: "banco",
           buscando: false,
+          candidatas: urls,
+          cual: 0,
         });
-      } catch {
-        tocar(golpe, { buscando: false });
+      } catch (e) {
+        tocar(golpe, {
+          buscando: false,
+          fallo: e instanceof Error ? e.message : "No se pudo buscar.",
+        });
       }
     },
     [tocar],

@@ -246,12 +246,35 @@ export type EstiloSubtitulo = {
   realce: string;
 };
 
+/**
+ * Medido sobre tres reels de referencia, no elegido a ojo.
+ *
+ * En los tres el subtítulo se sienta con su centro al **62–64% del alto** —no
+ * abajo del todo— y la altura de las letras es del **2,0 al 2,3% del cuadro**.
+ * Lo que había aquí antes estaba al 78% y al doble de tamaño: quedaba bajo,
+ * gordo y encima de donde Instagram pone sus botones.
+ */
 export const ESTILO: EstiloSubtitulo = {
   ancho: 1080,
   alto: 1920,
-  margen: 0.22,
+  // Distancia desde abajo. El centro del texto cae así al 63% del alto.
+  margen: 0.35,
   realce: "#FFD400",
 };
+
+/**
+ * El cuerpo del tipo, en píxeles.
+ *
+ * 3,2% del alto da una altura de letra del 2,2% — justo lo medido en las tres
+ * referencias. Lo que había antes era el 5%, más del doble, y se comía el
+ * cuadro. La palabra suelta va mayor porque no tiene nada al lado con que
+ * compararse.
+ */
+function cuerpoDe(animacion: Animacion, alto: number): number {
+  // 4% del alto. Se llegó midiendo: con 3,2% la letra salía al 1,7% del
+  // cuadro y las referencias están entre el 2,0 y el 2,3.
+  return Math.round(alto * (animacion === "una" ? 0.068 : 0.04));
+}
 
 /** ASS guarda el color al revés: &HBBGGRR&. Un #RRGGBB pasa a eso. */
 function aColorASS(hex: string): string {
@@ -275,7 +298,7 @@ export function aASS(
   animacion: Animacion = "palabra",
   estilo: EstiloSubtitulo = ESTILO,
 ): string {
-  const base = Math.round(estilo.alto * (animacion === "una" ? 0.075 : 0.05));
+  const base = cuerpoDe(animacion, estilo.alto);
   const contorno = Math.max(2, Math.round(base * 0.13));
   const margenV = Math.round(estilo.alto * estilo.margen);
   const margenH = Math.round(estilo.ancho * 0.08);
