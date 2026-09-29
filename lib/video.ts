@@ -77,6 +77,8 @@ export function filtros(
   recorte: Recorte,
   conAudio: boolean,
   conSubtitulos: boolean,
+  insertos: Inserto[] = [],
+  transiciones: Transicion[] = [],
 ): string {
   const usados = tramos.slice(0, MAX_TRAMOS);
   const partes: string[] = [];
@@ -100,16 +102,80 @@ export function filtros(
     `${entradas}concat=n=${usados.length}:v=1:a=${conAudio ? 1 : 0}[vc]${conAudio ? "[ac]" : ""}`,
   );
 
-  const cadena = [
-    `crop=${recorte.ancho}:${recorte.alto}:${recorte.x}:${recorte.y}`,
-    `scale=${SALIDA.ancho}:${SALIDA.alto}:flags=lanczos`,
-    "setsar=1",
-    // fontsdir y no fontconfig: dentro de wasm no hay fuentes de sistema, así
-    // que libass solo encuentra la que se le escribe en el disco virtual.
-    ...(conSubtitulos ? [`subtitles=subs.ass:fontsdir=/tipografia`] : []),
-  ].join(",");
-  partes.push(`[vc]${cadena}[vout]`);
+  partes.push(
+    `[vc]crop=${recorte.ancho}:${recorte.alto}:${recorte.x}:${recorte.y},` +
+      `scale=${SALIDA.ancho}:${SALIDA.alto}:flags=lanczos,setsar=1[base]`,
+  );
 
+  // Los insertos tapan el video entero mientras dura la frase, con un zoom
+  // lento. Una foto quieta a pantalla completa durante tres segundos parece un
+  // error de reproducción; moviéndose despacio parece intencionado.
+  let ultima = "base";
+  insertos.slice(0, MAX_INSERTOS).forEach((ins, i) => {
+    const entrada = i + 1; // la 0 es el video
+    const dura = Math.max(0.1, ins.hasta - ins.desde);
+    const fotogramas = Math.max(1, Math.round(dura * 30));
+    partes.push(
+      `[${entrada}:v]scale=${SALIDA.ancho}:${SALIDA.alto}:force_original_aspect_ratio=increase,` +
+        `crop=${SALIDA.ancho}:${SALIDA.alto},setsar=1,` +
+        `zoompan=z='min(zoom+0.0007,1.12)':d=${fotogramas}:s=${SALIDA.ancho}x${SALIDA.alto}:fps=30,` +
+        // Sin esto el inserto empieza en su propio segundo cero y `enable` lo
+        // dejaría fuera de su sitio.
+        `setpts=PTS-STARTPTS+${ins.desde.toFixed(3)}/TB[ap${i}]`,
+    );
+    partes.push(
+      `[${ultima}][ap${i}]overlay=0:0:enable='between(t,${ins.desde.toFixed(3)},${ins.hasta.toFixed(3)})':eof_action=pass[ov${i}]`,
+    );
+    ultima = `ov${i}`;
+  });
+
+  // Las transiciones: un borrón corto y un destello. Van entre BLOQUES del
+  // guion, no en cada corte de silencio — un corte de silencio tiene que ser
+  // invisible, y señalarlo con un efecto delata cada respiración quitada.
+  const usadas = transiciones.slice(0, MAX_TRANSICIONES);
+  if (usadas.length) {
+    const borrones = usadas
+      .map((t) => `between(t,${t.en.toFixed(3)},${(t.en + BORRON_S).toFixed(3)})`)
+      .join("+");
+    partes.push(`[${ultima}]gblur=sigma=16:enable='${borrones}'[bl]`);
+    const destellos = usadas
+      .map(
+        (t) =>
+          `between(t,${(t.en + 0.02).toFixed(3)},${(t.en + 0.02 + DESTELLO_S).toFixed(3)})`,
+      )
+      .join("+");
+    // drawbox con enable y no `fade`: fade=in deja en blanco TODO lo anterior
+    // a su arranque, así que un destello a mitad del video lo blanqueaba entero.
+    partes.push(
+      `[bl]drawbox=x=0:y=0:w=iw:h=ih:color=white@0.7:t=fill:enable='${destellos}'[tr]`,
+    );
+    ultima = "tr";
+  }
+
+  // fontsdir y no fontconfig: dentro de wasm no hay fuentes de sistema, así
+  // que libass solo encuentra la que se le escribe en el disco virtual.
+  if (conSubtitulos) {
+    partes.push(`[${ultima}]subtitles=subs.ass:fontsdir=/tipografia[vout]`);
+  } else {
+    partes.push(`[${ultima}]null[vout]`);
+  }
+
+  return partes.join(";");
+}
+
+/** La parte de audio: la voz ya cortada, más los efectos en su sitio. */
+export function filtrosAudio(sonidos: { en: number }[], primeraEntrada: number): string {
+  if (sonidos.length === 0) return "";
+  const partes = sonidos.map((s, i) => {
+    const ms = Math.max(0, Math.round(s.en * 1000));
+    // adelay pide un retraso por canal; el efecto es mono pero el amix puede
+    // estar en estéreo, así que se dan dos y sobra uno sin molestar.
+    return `[${primeraEntrada + i}:a]adelay=${ms}|${ms},volume=0.45[sfx${i}]`;
+  });
+  const entradas = sonidos.map((_, i) => `[sfx${i}]`).join("");
+  partes.push(
+    `[ac]${entradas}amix=inputs=${sonidos.length + 1}:duration=first:dropout_transition=0,volume=1.6[aout]`,
+  );
   return partes.join(";");
 }
 
@@ -216,6 +282,20 @@ export async function extraerAudio(
   }
 }
 
+/** Una imagen que tapa el video mientras se dice una frase. */
+export type Inserto = {
+  imagen: Blob;
+  desde: number;
+  hasta: number;
+};
+
+/** Un instante donde el video cambia de bloque. */
+export type Transicion = {
+  en: number;
+  /** El efecto que suena ahí. null para que no suene nada. */
+  sonido: Blob | null;
+};
+
 export type Montaje = {
   video: File | Blob;
   tramos: Tramo[];
@@ -223,7 +303,25 @@ export type Montaje = {
   /** El guion de subtítulos en ASS, o null para no quemar ninguno. */
   ass: string | null;
   conAudio: boolean;
+  /** Las imágenes de apoyo, ya resueltas y en tiempos del video ya cortado. */
+  insertos?: Inserto[];
+  transiciones?: Transicion[];
 };
+
+/** Cuánto dura el desenfoque de una transición. Más y se nota el truco. */
+const BORRON_S = 0.16;
+/** Y el destello, más corto todavía: es un parpadeo, no un fundido. */
+const DESTELLO_S = 0.07;
+
+/**
+ * Cuántos insertos y transiciones se admiten.
+ *
+ * Cada inserto es una entrada más para ffmpeg y una capa más que componer, y
+ * esto corre dentro de un navegador. Un guion con ocho frases no necesita
+ * ocho imágenes: necesita las que sostienen la idea.
+ */
+export const MAX_INSERTOS = 6;
+export const MAX_TRANSICIONES = 8;
 
 /**
  * Monta el video y devuelve el MP4.
@@ -255,12 +353,37 @@ export async function montar(
       await f.writeFile("subs.ass", new TextEncoder().encode(m.ass));
     }
 
+    // Cada inserto y cada efecto son una entrada más para ffmpeg, escrita
+    // antes en el disco virtual. El orden importa: [0] es el video, luego los
+    // insertos, luego los sonidos.
+    const insertos = (m.insertos ?? []).slice(0, MAX_INSERTOS);
+    const conSonido =
+      m.conAudio ? (m.transiciones ?? []).filter((t) => t.sonido).slice(0, MAX_TRANSICIONES) : [];
+
+    const entradas: string[] = ["-i", "entrada"];
+    for (let i = 0; i < insertos.length; i++) {
+      await f.writeFile(`ins${i}`, await fetchFile(insertos[i].imagen));
+      entradas.push("-i", `ins${i}`);
+    }
+    for (let i = 0; i < conSonido.length; i++) {
+      await f.writeFile(`sfx${i}.wav`, await fetchFile(conSonido[i].sonido!));
+      entradas.push("-i", `sfx${i}.wav`);
+    }
+
     const recorte = recorteDe(m.encuadre);
+    const audio = filtrosAudio(conSonido, 1 + insertos.length);
+    const grafo = [
+      filtros(m.tramos, recorte, m.conAudio, Boolean(m.ass), insertos, m.transiciones ?? []),
+      ...(audio ? [audio] : []),
+    ].join(";");
+
     const orden = [
-      "-i", "entrada",
-      "-filter_complex", filtros(m.tramos, recorte, m.conAudio, Boolean(m.ass)),
+      ...entradas,
+      "-filter_complex", grafo,
       "-map", "[vout]",
-      ...(m.conAudio ? ["-map", "[ac]", "-c:a", "aac", "-b:a", "128k", "-ar", "44100"] : ["-an"]),
+      ...(m.conAudio
+        ? ["-map", audio ? "[aout]" : "[ac]", "-c:a", "aac", "-b:a", "128k", "-ar", "44100"]
+        : ["-an"]),
       "-c:v", "libx264",
       // veryfast y no ultrafast: ultrafast produce archivos casi del doble, y
       // aquí lo que se sube después también cuesta tiempo al dueño.
@@ -286,8 +409,9 @@ export async function montar(
     f.off("progress", escuchar);
     // El disco virtual vive lo que vive la pestaña: un video de 200 MB que se
     // queda dentro deja sin memoria al siguiente montaje.
-    for (const a of ["entrada", "salida.mp4", "subs.ass"]) {
-      await f.deleteFile(a).catch(() => {});
-    }
+    const basura = ["entrada", "salida.mp4", "subs.ass"];
+    for (let i = 0; i < MAX_INSERTOS; i++) basura.push(`ins${i}`);
+    for (let i = 0; i < MAX_TRANSICIONES; i++) basura.push(`sfx${i}.wav`);
+    for (const a of basura) await f.deleteFile(a).catch(() => {});
   }
 }

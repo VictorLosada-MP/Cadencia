@@ -355,8 +355,18 @@ function Resultado({ p }: { p: Pieza }) {
   );
 }
 
+/** Para comparar dos frases sin que una coma decida que son distintas. */
+const mismaFrase = (a = "", b = "") =>
+  a.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "") ===
+  b.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "");
+
 function DeVideo({ g }: { g: Guion }) {
-  const completo = [g.gancho, ...(g.golpes?.map((x) => x.texto) ?? []), g.cierre?.texto]
+  // El primer golpe ES el gancho —lo manda el prompt, literal— así que ponerlo
+  // otra vez delante lo repetía dos veces en el texto para copiar. Se comprueba
+  // en vez de darlo por hecho: un guion viejo puede no cumplirlo.
+  const golpes = g.golpes?.map((x) => x.texto) ?? [];
+  const repetido = mismaFrase(g.gancho, golpes[0]);
+  const completo = [...(repetido ? [] : [g.gancho]), ...golpes, g.cierre?.texto]
     .filter(Boolean)
     .join("\n\n");
 
