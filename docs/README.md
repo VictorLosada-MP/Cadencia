@@ -104,6 +104,29 @@ copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
 sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
 a que un tercero siga publicándolo.
 
+### La carátula de entrada
+
+Los tres reels de referencia abren igual: el gancho en grande sobre una
+imagen, dos o tres renglones, el último en otro color. Dura 1,8 segundos —
+medido— y es lo que decide si alguien se queda.
+
+Va por ASS y no por una capa de video más: un estilo aparte centrado en el
+cuadro (`Alignment 5`), con el contorno más grueso para que aguante encima de
+cualquier foto. Cuesta cero fotogramas extra. Mientras está, los subtítulos se
+callan: dos textos a la vez sobre la misma imagen no se lee ninguno.
+
+Solo en la edición completa.
+
+### El borrador del negocio
+
+Lo que escribes y no guardas se perdía, y encima **volvía solo a la versión
+vieja del servidor** — así que parecía que no guardaba. Ahora vive en el
+navegador y **gana sobre lo del servidor** hasta que se guarda de verdad.
+
+La regla es dura y está en `leerBorrador`/`guardarBorrador`: lo del servidor
+solo se pone si no hay nada escrito a medias. Y si intentas cerrar la pestaña
+con algo sin guardar, el navegador pregunta.
+
 ### El paso 3 pregunta QUÉ grabas, no cómo se edita
 
 Había cuatro formatos y dos —"sencillo" y "con producción"— no describían la

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CAMPOS_EXTRA,
   CAMPOS_NUCLEO,
@@ -11,6 +11,66 @@ import {
 
 /** El negocio en blanco: lo mismo que ve alguien que llega por primera vez. */
 export const NEGOCIO_VACIO: Negocio = { oferta: "", cliente: "", despues: "" };
+
+const BORRADOR = "cadencia:negocio";
+
+/**
+ * Lo que está escrito y sin guardar.
+ *
+ * Existe porque sin esto se perdía: escribías media oferta, te ibas a la
+ * semana, volvías, y el campo había vuelto solo a la versión vieja del
+ * servidor. Parecía que no guardaba — y en realidad es que nunca llegó a
+ * guardarse, y encima lo tapaba con lo de antes.
+ *
+ * **El borrador gana sobre lo del servidor** mientras exista. Se borra al
+ * guardar, que es el único momento en que lo del servidor ya es lo suyo.
+ */
+export function leerBorrador(): Negocio | null {
+  try {
+    const crudo = localStorage.getItem(BORRADOR);
+    return crudo ? (JSON.parse(crudo) as Negocio) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function guardarBorrador(n: Negocio) {
+  try {
+    localStorage.setItem(BORRADOR, JSON.stringify(n));
+  } catch {
+    // Sin espacio o en incógnito: se sigue escribiendo, solo no se recuerda.
+  }
+}
+
+export function borrarBorrador() {
+  try {
+    localStorage.removeItem(BORRADOR);
+  } catch {
+    // Si no se puede borrar, el siguiente guardado lo pisa igual.
+  }
+}
+
+/**
+ * Avisa antes de cerrar la pestaña con algo escrito y sin guardar.
+ *
+ * El borrador ya lo recupera todo, pero un aviso del propio navegador es la
+ * única forma de parar a alguien que está a punto de cerrar sin darse cuenta.
+ */
+export function useAvisarSinGuardar(hay: boolean) {
+  useEffect(() => {
+    if (!hay) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [hay]);
+}
+
+/** ¿Hay algo escrito de verdad? Un borrador todo en blanco no es un borrador. */
+export function tieneAlgo(n: Negocio | null): boolean {
+  return Boolean(
+    n && Object.values(n).some((v) => typeof v === "string" && v.trim().length > 0),
+  );
+}
 
 /**
  * Lo que devuelve /api/negocio, ya normalizado a cadenas. La base guarda null

@@ -8,7 +8,15 @@ import type { Imagen } from "@/lib/modelo";
 import type { Comparacion } from "@/lib/historial";
 import type { Diagnostico, DiagnosticoRed } from "@/types/diagnostico";
 import type { Negocio } from "@/types/negocio";
-import { BloqueNegocio, NEGOCIO_VACIO, desdeBase } from "../negocio/negocio";
+import {
+  BloqueNegocio,
+  NEGOCIO_VACIO,
+  borrarBorrador,
+  desdeBase,
+  guardarBorrador,
+  leerBorrador,
+  tieneAlgo,
+} from "../negocio/negocio";
 import {
   CASILLAS,
   CASILLAS_VACIAS,
@@ -106,7 +114,8 @@ export default function Diagnostico() {
     ventana: guardado?.ventana,
   }));
   const [respuestasGuardadas] = useState(() => guardado?.respuestas ?? {});
-  const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
+  const [borradorNegocio] = useState(leerBorrador);
+  const [negocio, setNegocio] = useState<Negocio>(() => borradorNegocio ?? NEGOCIO_VACIO);
   const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
   const [creado, setCreado] = useState<string | null>(null);
@@ -182,8 +191,11 @@ export default function Diagnostico() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!vivo || !d?.negocio) return;
-        setNegocio(desdeBase(d.negocio));
-        setNegocioEnBase(true);
+        // Igual que en /negocio: lo del servidor no pisa lo que está a medias.
+        if (!tieneAlgo(borradorNegocio)) {
+          setNegocio(desdeBase(d.negocio));
+          setNegocioEnBase(true);
+        }
         if (d.comparacion) setComparacion(d.comparacion);
       })
       .catch(() => {
@@ -192,7 +204,7 @@ export default function Diagnostico() {
     return () => {
       vivo = false;
     };
-  }, [sesion, guardado]);
+  }, [sesion, guardado, borradorNegocio]);
 
   const listas = redes.filter(tieneContenido);
   const usadas = redes.map((r) => r.plataforma);
@@ -317,11 +329,16 @@ export default function Diagnostico() {
             <BloqueNegocio
               negocio={negocio}
               onCambio={(c) => {
-                setNegocio({ ...negocio, ...c });
+                const nuevo = { ...negocio, ...c };
+                setNegocio(nuevo);
                 setNegocioEnBase(false);
+                guardarBorrador(nuevo);
               }}
               guardado={negocioEnBase}
-              onGuardado={() => setNegocioEnBase(true)}
+              onGuardado={() => {
+                setNegocioEnBase(true);
+                borrarBorrador();
+              }}
               semilla={enPruebas ? semilla : undefined}
               onSemilla={enPruebas ? setSemilla : undefined}
             />

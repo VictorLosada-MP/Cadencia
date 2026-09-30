@@ -15,6 +15,7 @@ import {
 } from "@/lib/silencios";
 import {
   ANIMACIONES,
+  CARATULA_S,
   aASS,
   enLineas,
   protegerPalabras,
@@ -186,6 +187,15 @@ export function Editor({
     return planos(enCorte, duracionDe(tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }]));
   }, [palabras, tramos, fuente]);
 
+  /** El gancho en grande sobre la primera imagen, los dos primeros segundos. */
+  const caratula = useMemo(
+    () =>
+      nivel === "completa" && guion?.gancho?.trim()
+        ? { texto: guion.gancho.trim(), hasta: CARATULA_S }
+        : null,
+    [nivel, guion],
+  );
+
   const puestos = useMemo(
     () => (fuente ? insertosDe(apoyos, tramos, fuente.duracion) : []),
     [apoyos, tramos, fuente],
@@ -337,7 +347,12 @@ export function Editor({
           video: fuente.archivo,
           tramos: tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }],
           encuadre: { ancho: fuente.ancho, alto: fuente.alto, posicion },
-          ass: lineas.length ? aASS(lineas, animacion) : null,
+          // La carátula solo en la edición completa: es lo que abre los reels
+          // de referencia, y en la base estorba.
+          ass:
+            lineas.length || caratula
+              ? aASS(lineas, animacion, undefined, caratula)
+              : null,
           conAudio,
           insertos: puestos,
           soloVoz,
@@ -932,6 +947,15 @@ export function Editor({
                         conApoyo.length > 0
                           ? "Sin imágenes de apoyo — no llegaste a elegirlas"
                           : "Este guion no pedía imágenes de apoyo"
+                      }
+                    />
+                    <Hizo
+                      si={Boolean(caratula)}
+                      hecho="Carátula de entrada con el gancho"
+                      no={
+                        nivel === "base"
+                          ? "Sin carátula — elegiste la edición base"
+                          : "Sin carátula — el guion no trae gancho"
                       }
                     />
                     <Hizo

@@ -442,6 +442,16 @@ export async function montar(
 ): Promise<Blob> {
   const f = await cargarMotor(alAvanzar);
 
+  // Lo último que dijo ffmpeg antes de morir. Sin esto, un fallo de montaje
+  // llega a la pantalla como "código 1" y no hay forma de saber qué pasó —
+  // ni para quien lo usa, ni para quien lo arregla.
+  const ultimas: string[] = [];
+  const anotar = ({ message }: { message: string }) => {
+    ultimas.push(message);
+    if (ultimas.length > 40) ultimas.shift();
+  };
+  f.on("log", anotar);
+
   const escuchar = ({ progress }: { progress: number }) => {
     // ffmpeg devuelve valores fuera de rango cuando la duración no cuadra.
     const parte = Math.min(0.99, Math.max(0, progress));
@@ -482,6 +492,14 @@ export async function montar(
         entradas.push("-i", `ins${i}`);
       }
     }
+    // Cuántas entradas hay ANTES de los efectos: es el índice del primero.
+    //
+    // Se cuenta aquí y no después, que es donde estaba el fallo: contándolo
+    // al final incluía los propios efectos y el grafo pedía `[4:a]` cuando
+    // solo había cuatro entradas (0..3). ffmpeg contestaba "Invalid file
+    // index 4" y el montaje entero se caía.
+    const antesDelSonido = entradas.filter((e) => e === "-i").length;
+
     for (let i = 0; i < conSonido.length; i++) {
       await f.writeFile(`sfx${i}.wav`, await fetchFile(conSonido[i].sonido!));
       entradas.push("-i", `sfx${i}.wav`);
@@ -490,7 +508,7 @@ export async function montar(
     const recorte = recorteDe(m.encuadre);
     // De dónde sale la voz: la entrada 0 en a cámara, la última en voz en off.
     const laVoz = m.soloVoz ? `${insertos.length}:a` : "ac";
-    const audio = filtrosAudio(conSonido, entradas.filter((e) => e === "-i").length, laVoz);
+    const audio = filtrosAudio(conSonido, antesDelSonido, laVoz);
 
     const duracion = duracionDe(m.tramos);
     const grafo = [
@@ -537,7 +555,15 @@ export async function montar(
     ];
 
     const codigo = await f.exec(orden);
-    if (codigo !== 0) throw new Error(`ffmpeg terminó con código ${codigo}.`);
+    if (codigo !== 0) {
+      const pista = ultimas
+        .filter((l) => /error|invalid|no such|unable|failed|cannot/i.test(l))
+        .slice(-3)
+        .join(" · ");
+      throw new Error(
+        pista ? `ffmpeg falló: ${pista}` : `ffmpeg terminó con código ${codigo}.`,
+      );
+    }
 
     const datos = await f.readFile("salida.mp4");
     alAvanzar?.({ parte: 1, mensaje: "Listo." });
@@ -546,6 +572,7 @@ export async function montar(
     return new Blob([bytes.slice().buffer as ArrayBuffer], { type: "video/mp4" });
   } finally {
     f.off("progress", escuchar);
+    f.off("log", anotar);
     // El disco virtual vive lo que vive la pestaña: un video de 200 MB que se
     // queda dentro deja sin memoria al siguiente montaje.
     const basura = ["entrada", "salida.mp4", "subs.ass"];

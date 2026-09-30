@@ -5,7 +5,16 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import type { Negocio } from "@/types/negocio";
-import { BloqueNegocio, NEGOCIO_VACIO, desdeBase } from "./negocio";
+import {
+  BloqueNegocio,
+  NEGOCIO_VACIO,
+  borrarBorrador,
+  desdeBase,
+  guardarBorrador,
+  leerBorrador,
+  tieneAlgo,
+  useAvisarSinGuardar,
+} from "./negocio";
 
 /**
  * El Perfil de Negocio tiene pantalla propia porque no es de la Función 1: es
@@ -14,9 +23,14 @@ import { BloqueNegocio, NEGOCIO_VACIO, desdeBase } from "./negocio";
  */
 export default function PantallaNegocio() {
   const { data: sesion, isPending } = useSession();
-  const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
+  // Lo escrito y sin guardar vuelve primero. Si hay borrador, ese manda.
+  const [borrador] = useState(leerBorrador);
+  const [negocio, setNegocio] = useState<Negocio>(() => borrador ?? NEGOCIO_VACIO);
   const [enBase, setEnBase] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const sinGuardar = tieneAlgo(borrador) && !enBase;
+  // Y si intenta cerrar la pestaña con algo a medias, el navegador pregunta.
+  useAvisarSinGuardar(!enBase && tieneAlgo(negocio));
 
   useEffect(() => {
     // Sin sesión no se pide nada, y `cargando` no se toca: esta pantalla
@@ -29,8 +43,13 @@ export default function PantallaNegocio() {
       .then((d) => {
         if (!vivo) return;
         if (d?.negocio) {
-          setNegocio(desdeBase(d.negocio));
-          setEnBase(true);
+          // Lo del servidor solo se pone si no hay nada escrito a medias.
+          // Pisarlo era el fallo: borraba lo que estabas escribiendo y lo
+          // devolvía a la versión vieja, así que parecía que no guardaba.
+          if (!tieneAlgo(borrador)) {
+            setNegocio(desdeBase(d.negocio));
+            setEnBase(true);
+          }
         }
       })
       .catch(() => {})
@@ -40,7 +59,7 @@ export default function PantallaNegocio() {
     return () => {
       vivo = false;
     };
-  }, [sesion]);
+  }, [sesion, borrador]);
 
   if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
@@ -80,6 +99,14 @@ export default function PantallaNegocio() {
         </p>
       </header>
 
+      {sinGuardar && (
+        <p className="mt-6 rounded-lg border-l-[3px] border-amber-600 bg-amber-50 p-3 text-sm dark:bg-amber-950/25">
+          Tienes cambios <strong>sin guardar</strong> de la última vez. Están
+          aquí abajo tal como los dejaste — dale a <em>Guardar mi negocio</em>
+          cuando termines.
+        </p>
+      )}
+
       {cargando ? (
         <p className="mt-9 text-sm text-neutral-500">Buscando lo que ya guardaste…</p>
       ) : (
@@ -87,11 +114,17 @@ export default function PantallaNegocio() {
           <BloqueNegocio
             negocio={negocio}
             onCambio={(c) => {
-              setNegocio({ ...negocio, ...c });
+              const nuevo = { ...negocio, ...c };
+              setNegocio(nuevo);
               setEnBase(false);
+              guardarBorrador(nuevo);
             }}
             guardado={enBase}
-            onGuardado={() => setEnBase(true)}
+            onGuardado={() => {
+              setEnBase(true);
+              // Guardado: lo del servidor ya ES lo suyo, el borrador sobra.
+              borrarBorrador();
+            }}
           />
           {enBase && (
             <Link
