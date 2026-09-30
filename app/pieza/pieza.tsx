@@ -134,20 +134,16 @@ export default function Guion() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           1 · Qué vas a grabar
         </h2>
-        {([true, false] as const).map((grabas) => {
-          const suyos = FORMATOS.filter(
-            (f) =>
-              f.grabas === grabas &&
-              (verTodos || !familiaVenida || f.familia === familiaVenida),
-          );
-          if (!suyos.length) return null;
-          return (
-          <div key={String(grabas)} className="mt-3">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-              {grabas ? "te grabas" : "sin cámara"}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {suyos.map((f) => (
+        <p className="mb-3 mt-0.5 text-sm text-neutral-500">
+          Solo eso: si sales tú, si solo se te oye, o si no hace falta ninguna
+          de las dos. <strong>Cuánto se edita se decide después</strong>, en el
+          paso 4 — y grabes como grabes, se puede editar igual.
+        </p>
+        <div className="mt-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {FORMATOS.filter(
+              (f) => verTodos || !familiaVenida || f.familia === familiaVenida,
+            ).map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setFormato(f.id)}
@@ -157,17 +153,22 @@ export default function Guion() {
                       : "border-neutral-300 bg-white hover:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-teal-400"
                   }`}
                 >
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                    {f.graba === "video"
+                      ? "grabas video"
+                      : f.graba === "audio"
+                        ? "grabas solo audio"
+                        : "no grabas nada"}
+                  </p>
                   <p className="font-semibold leading-snug">{f.nombre}</p>
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{f.que}</p>
                   <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                     {f.detalle}
                   </p>
                 </button>
-              ))}
-            </div>
+            ))}
           </div>
-          );
-        })}
+        </div>
         {familiaVenida && !verTodos ? (
           <button
             onClick={() => setVerTodos(true)}

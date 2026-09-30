@@ -1,54 +1,69 @@
 /**
- * Los formatos, agrupados por lo que hay que producir.
+ * Qué vas a grabar. **Nada más que eso.**
  *
- * No todo es video. Un dueño de negocio que esta semana no quiere grabarse
- * sigue teniendo que publicar, y obligarle a elegir entre grabar o no publicar
- * es lo que rompe la constancia.
+ * Antes había cuatro opciones y dos de ellas —"sencillo" y "con producción"—
+ * no describían la grabación sino la EDICIÓN: hablaban de subtítulos, de
+ * transiciones y de "media hora de edición". Eso le decía al dueño que tenía
+ * que grabar de forma distinta según la opción, cuando no es verdad: se graba
+ * igual. Y encima duplicaba la elección, porque cuánto se edita se decide
+ * después, en el paso 4, que es donde está el editor.
+ *
+ * Ahora esta pantalla solo pregunta lo único que cambia lo que hace falta de
+ * él: si sale su cara, si solo sale su voz, o si no sale ninguna de las dos.
  */
 export const FORMATOS = [
   {
-    id: "sencillo" as const,
-    familia: "video" as const,
-    nombre: "A cámara, sencillo",
-    que: "Tú hablando, con subtítulos y los cortes justos. Media hora de edición.",
-    detalle: "3 o 4 frases",
-    grabas: true,
-  },
-  {
-    id: "producido" as const,
-    familia: "video" as const,
-    nombre: "A cámara, con producción",
-    que: "Lo mismo, más imágenes de apoyo, algún texto animado y transiciones. Se nota, y cuesta más.",
-    detalle: "4 o 5 frases, con apoyo en cada una",
-    grabas: true,
+    id: "camara" as const,
+    familia: "camara" as const,
+    nombre: "A cámara",
+    que: "Sales tú hablando. Grabas con el teléfono como te salga: los cortes, el encuadre y los subtítulos los pone el sistema después.",
+    detalle: "3 a 5 frases",
+    graba: "video" as const,
   },
   {
     id: "voz-en-off" as const,
-    familia: "video" as const,
+    familia: "voz" as const,
     nombre: "Voz en off",
-    que: "No sales tú: solo imágenes, tu voz encima y texto. Para cuando no quieres grabarte la cara.",
+    que: "No sales tú: solo tu voz sobre imágenes. Grabas únicamente el audio, y el sistema arma el video con las imágenes del guion.",
     detalle: "4 o 5 frases",
-    grabas: false,
+    graba: "audio" as const,
   },
   {
     id: "carrusel" as const,
     familia: "carrusel" as const,
     nombre: "Carrusel",
-    que: "Varias láminas que se pasan con el dedo. Sin cámara, sin voz, sin edición.",
+    que: "Varias láminas que se pasan con el dedo. Sin cámara y sin voz.",
     detalle: "de 5 a 8 láminas",
-    grabas: false,
+    graba: "nada" as const,
   },
 ];
 
 export type Formato = (typeof FORMATOS)[number]["id"];
 export type Familia = (typeof FORMATOS)[number]["familia"];
+/** Qué tiene que grabar el dueño. Decide qué le pide el paso 4. */
+export type Graba = (typeof FORMATOS)[number]["graba"];
 
-export const formatoPorId = (id: string) => FORMATOS.find((f) => f.id === id);
-export const familiaDe = (id: string): Familia => formatoPorId(id)?.familia ?? "video";
+/**
+ * Los ids viejos siguen resolviendo.
+ *
+ * Hay guiones ya guardados con "sencillo" y "producido": si dejaran de
+ * resolver, la pieza de la semana pasada se abriría rota.
+ */
+const VIEJOS: Record<string, Formato> = {
+  sencillo: "camara",
+  producido: "camara",
+};
+
+export const formatoPorId = (id: string) =>
+  FORMATOS.find((f) => f.id === id) ?? FORMATOS.find((f) => f.id === VIEJOS[id]);
+
+export const familiaDe = (id: string): Familia => formatoPorId(id)?.familia ?? "camara";
+export const grabaDe = (id: string): Graba => formatoPorId(id)?.graba ?? "video";
 
 /** El prompt que produce cada familia. */
 export const PROMPT_DE: Record<Familia, string> = {
-  video: "3-guion.md",
+  camara: "3-guion.md",
+  voz: "3-guion.md",
   carrusel: "3-carrusel.md",
 };
 

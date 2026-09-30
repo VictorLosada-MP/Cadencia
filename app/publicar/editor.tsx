@@ -8,12 +8,14 @@ import {
   envolvente,
   reubicar,
   tramosAudibles,
+  sinMuletillas,
   umbralSugerido,
   type Ajustes,
   type Tramo,
 } from "@/lib/silencios";
 import {
   ANIMACIONES,
+  CARATULA_S,
   aASS,
   enLineas,
   protegerPalabras,
@@ -68,6 +70,7 @@ const reloj = (s: number) => {
 export function Editor({
   guion,
   corridaId,
+  graba,
 }: {
   guion?: {
     descripcion?: string;
@@ -75,7 +78,14 @@ export function Editor({
     golpes?: { texto: string; apoyo?: string; apoyo_tuyo?: boolean }[];
   };
   corridaId?: string | null;
+  /**
+   * Qué grabó el dueño. En "voz en off" es SOLO audio, y entonces el video no
+   * existe: lo arma el sistema con las imágenes. Pedirle un video en ese
+   * formato era pedirle lo único que ese formato dice que no va a grabar.
+   */
+  graba?: "video" | "audio";
 }) {
+  const soloVoz = graba === "audio";
   const [nivel, setNivel] = useState<"base" | "completa">("completa");
   // El guion pide imágenes de apoyo cuando el formato es "con producción" o
   // "voz en off". El editor todavía no las coloca solo, así que lo dice y las
@@ -90,6 +100,7 @@ export function Editor({
   const [conAudio, setConAudio] = useState(true);
   const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES);
   const [cortar, setCortar] = useState(true);
+  const [quitarMuletillas, setQuitarMuletillas] = useState(true);
 
   const [palabras, setPalabras] = useState<Palabra[] | null>(null);
   const [transcribiendo, setTranscribiendo] = useState(false);
@@ -122,11 +133,15 @@ export function Editor({
     if (!env || !fuente) return [];
     if (!cortar) return [{ desde: 0, hasta: fuente.duracion }];
     const crudos = tramosAudibles(env, fuente.duracion, ajustes);
+    if (!palabras?.length) return crudos;
     // En cuanto hay transcripción, ningún corte puede partir una palabra. Es
     // lo que hacía que el video dijera media palabra y además se quedara sin
     // su subtítulo: el arranque de una ese suave cae por debajo del umbral.
-    return palabras?.length ? protegerPalabras(crudos, palabras) : crudos;
-  }, [env, fuente, ajustes, cortar, palabras]);
+    const protegidos = protegerPalabras(crudos, palabras);
+    // Y las muletillas se quitan por lo que SON, no por su volumen: un "eh"
+    // suena de sobra para pasar cualquier umbral.
+    return quitarMuletillas ? sinMuletillas(protegidos, palabras) : protegidos;
+  }, [env, fuente, ajustes, cortar, palabras, quitarMuletillas]);
 
   /**
    * Dónde va cada transición.
@@ -171,6 +186,15 @@ export function Editor({
       .filter((p): p is NonNullable<typeof p> => p !== null);
     return planos(enCorte, duracionDe(tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }]));
   }, [palabras, tramos, fuente]);
+
+  /** El gancho en grande sobre la primera imagen, los dos primeros segundos. */
+  const caratula = useMemo(
+    () =>
+      nivel === "completa" && guion?.gancho?.trim()
+        ? { texto: guion.gancho.trim(), hasta: CARATULA_S }
+        : null,
+    [nivel, guion],
+  );
 
   const puestos = useMemo(
     () => (fuente ? insertosDe(apoyos, tramos, fuente.duracion) : []),
@@ -228,7 +252,13 @@ export function Editor({
     // —los iPhone graban en HEVC y Chrome no siempre puede— lo mide ffmpeg, y
     // entonces se monta igual: lo único que se pierde es la vista previa.
     let verEnPantalla = true;
-    let medido = await medir(url).catch(() => null);
+    // Un audio no tiene ancho ni alto: se le da el tamaño de salida y punto.
+    let medido = soloVoz ? null : await medir(url).catch(() => null);
+    if (soloVoz) {
+      verEnPantalla = false;
+      const solo = await medirConMotor(archivo, setAvance).catch(() => null);
+      medido = solo && { ...solo, ancho: SALIDA.ancho, alto: SALIDA.alto };
+    }
     if (!medido) {
       verEnPantalla = false;
       setAvance({ parte: 0, mensaje: "Tu navegador no sabe leer ese formato. Abriendo el motor…" });
@@ -317,9 +347,15 @@ export function Editor({
           video: fuente.archivo,
           tramos: tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }],
           encuadre: { ancho: fuente.ancho, alto: fuente.alto, posicion },
-          ass: lineas.length ? aASS(lineas, animacion) : null,
+          // La carátula solo en la edición completa: es lo que abre los reels
+          // de referencia, y en la base estorba.
+          ass:
+            lineas.length || caratula
+              ? aASS(lineas, animacion, undefined, caratula)
+              : null,
           conAudio,
           insertos: puestos,
+          soloVoz,
           // En la edición base no hay transiciones ni efecto: es el corte
           // limpio, los subtítulos y el apoyo, y nada más.
           transiciones: nivel === "completa" ? transiciones : [],
@@ -363,11 +399,15 @@ export function Editor({
   return (
     <div className="mt-9 space-y-10">
       {/* ── 1 · El archivo ── */}
-      <Paso n="1" titulo="El video que grabaste" hecho={Boolean(fuente)}>
+      <Paso
+        n="1"
+        titulo={soloVoz ? "El audio que grabaste" : "El video que grabaste"}
+        hecho={Boolean(fuente)}
+      >
         <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 p-6 text-center transition-colors hover:border-teal-600 dark:border-neutral-700 dark:hover:border-teal-400">
           <input
             type="file"
-            accept="video/*"
+            accept={soloVoz ? "audio/*,video/*" : "video/*"}
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -376,11 +416,15 @@ export function Editor({
             }}
           />
           <span className="font-semibold text-teal-700 dark:text-teal-400">
-            {fuente ? "Elegir otro video" : "Elegir el video"}
+            {fuente
+              ? soloVoz ? "Elegir otro audio" : "Elegir otro video"
+              : soloVoz ? "Elegir el audio" : "Elegir el video"}
           </span>
           <span className="mt-1 block text-sm text-neutral-500">
-            Sale de tu teléfono y se queda en tu navegador. Hasta{" "}
-            {MAX_SEGUNDOS / 60} minutos y {MAX_BYTES / 1e6} MB.
+            {soloVoz
+              ? "Solo tu voz: una nota de voz del teléfono sirve. El video lo arma el sistema con las imágenes del guion."
+              : "Sale de tu teléfono y se queda en tu navegador."}{" "}
+            Hasta {MAX_SEGUNDOS / 60} minutos y {MAX_BYTES / 1e6} MB.
           </span>
         </label>
 
@@ -491,15 +535,32 @@ export function Editor({
                   />
                 </div>
 
-                <label className="mt-4 flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={cortar}
-                    onChange={(e) => setCortar(e.target.checked)}
-                    className="accent-teal-700"
-                  />
-                  Cortar los silencios
-                </label>
+                <div className="mt-4 space-y-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={cortar}
+                      onChange={(e) => setCortar(e.target.checked)}
+                      className="accent-teal-700"
+                    />
+                    Cortar los silencios
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={quitarMuletillas}
+                      disabled={!palabras}
+                      onChange={(e) => setQuitarMuletillas(e.target.checked)}
+                      className="accent-teal-700"
+                    />
+                    Quitar las muletillas sueltas
+                    <span className="text-xs text-neutral-500">
+                      {palabras
+                        ? "«eh», «mmm», «o sea» cuando van solas entre pausas"
+                        : "necesita los subtítulos del paso 3"}
+                    </span>
+                  </label>
+                </div>
               </>
             )}
           </Paso>
@@ -886,6 +947,15 @@ export function Editor({
                         conApoyo.length > 0
                           ? "Sin imágenes de apoyo — no llegaste a elegirlas"
                           : "Este guion no pedía imágenes de apoyo"
+                      }
+                    />
+                    <Hizo
+                      si={Boolean(caratula)}
+                      hecho="Carátula de entrada con el gancho"
+                      no={
+                        nivel === "base"
+                          ? "Sin carátula — elegiste la edición base"
+                          : "Sin carátula — el guion no trae gancho"
                       }
                     />
                     <Hizo

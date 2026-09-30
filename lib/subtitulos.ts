@@ -293,10 +293,40 @@ const NEGRO = "&H00000000&";
  * tipografía, contorno, posición y —lo que hace falta para que se muevan—
  * etiquetas dentro de la propia línea.
  */
+/**
+ * La carátula de entrada.
+ *
+ * Los tres reels de referencia abren igual: el gancho en grande sobre una
+ * imagen, dos o tres renglones, la línea que remata en otro color. Dura poco
+ * —menos de dos segundos— y es lo que decide si alguien se queda.
+ */
+export type Caratula = { texto: string; hasta: number };
+
+/** Cuánto se queda. Medido: en las referencias, entre 1,5 y 2 segundos. */
+export const CARATULA_S = 1.8;
+
+/** Parte el gancho en renglones cortos, sin cortar palabras. */
+function enRenglones(texto: string, porRenglon = 22): string[] {
+  const salida: string[] = [];
+  let linea = "";
+  for (const w of limpiar(texto).split(/\s+/)) {
+    if (linea && (linea + " " + w).length > porRenglon) {
+      salida.push(linea);
+      linea = w;
+    } else {
+      linea = linea ? `${linea} ${w}` : w;
+    }
+  }
+  if (linea) salida.push(linea);
+  // Cuatro renglones ya es un párrafo, y un párrafo no es un gancho.
+  return salida.slice(0, 4);
+}
+
 export function aASS(
   lineas: Linea[],
   animacion: Animacion = "palabra",
   estilo: EstiloSubtitulo = ESTILO,
+  caratula?: Caratula | null,
 ): string {
   const base = cuerpoDe(animacion, estilo.alto);
   const contorno = Math.max(2, Math.round(base * 0.13));
@@ -318,6 +348,11 @@ export function aASS(
     // la interfaz de Instagram no le pone encima los botones.
     `Style: Voz,Outfit,${base},${BLANCO},${BLANCO},${NEGRO},&H64000000,-1,0,0,0,100,100,0,0,1,${contorno},${Math.round(contorno * 0.8)},2,${margenH},${margenH},${margenV},1`,
     "",
+    // La carátula tiene su propio estilo: más grande, centrada en el cuadro
+    // (Alignment 5) y con el contorno más grueso para que aguante encima de
+    // cualquier foto.
+    `Style: Gancho,Outfit,${Math.round(estilo.alto * 0.062)},${BLANCO},${BLANCO},${NEGRO},&H96000000,-1,0,0,0,100,100,0,0,1,${Math.round(contorno * 1.6)},${contorno},5,${margenH},${margenH},0,1`,
+    "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
   ];
@@ -327,7 +362,26 @@ export function aASS(
 
   const eventos: string[] = [];
 
+  if (caratula?.texto.trim()) {
+    const renglones = enRenglones(caratula.texto);
+    // El último renglón va en el color de realce: es el que remata la idea,
+    // y es lo que hacen las tres referencias.
+    const cuerpo = renglones
+      .map((r, i) => (i === renglones.length - 1 ? `{\\c${realce}}${r}` : r))
+      .join("\\N");
+    eventos.push(
+      `Dialogue: 1,${reloj(0)},${reloj(caratula.hasta)},Gancho,,0,0,0,,` +
+        // Entra creciendo y se va con un desvanecido: sin movimiento parece
+        // una marca de agua, no una entrada.
+        `{\\fad(0,220)\\fscx88\\fscy88\\t(0,180,\\fscx100\\fscy100)}${cuerpo}`,
+    );
+  }
+
   for (const l of lineas) {
+    // Mientras está la carátula no hay subtítulo: dos textos a la vez sobre
+    // la misma imagen no se lee ninguno.
+    if (caratula && l.hasta <= caratula.hasta) continue;
+
     const ps = l.palabras.length ? l.palabras : [{ palabra: l.texto, desde: l.desde, hasta: l.hasta }];
 
     if (animacion === "golpe") {
