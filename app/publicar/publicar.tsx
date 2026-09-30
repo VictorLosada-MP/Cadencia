@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
-import { esCarrusel, type Carrusel, type Guion, type Pieza } from "@/types/guion";
+import { esCarrusel, grabaDe, type Carrusel, type Guion, type Pieza } from "@/types/guion";
 import { apuntarHecho } from "@/lib/hecho";
 import { Editor } from "./editor";
 
@@ -15,6 +15,7 @@ export default function Lista() {
   const [paleta, setPaleta] = useState(PALETAS[0].id);
   const [creado, setCreado] = useState<string | null>(null);
   const [corridaId, setCorridaId] = useState<string | null>(null);
+  const [formato, setFormato] = useState<string>("camara");
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,9 @@ export default function Lista() {
           setPieza(d.corrida.resultado);
           setCreado(d.corrida.creado);
           setCorridaId(d.corrida.id ?? null);
+          // El formato viaja en la entrada de la corrida: dice si grabó
+          // video o solo audio, y eso cambia lo que el paso 4 le pide.
+          if (d.corrida.entrada?.formato) setFormato(String(d.corrida.entrada.formato));
         }
       })
       .catch(() => {})
@@ -93,7 +97,7 @@ export default function Lista() {
           corridaId={corridaId}
         />
       ) : (
-        <EsVideo guion={pieza as Guion} corridaId={corridaId} />
+        <EsVideo guion={pieza as Guion} corridaId={corridaId} formato={formato} />
       )}
     </main>
   );
@@ -423,15 +427,28 @@ function Buscador({
   );
 }
 
-function EsVideo({ guion, corridaId }: { guion: Guion; corridaId: string | null }) {
+function EsVideo({
+  guion,
+  corridaId,
+  formato,
+}: {
+  guion: Guion;
+  corridaId: string | null;
+  formato: string;
+}) {
+  const graba = grabaDe(formato);
   return (
     <section className="revela mt-9" style={{ ["--tarda" as string]: "0.08s" }}>
       <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-        <p className="font-semibold">Tu guion de video, listo para montar</p>
+        <p className="font-semibold">
+          {graba === "audio"
+            ? "Tu guion de voz en off, listo para montar"
+            : "Tu guion de video, listo para montar"}
+        </p>
         <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-          Graba con el teléfono y súbelo aquí. Se cortan los silencios, se
-          recorta a 9:16 y se queman los subtítulos —todo dentro de tu
-          navegador— y sale el MP4 que subes a Instagram o TikTok.
+          {graba === "audio"
+            ? "Graba solo tu voz —una nota de voz sirve— y súbela aquí. El sistema arma el video con las imágenes del guion, le pone tu voz encima y quema los subtítulos."
+            : "Graba con el teléfono y súbelo aquí. Se cortan los silencios, se recorta a 9:16 y se queman los subtítulos —todo dentro de tu navegador— y sale el MP4 que subes a Instagram o TikTok."}
         </p>
         <details className="mt-3">
           <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
@@ -452,7 +469,11 @@ function EsVideo({ guion, corridaId }: { guion: Guion; corridaId: string | null 
         </details>
       </div>
 
-      <Editor guion={guion} corridaId={corridaId} />
+      <Editor
+        guion={guion}
+        corridaId={corridaId}
+        graba={graba === "audio" ? "audio" : "video"}
+      />
     </section>
   );
 }

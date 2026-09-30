@@ -160,3 +160,71 @@ export function reubicar(t: number, tramos: Tramo[]): number | null {
   }
   return null;
 }
+
+/**
+ * Las muletillas.
+ *
+ * "Eh", "mmm", "o sea", "este"… No las quita el detector de silencios porque
+ * suenan: tienen energía de sobra para pasar cualquier umbral. Hay que
+ * quitarlas por lo que SON, y para eso hace falta la transcripción.
+ *
+ * Va con la lista corta y en español de Colombia, no con una lista exhaustiva:
+ * quitar demasiado deja el habla picada, y una muletilla ocasional suena
+ * humano. Se quitan las que se repiten y no dicen nada.
+ */
+export const MULETILLAS = [
+  "eh", "ehh", "em", "emm", "mmm", "mm", "este", "esto",
+  "osea", "digamos", "entonces", "pues", "bueno", "verdad", "cierto",
+];
+
+/** Sin tildes ni signos: así "¿cierto?" casa con "cierto". */
+function pelar(t: string): string {
+  return t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9ñ]/g, "");
+}
+
+/**
+ * Quita de los tramos las palabras que no dicen nada.
+ *
+ * Solo las que van **sueltas entre dos pausas**: un "entonces" en mitad de una
+ * frase es una conjunción de verdad y quitarlo rompe la oración. Uno precedido
+ * y seguido de silencio es relleno.
+ */
+export function sinMuletillas(
+  tramos: Tramo[],
+  palabras: { palabra: string; desde: number; hasta: number }[],
+  pausa = 0.18,
+): Tramo[] {
+  if (palabras.length === 0) return tramos;
+
+  const fuera: Tramo[] = [];
+  palabras.forEach((p, i) => {
+    if (!MULETILLAS.includes(pelar(p.palabra))) return;
+    const antes = i > 0 ? p.desde - palabras[i - 1].hasta : 99;
+    const despues = i + 1 < palabras.length ? palabras[i + 1].desde - p.hasta : 99;
+    // Suelta entre pausas: es relleno. Pegada a otra palabra: es gramática.
+    if (antes >= pausa || despues >= pausa) fuera.push({ desde: p.desde, hasta: p.hasta });
+  });
+
+  if (fuera.length === 0) return tramos;
+
+  const salida: Tramo[] = [];
+  for (const t of tramos) {
+    let trozos: Tramo[] = [{ ...t }];
+    for (const f of fuera) {
+      const nuevos: Tramo[] = [];
+      for (const tr of trozos) {
+        if (f.hasta <= tr.desde || f.desde >= tr.hasta) { nuevos.push(tr); continue; }
+        if (f.desde > tr.desde) nuevos.push({ desde: tr.desde, hasta: f.desde });
+        if (f.hasta < tr.hasta) nuevos.push({ desde: f.hasta, hasta: tr.hasta });
+      }
+      trozos = nuevos;
+    }
+    // Lo que queda por debajo de dos décimas no es habla: es un resto.
+    salida.push(...trozos.filter((x) => x.hasta - x.desde >= 0.2));
+  }
+  return salida.length ? salida : tramos;
+}

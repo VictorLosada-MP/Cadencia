@@ -104,6 +104,45 @@ copia de `node_modules` a `public/ffmpeg/` al instalar y al construir. Se
 sirve desde ahí y no desde un CDN porque cargarlo de unpkg ataría el producto
 a que un tercero siga publicándolo.
 
+### El paso 3 pregunta QUÉ grabas, no cómo se edita
+
+Había cuatro formatos y dos —"sencillo" y "con producción"— no describían la
+grabación sino la EDICIÓN: hablaban de subtítulos, transiciones y "media hora
+de edición". Eso le decía al dueño que tenía que grabar distinto según la
+opción, cuando se graba igual, y encima duplicaba una elección que ya vive en
+el paso 4.
+
+Quedan tres, y solo cambian lo que hace falta de él: **a cámara** (graba
+video), **voz en off** (graba solo audio) y **carrusel** (no graba nada). Los
+ids viejos siguen resolviendo, porque hay guiones guardados con ellos.
+
+### Voz en off arma el video, no lo pide
+
+Era un fallo de bulto: el formato dice "no sales tú, solo tu voz sobre
+imágenes" y el paso 4 le pedía un video — justo lo que ese formato promete que
+no va a grabar.
+
+Ahora `filtrosVoz` construye el video **con las imágenes**: cada una ocupa su
+tramo con un zoom lento, se encadenan y la voz va entera encima. Si una imagen
+falta, se estira la anterior: un video con negro en medio parece roto.
+
+### Lo que se tomó de video-use
+
+[browser-use/video-use](https://github.com/browser-use/video-use) es MIT y hace
+lo mismo desde otro sitio: un agente con terminal, ffmpeg de sistema y Python.
+No sirve como pieza de aquí —el dueño de un negocio no va a instalar nada— pero
+valida el enfoque ("el modelo no ve el video, lo lee") y trae dos cosas
+concretas que aquí faltaban:
+
+- **Fundido de 25 ms a cada lado de cada corte.** Sin él la onda salta de golpe
+  y se oye un clic en cada empalme. Es el detalle que separa un corte que no se
+  nota de uno que suena a tijera.
+- **Quitar las muletillas.** El detector de silencios no las quita porque
+  SUENAN: un "eh" tiene energía de sobra para pasar cualquier umbral. Se quitan
+  por lo que son, y para eso hace falta la transcripción. Solo las que van
+  sueltas entre pausas: un "entonces" en mitad de una frase es una conjunción,
+  y quitarlo rompe la oración.
+
 ### El ritmo sale de medir, no de opinar
 
 Tres reels de referencia (`evidencia/referencias/` en `main`) medidos con

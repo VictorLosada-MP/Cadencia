@@ -1,6 +1,6 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
-import type { Tramo } from "@/lib/silencios";
+import { duracionDe, type Tramo } from "@/lib/silencios";
 import { expresionZoom, type Plano } from "@/lib/ritmo";
 
 /**
@@ -73,6 +73,70 @@ export function recorteDe({ ancho, alto, posicion }: Encuadre): Recorte {
  * y quemar los subtítulos significaría codificar el video dos veces, y aquí
  * cada codificación son minutos.
  */
+/**
+ * El grafo de "voz en off": las imágenes SON el video.
+ *
+ * Cada imagen ocupa su tramo con un zoom lento, se encadenan, y el audio del
+ * dueño va entero por encima. Si hay huecos sin imagen se estira la anterior:
+ * un video con negro en medio parece roto.
+ */
+export function filtrosVoz(
+  insertos: Inserto[],
+  duracion: number,
+  conSubtitulos: boolean,
+  transiciones: Transicion[] = [],
+): string {
+  const partes: string[] = [];
+  const usados = insertos.slice(0, MAX_INSERTOS);
+
+  // Sin ninguna imagen no hay video que armar: un fondo liso y la voz.
+  if (usados.length === 0) {
+    partes.push(
+      `color=c=0x111111:s=${SALIDA.ancho}x${SALIDA.alto}:r=30:d=${duracion.toFixed(2)},setsar=1[base]`,
+    );
+  } else {
+    // Cada imagen se estira hasta donde empieza la siguiente, para que no
+    // queden huecos negros entre una y otra.
+    const trozos = usados.map((ins, i) => ({
+      ...ins,
+      desde: i === 0 ? 0 : ins.desde,
+      hasta: i + 1 < usados.length ? usados[i + 1].desde : duracion,
+    }));
+
+    trozos.forEach((t, i) => {
+      const dura = Math.max(0.2, t.hasta - t.desde);
+      partes.push(
+        `[${i}:v]scale=${SALIDA.ancho}:${SALIDA.alto}:force_original_aspect_ratio=increase,` +
+          `crop=${SALIDA.ancho}:${SALIDA.alto},setsar=1,` +
+          `zoompan=z='min(zoom+0.0006,1.14)':d=${Math.max(1, Math.round(dura * 30))}:` +
+          `s=${SALIDA.ancho}x${SALIDA.alto}:fps=30,setpts=PTS-STARTPTS[t${i}]`,
+      );
+    });
+    partes.push(
+      `${trozos.map((_, i) => `[t${i}]`).join("")}concat=n=${trozos.length}:v=1:a=0[base]`,
+    );
+  }
+
+  let ultima = "base";
+  const usadas = transiciones.slice(0, MAX_TRANSICIONES);
+  if (usadas.length) {
+    const destellos = usadas
+      .map((t) => `between(t,${t.en.toFixed(3)},${(t.en + DESTELLO_S).toFixed(3)})`)
+      .join("+");
+    partes.push(
+      `[base]drawbox=x=0:y=0:w=iw:h=ih:color=white@0.6:t=fill:enable='${destellos}'[tr]`,
+    );
+    ultima = "tr";
+  }
+
+  partes.push(
+    conSubtitulos
+      ? `[${ultima}]subtitles=subs.ass:fontsdir=/tipografia[vout]`
+      : `[${ultima}]null[vout]`,
+  );
+  return partes.join(";");
+}
+
 export function filtros(
   tramos: Tramo[],
   recorte: Recorte,
@@ -93,7 +157,17 @@ export function filtros(
     // congelados justo donde se supone que se quitó el silencio.
     partes.push(`[0:v]trim=start=${desde}:end=${hasta},setpts=PTS-STARTPTS[v${i}]`);
     if (conAudio) {
-      partes.push(`[0:a]atrim=start=${desde}:end=${hasta},asetpts=PTS-STARTPTS[a${i}]`);
+      // Un fundido de 25 ms a cada lado del corte.
+      //
+      // Sin esto la onda salta de golpe de un valor a otro y se oye un clic en
+      // cada empalme. Es el detalle que separa un corte que no se nota de uno
+      // que suena a tijera — y sale gratis.
+      const dura = Math.max(0.06, t.hasta - t.desde);
+      partes.push(
+        `[0:a]atrim=start=${desde}:end=${hasta},asetpts=PTS-STARTPTS,` +
+          `afade=t=in:st=0:d=${FUNDIDO_S},` +
+          `afade=t=out:st=${(dura - FUNDIDO_S).toFixed(3)}:d=${FUNDIDO_S}[a${i}]`,
+      );
     }
   });
 
@@ -174,7 +248,11 @@ export function filtros(
 }
 
 /** La parte de audio: la voz ya cortada, más los efectos en su sitio. */
-export function filtrosAudio(sonidos: { en: number }[], primeraEntrada: number): string {
+export function filtrosAudio(
+  sonidos: { en: number }[],
+  primeraEntrada: number,
+  voz = "ac",
+): string {
   if (sonidos.length === 0) return "";
   const partes = sonidos.map((s, i) => {
     const ms = Math.max(0, Math.round(s.en * 1000));
@@ -184,7 +262,7 @@ export function filtrosAudio(sonidos: { en: number }[], primeraEntrada: number):
   });
   const entradas = sonidos.map((_, i) => `[sfx${i}]`).join("");
   partes.push(
-    `[ac]${entradas}amix=inputs=${sonidos.length + 1}:duration=first:dropout_transition=0,volume=1.6[aout]`,
+    `[${voz}]${entradas}amix=inputs=${sonidos.length + 1}:duration=first:dropout_transition=0,volume=1.6[aout]`,
   );
   return partes.join(";");
 }
@@ -307,6 +385,10 @@ export type Transicion = {
 };
 
 export type Montaje = {
+  /**
+   * Lo que grabó el dueño. En "a cámara" es el video; en "voz en off" es
+   * **solo el audio**, y entonces el video se arma con las imágenes.
+   */
   video: File | Blob;
   tramos: Tramo[];
   encuadre: Encuadre;
@@ -318,7 +400,19 @@ export type Montaje = {
   transiciones?: Transicion[];
   /** Los cambios de encuadre. Es lo que da el ritmo de las referencias. */
   ritmo?: Plano[];
+  /**
+   * Verdad cuando lo que entra es solo audio.
+   *
+   * Entonces no hay nada que recortar ni que acercar: el video se construye
+   * encadenando las imágenes, cada una con su zoom lento, y el audio va
+   * encima entero. El formato "voz en off" pedía un video que por definición
+   * no existe — ese era el fallo.
+   */
+  soloVoz?: boolean;
 };
+
+/** El fundido de audio en cada empalme. Menos y se oye el clic; más y se nota. */
+const FUNDIDO_S = 0.025;
 
 /** Cuánto dura el desenfoque de una transición. Más y se nota el truco. */
 const BORRON_S = 0.16;
@@ -372,10 +466,21 @@ export async function montar(
     const conSonido =
       m.conAudio ? (m.transiciones ?? []).filter((t) => t.sonido).slice(0, MAX_TRANSICIONES) : [];
 
-    const entradas: string[] = ["-i", "entrada"];
-    for (let i = 0; i < insertos.length; i++) {
-      await f.writeFile(`ins${i}`, await fetchFile(insertos[i].imagen));
-      entradas.push("-i", `ins${i}`);
+    // En voz en off las imágenes van PRIMERO: ellas son el video, y el audio
+    // del dueño entra detrás. En a cámara el orden es el contrario.
+    const entradas: string[] = [];
+    if (m.soloVoz) {
+      for (let i = 0; i < insertos.length; i++) {
+        await f.writeFile(`ins${i}`, await fetchFile(insertos[i].imagen));
+        entradas.push("-i", `ins${i}`);
+      }
+      entradas.push("-i", "entrada");
+    } else {
+      entradas.push("-i", "entrada");
+      for (let i = 0; i < insertos.length; i++) {
+        await f.writeFile(`ins${i}`, await fetchFile(insertos[i].imagen));
+        entradas.push("-i", `ins${i}`);
+      }
     }
     for (let i = 0; i < conSonido.length; i++) {
       await f.writeFile(`sfx${i}.wav`, await fetchFile(conSonido[i].sonido!));
@@ -383,17 +488,23 @@ export async function montar(
     }
 
     const recorte = recorteDe(m.encuadre);
-    const audio = filtrosAudio(conSonido, 1 + insertos.length);
+    // De dónde sale la voz: la entrada 0 en a cámara, la última en voz en off.
+    const laVoz = m.soloVoz ? `${insertos.length}:a` : "ac";
+    const audio = filtrosAudio(conSonido, entradas.filter((e) => e === "-i").length, laVoz);
+
+    const duracion = duracionDe(m.tramos);
     const grafo = [
-      filtros(
-        m.tramos,
-        recorte,
-        m.conAudio,
-        Boolean(m.ass),
-        insertos,
-        m.transiciones ?? [],
-        m.ritmo ?? [],
-      ),
+      m.soloVoz
+        ? filtrosVoz(insertos, duracion, Boolean(m.ass), m.transiciones ?? [])
+        : filtros(
+            m.tramos,
+            recorte,
+            m.conAudio,
+            Boolean(m.ass),
+            insertos,
+            m.transiciones ?? [],
+            m.ritmo ?? [],
+          ),
       ...(audio ? [audio] : []),
     ].join(";");
 
@@ -402,7 +513,15 @@ export async function montar(
       "-filter_complex", grafo,
       "-map", "[vout]",
       ...(m.conAudio
-        ? ["-map", audio ? "[aout]" : "[ac]", "-c:a", "aac", "-b:a", "128k", "-ar", "44100"]
+        ? [
+            "-map",
+            audio ? "[aout]" : `[${laVoz}]`,
+            "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+            // En voz en off el video dura lo que duran las imágenes y el audio
+            // lo que dura la voz. Sin esto, el más largo alarga el archivo con
+            // negro o con silencio al final.
+            ...(m.soloVoz ? ["-shortest"] : []),
+          ]
         : ["-an"]),
       "-c:v", "libx264",
       // veryfast y no ultrafast: ultrafast produce archivos casi del doble, y
