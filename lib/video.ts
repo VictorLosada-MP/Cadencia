@@ -295,12 +295,17 @@ export async function medirConMotor(
 
     const dur = todo.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
     const dim = todo.match(/Stream #\d+:\d+.*?Video:.*?\b(\d{2,5})x(\d{2,5})\b/);
-    if (!dur || !dim) return null;
+    if (!dur) return null;
 
     return {
       duracion: Number(dur[1]) * 3600 + Number(dur[2]) * 60 + Number(dur[3]),
-      ancho: Number(dim[1]),
-      alto: Number(dim[2]),
+      // Un archivo de solo audio no tiene dimensiones, y exigirlas aquí era lo
+      // que impedía cargar NINGÚN audio en voz en off: daba igual el formato,
+      // porque un m4a, un aac o un wav no traen línea de Video y esta función
+      // devolvía null para los tres. Las dimensiones vuelven en cero y decide
+      // quien llama: el paso que pide video las exige, el que pide voz no.
+      ancho: dim ? Number(dim[1]) : 0,
+      alto: dim ? Number(dim[2]) : 0,
     };
   } catch {
     return null;

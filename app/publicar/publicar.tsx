@@ -7,6 +7,7 @@ import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
 import { esCarrusel, grabaDe, type Carrusel, type Guion, type Pieza } from "@/types/guion";
 import { apuntarHecho } from "@/lib/hecho";
+import { deLienzo } from "@/lib/portada";
 import { Editor } from "./editor";
 
 export default function Lista() {
@@ -166,6 +167,8 @@ function DeCarrusel({
           titulo: c.laminas[0]?.titular ?? "",
           detalle: `${total} láminas`,
           corridaId,
+          // La primera lámina, que es la que se ve en el feed.
+          portada: lienzos.current[0] ? deLienzo(lienzos.current[0]) : null,
         });
         setBajado(true);
       }

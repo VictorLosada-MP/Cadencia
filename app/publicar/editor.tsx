@@ -34,9 +34,11 @@ import {
   medirConMotor,
   montar,
   recorteDe,
+  type Medida,
 } from "@/lib/video";
 import { apuntarHecho } from "@/lib/hecho";
-import { efecto } from "@/lib/sonido";
+import { deVideo } from "@/lib/portada";
+import { EFECTOS, MAX_SUBIDO_S, delArchivo, efecto, type Efecto } from "@/lib/sonido";
 import { insertosDe, useApoyos } from "./apoyo";
 import { apoyosDe } from "@/lib/apoyos";
 import { planos } from "@/lib/ritmo";
@@ -115,12 +117,33 @@ export function Editor({
 
   const [posicion, setPosicion] = useState(0.5);
 
+  /**
+   * Qué suena en cada transición.
+   *
+   * Se elige y se puede oír antes de montar. Con un solo efecto fijo, al dueño
+   * que no le gustaba no le quedaba más salida que bajar a la edición base y
+   * quedarse sin transiciones: una preferencia de sonido le costaba la mitad
+   * del montaje.
+   */
+  const [cualSonido, setCualSonido] = useState<Efecto | "mio">("golpe");
+  const [mio, setMio] = useState<{ nombre: string; blob: Blob } | null>(null);
+  const [falloSonido, setFalloSonido] = useState("");
+  const oyendo = useRef<HTMLAudioElement | null>(null);
+
   const [montando, setMontando] = useState(false);
   const [avance, setAvance] = useState({ parte: 0, mensaje: "" });
   const [resultado, setResultado] = useState<{ url: string; bytes: number } | null>(null);
   const [bajado, setBajado] = useState(false);
 
-  const { lista: apoyos, buscar, poner, alternar } = useApoyos(guion?.golpes, palabras);
+  const {
+    lista: apoyos,
+    buscar,
+    poner,
+    alternar,
+    agregar,
+    quitar,
+    mover,
+  } = useApoyos(guion?.golpes, palabras, fuente?.duracion ?? 0);
 
 
   const video = useRef<HTMLVideoElement>(null);
@@ -143,6 +166,34 @@ export function Editor({
     return quitarMuletillas ? sinMuletillas(protegidos, palabras) : protegidos;
   }, [env, fuente, ajustes, cortar, palabras, quitarMuletillas]);
 
+  /** El WAV que se le pasa a ffmpeg. El suyo manda si lo trajo. */
+  const sonido = useMemo(
+    () => (cualSonido === "mio" ? (mio?.blob ?? efecto("golpe")) : efecto(cualSonido)),
+    [cualSonido, mio],
+  );
+
+  /** Oírlo aquí, sin montar nada: montar tarda minutos y esto es un segundo. */
+  const oir = useCallback((que: Blob) => {
+    oyendo.current?.pause();
+    const url = URL.createObjectURL(que);
+    const a = new Audio(url);
+    a.onended = () => URL.revokeObjectURL(url);
+    oyendo.current = a;
+    void a.play().catch(() => URL.revokeObjectURL(url));
+  }, []);
+
+  const traerSonido = useCallback(async (archivo: File) => {
+    setFalloSonido("");
+    try {
+      const blob = await delArchivo(archivo);
+      setMio({ nombre: archivo.name, blob });
+      setCualSonido("mio");
+      oir(blob);
+    } catch {
+      setFalloSonido("No pude leer ese archivo. Prueba con un MP3, un WAV o un M4A.");
+    }
+  }, [oir]);
+
   /**
    * Dónde va cada transición.
    *
@@ -159,13 +210,13 @@ export function Editor({
     return apoyosDeGolpes(guion.golpes, palabras)
       .map((m) => {
         const t = reubicar(m, tramos);
-        return t === null ? null : { en: t, sonido: efecto("whoosh") };
+        return t === null ? null : { en: t, sonido };
       })
       .filter((t): t is { en: number; sonido: Blob } => t !== null)
       // La primera del video no: no hay de dónde venir.
       .filter((t) => t.en > 0.4)
       .slice(0, MAX_TRANSICIONES);
-  }, [palabras, guion, tramos]);
+  }, [palabras, guion, tramos, sonido]);
 
   /**
    * El ritmo, en tiempos del video ya cortado.
@@ -248,29 +299,77 @@ export function Editor({
     const url = URL.createObjectURL(archivo);
     setAnalizando(true);
 
-    // Primero el navegador, que es instantáneo. Si no sabe leer el formato
-    // —los iPhone graban en HEVC y Chrome no siempre puede— lo mide ffmpeg, y
-    // entonces se monta igual: lo único que se pierde es la vista previa.
+    // El audio se decodifica aquí y una sola vez, porque sirve para las dos
+    // cosas que vienen después: dar la duración y sacar la envolvente.
+    // Decodificar es lo caro de todo el análisis.
+    let audio = await leerAudio(archivo).catch(() => null);
+
     let verEnPantalla = true;
-    // Un audio no tiene ancho ni alto: se le da el tamaño de salida y punto.
-    let medido = soloVoz ? null : await medir(url).catch(() => null);
+    let medido: Medida | null = null;
+
     if (soloVoz) {
+      // En voz en off no hay imagen que mostrar: lo que se enseña es la onda.
       verEnPantalla = false;
-      const solo = await medirConMotor(archivo, setAvance).catch(() => null);
-      medido = solo && { ...solo, ancho: SALIDA.ancho, alto: SALIDA.alto };
-    }
-    if (!medido) {
-      verEnPantalla = false;
-      setAvance({ parte: 0, mensaje: "Tu navegador no sabe leer ese formato. Abriendo el motor…" });
-      medido = await medirConMotor(archivo, setAvance).catch(() => null);
+      if (!audio) {
+        // El filtro del selector no cubre el arrastre, así que un video puede
+        // entrar igual. En vez de rechazarlo se le saca la voz, que es lo
+        // único que este formato necesita de él. Por ahí pasan también los
+        // formatos que el navegador no abre.
+        setAvance({
+          parte: 0,
+          mensaje: archivo.type.startsWith("video")
+            ? "Eso es un video. Me quedo con tu voz…"
+            : "Tu navegador no sabe leer ese formato. Abriendo el motor…",
+        });
+        const delMotor = await extraerAudio(archivo, setAvance);
+        if (delMotor) audio = await leerAudio(delMotor).catch(() => null);
+      }
+      // Un audio no tiene ancho ni alto: se le da el tamaño de salida y punto.
+      if (audio) medido = { duracion: audio.duracion_s, ancho: SALIDA.ancho, alto: SALIDA.alto };
+      if (!medido) {
+        const solo = await medirConMotor(archivo, setAvance).catch(() => null);
+        if (solo) medido = { ...solo, ancho: SALIDA.ancho, alto: SALIDA.alto };
+      }
+      if (!medido) {
+        URL.revokeObjectURL(url);
+        setAnalizando(false);
+        setFallo(
+          "No pude leer ese audio. Prueba con un MP3, un M4A, un WAV o el archivo tal cual te lo dio la grabadora del teléfono.",
+        );
+        return;
+      }
+    } else {
+      // Primero el navegador, que es instantáneo. Si no sabe leer el formato
+      // —los iPhone graban en HEVC y Chrome no siempre puede— lo mide ffmpeg,
+      // y entonces se monta igual: lo único que se pierde es la vista previa.
+      medido = await medir(url).catch(() => null);
+      if (!medido) {
+        verEnPantalla = false;
+        setAvance({
+          parte: 0,
+          mensaje: "Tu navegador no sabe leer ese formato. Abriendo el motor…",
+        });
+        medido = await medirConMotor(archivo, setAvance).catch(() => null);
+      }
+      if (!medido) {
+        URL.revokeObjectURL(url);
+        setAnalizando(false);
+        setFallo("No pude leer ese archivo. ¿Seguro que es un video?");
+        return;
+      }
+      // Ahora que el motor también mide los audios, un archivo sin imagen
+      // llega hasta aquí en vez de morir con un "¿seguro que es un video?".
+      // Decirle qué pasó y adónde ir es más útil que repetirle la pregunta.
+      if (!medido.ancho || !medido.alto) {
+        URL.revokeObjectURL(url);
+        setAnalizando(false);
+        setFallo(
+          "Eso es un audio, no un video. Si no quieres salir en cámara, vuelve al paso 3 y elige «Voz en off»: ahí es exactamente lo que se pide.",
+        );
+        return;
+      }
     }
 
-    if (!medido) {
-      URL.revokeObjectURL(url);
-      setAnalizando(false);
-      setFallo("No pude leer ese archivo. ¿Seguro que es un video?");
-      return;
-    }
     if (medido.duracion > MAX_SEGUNDOS) {
       URL.revokeObjectURL(url);
       setAnalizando(false);
@@ -282,11 +381,10 @@ export function Editor({
 
     setFuente({ archivo, url, verEnPantalla, ...medido });
     try {
-      // El navegador primero. Si no sabe abrir el contenedor —otra vez los
-      // HEVC de iPhone— el motor saca el audio a WAV, que sí abre cualquiera.
-      // Sin esto, un video de iPhone perdería las dos cosas que valen de todo
-      // este editor: los cortes y los subtítulos.
-      let audio = await leerAudio(archivo).catch(() => null);
+      // Si el navegador no supo abrir el contenedor —otra vez los HEVC de
+      // iPhone— el motor saca el audio a WAV, que sí abre cualquiera. Sin esto
+      // un video de iPhone perdería las dos cosas que valen de este editor:
+      // los cortes y los subtítulos.
       if (!audio) {
         setAvance({ parte: 0, mensaje: "Sacando el audio con el motor…" });
         const delMotor = await extraerAudio(archivo, setAvance);
@@ -407,7 +505,18 @@ export function Editor({
         <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 p-6 text-center transition-colors hover:border-teal-600 dark:border-neutral-700 dark:hover:border-teal-400">
           <input
             type="file"
-            accept={soloVoz ? "audio/*,video/*" : "video/*"}
+            // Solo audio. Dejarlo en "audio/*,video/*" era seguir pidiéndole
+            // un video en el formato que dice que no graba video.
+            // Las extensiones van escritas además del tipo MIME a propósito.
+            // En Windows, `audio/*` se resuelve contra el registro, y .m4a y
+            // .aac a menudo no tienen tipo declarado allí: el selector los
+            // pintaba en gris y no se podían ni elegir. Son justo los dos que
+            // sueltan la grabadora de Android y los audios de WhatsApp.
+            accept={
+              soloVoz
+                ? "audio/*,.m4a,.aac,.mp3,.wav,.ogg,.oga,.opus,.amr,.3gp,.3gpp,.weba,.webm,.flac,.caf"
+                : "video/*,.mp4,.mov,.m4v,.webm,.mkv,.avi,.3gp,.3gpp"
+            }
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -436,7 +545,7 @@ export function Editor({
           </p>
         )}
 
-        {fuente && !fuente.verEnPantalla && (
+        {fuente && !fuente.verEnPantalla && !soloVoz && (
           <p className="mt-2 rounded-lg border-l-[3px] border-amber-600 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
             Tu navegador no sabe mostrar este formato —suele pasar con los
             videos de iPhone grabados en <strong>Alta eficiencia</strong>— así
@@ -678,21 +787,22 @@ export function Editor({
           </Paso>
 
           {/* ── El apoyo, que ahora coloca el sistema ── */}
-          {conApoyo.length > 0 && (
+          {true && (
             <Paso
               n="3b"
               titulo="Las imágenes de apoyo"
               hecho={apoyos.some((a) => a.imagen && a.usar)}
               nota={
                 palabras
-                  ? "El sistema busca y coloca solo lo que se puede sacar de un banco. Solo te pide lo que es tuyo de verdad."
+                  ? "El sistema busca y coloca solo lo que se puede sacar de un banco. Lo que es tuyo de verdad te lo pide, y puedes añadir las tuyas donde quieras."
                   : "Saca primero los subtítulos: sin ellos no se sabe en qué segundo dices cada frase."
               }
             >
               {!palabras ? (
                 <p className="text-sm text-neutral-500">
-                  {conApoyo.length}{" "}
-                  {conApoyo.length === 1 ? "imagen pendiente" : "imágenes pendientes"}.
+                  {conApoyo.length
+                    ? `${conApoyo.length} ${conApoyo.length === 1 ? "imagen pendiente" : "imágenes pendientes"}.`
+                    : "Este guion no pide ninguna, pero podrás añadir las tuyas."}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -718,7 +828,21 @@ export function Editor({
                           <strong>{a.pide}</strong>
                         </p>
                         <p className="mt-0.5 text-xs text-neutral-500">
-                          {a.momento ? (
+                          {a.golpe < 0 && a.momento ? (
+                            <>
+                              <input
+                                type="number"
+                                min={0}
+                                max={Math.floor(fuente.duracion)}
+                                step={0.5}
+                                value={a.momento.desde}
+                                onChange={(e) => mover(a.golpe, Number(e.target.value))}
+                                aria-label="En qué segundo entra"
+                                className="w-16 rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 text-xs tabular-nums dark:border-neutral-700 dark:bg-neutral-950"
+                              />{" "}
+                              segundo · tuya
+                            </>
+                          ) : a.momento ? (
                             <>
                               {reloj(a.momento.desde)} ·{" "}
                               {a.exacto ? (
@@ -770,6 +894,14 @@ export function Editor({
                             />
                             subir la mía
                           </label>
+                          {a.golpe < 0 && (
+                            <button
+                              onClick={() => quitar(a.golpe)}
+                              className="font-mono text-[11px] uppercase tracking-wider text-neutral-400 underline underline-offset-4 hover:text-red-700 hover:no-underline dark:hover:text-red-400"
+                            >
+                              quitar
+                            </button>
+                          )}
                           {a.momento && a.imagen && (
                             <label className="flex items-center gap-1.5 text-xs text-neutral-500">
                               <input
@@ -785,18 +917,45 @@ export function Editor({
                       </div>
                     </li>
                   ))}
+                  {apoyos.length === 0 && (
+                    <li className="rounded-lg border border-dashed border-neutral-300 p-4 text-sm text-neutral-500 dark:border-neutral-700">
+                      Este guion no pide imágenes de apoyo. Puedes añadir las
+                      tuyas: una cada pocos segundos es lo que rompe el plano
+                      fijo.
+                    </li>
+                  )}
                 </ul>
+              )}
+
+              {palabras && (
+                <button
+                  onClick={agregar}
+                  className="mt-3 font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+                >
+                  + añadir una imagen mía
+                </button>
               )}
             </Paso>
           )}
 
           {/* ── 4 · El encuadre y la prueba ── */}
-          <Paso n="4" titulo="El encuadre" hecho>
+          <Paso
+            n="4"
+            titulo={soloVoz ? "Cómo va a verse" : "El encuadre"}
+            hecho
+            nota={
+              soloVoz
+                ? "No hay nada que encuadrar: el video lo arman las imágenes del guion."
+                : undefined
+            }
+          >
             <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
               <div className="relative w-56 shrink-0 overflow-hidden rounded-lg bg-neutral-900">
                 {!fuente.verEnPantalla && (
                   <p className="p-4 text-center text-xs text-neutral-400">
-                    Sin vista previa en este formato. El recorte se aplica igual.
+                    {soloVoz
+                      ? "Grabaste solo la voz: aquí no hay imagen que mostrar. Se ve al montar."
+                      : "Sin vista previa en este formato. El recorte se aplica igual."}
                   </p>
                 )}
                 <video
@@ -842,13 +1001,25 @@ export function Editor({
                   />
                 ) : (
                   <p className="text-sm text-neutral-500">
-                    Ya lo grabaste en vertical: entra entero, no hay nada que recortar.
+                    {soloVoz
+                      ? "El video sale en 9:16 con las imágenes del guion y tu voz encima."
+                      : "Ya lo grabaste en vertical: entra entero, no hay nada que recortar."}
                   </p>
                 )}
 
                 <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
-                  Dale a reproducir para ver el resultado <strong>antes de montarlo</strong>:
-                  el reproductor salta los cortes. No monta nada, así que es inmediato.
+                  {soloVoz ? (
+                    <>
+                      Dale a reproducir para <strong>oír cómo queda</strong> antes de
+                      montarlo: salta los cortes igual que el montaje.
+                    </>
+                  ) : (
+                    <>
+                      Dale a reproducir para ver el resultado{" "}
+                      <strong>antes de montarlo</strong>: el reproductor salta los
+                      cortes. No monta nada, así que es inmediato.
+                    </>
+                  )}
                 </p>
                 <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-neutral-500">
                   Sale {SALIDA.ancho}×{SALIDA.alto} · MP4 · H.264
@@ -888,6 +1059,115 @@ export function Editor({
                 </label>
               ))}
             </fieldset>
+
+            {nivel === "completa" && (
+              <fieldset className="mb-5 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                  El sonido de las transiciones
+                </legend>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  Suena al empezar cada bloque del guion
+                  {transiciones.length > 0 &&
+                    `: ${transiciones.length === 1 ? "una vez" : `${transiciones.length} veces`} en este video`}
+                  . Óyelo antes de montar.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {EFECTOS.map((e) => (
+                    <label
+                      key={e.id}
+                      className={`tarjeta cursor-pointer rounded-lg border p-3 ${
+                        cualSonido === e.id
+                          ? "border-teal-600 bg-teal-50/60 dark:border-teal-400 dark:bg-teal-950/25"
+                          : "border-neutral-200 hover:border-neutral-400 dark:border-neutral-800"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="sonido"
+                        className="sr-only"
+                        checked={cualSonido === e.id}
+                        onChange={() => {
+                          setCualSonido(e.id);
+                          oir(efecto(e.id));
+                        }}
+                      />
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-semibold">{e.nombre}</span>
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.preventDefault();
+                            oir(efecto(e.id));
+                          }}
+                          className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-teal-700 underline dark:text-teal-400"
+                        >
+                          oír
+                        </button>
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-neutral-500">
+                        {e.que}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <label className="empuja cursor-pointer rounded-full border border-neutral-300 px-4 py-1.5 text-sm font-semibold dark:border-neutral-700">
+                    {mio ? "Cambiar el mío" : "Poner uno mío"}
+                    <input
+                      type="file"
+                      accept="audio/*,.m4a,.aac,.mp3,.wav,.ogg,.opus,.flac"
+                      className="sr-only"
+                      onChange={(ev) => {
+                        const a = ev.target.files?.[0];
+                        ev.target.value = "";
+                        if (a) void traerSonido(a);
+                      }}
+                    />
+                  </label>
+                  {mio && (
+                    <label
+                      className={`tarjeta flex cursor-pointer items-baseline gap-2 rounded-lg border px-3 py-1.5 ${
+                        cualSonido === "mio"
+                          ? "border-teal-600 bg-teal-50/60 dark:border-teal-400 dark:bg-teal-950/25"
+                          : "border-neutral-200 hover:border-neutral-400 dark:border-neutral-800"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="sonido"
+                        className="sr-only"
+                        checked={cualSonido === "mio"}
+                        onChange={() => {
+                          setCualSonido("mio");
+                          oir(mio.blob);
+                        }}
+                      />
+                      <span className="max-w-[16rem] truncate text-sm font-semibold">
+                        {mio.nombre}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.preventDefault();
+                          oir(mio.blob);
+                        }}
+                        className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-teal-700 underline dark:text-teal-400"
+                      >
+                        oír
+                      </button>
+                    </label>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Se queda con los primeros {MAX_SUBIDO_S} segundos y lo nivela, para que no te
+                  tape la voz. El archivo no sale de tu navegador.
+                </p>
+                {falloSonido && (
+                  <p className="mt-2 text-sm text-red-700 dark:text-red-400">{falloSonido}</p>
+                )}
+              </fieldset>
+            )}
 
             <button
               onClick={() => void armar()}
@@ -960,7 +1240,7 @@ export function Editor({
                     />
                     <Hizo
                       si={nivel === "completa" && transiciones.length > 0}
-                      hecho={`${transiciones.length} ${transiciones.length === 1 ? "transición" : "transiciones"} entre bloques, con sonido`}
+                      hecho={`${transiciones.length} ${transiciones.length === 1 ? "transición" : "transiciones"} entre bloques · ${cualSonido === "mio" ? "tu sonido" : EFECTOS.find((e) => e.id === cualSonido)?.nombre.toLowerCase()}`}
                       no={
                         nivel === "base"
                           ? "Sin transiciones — elegiste la edición base"
@@ -977,12 +1257,17 @@ export function Editor({
                     href={resultado.url}
                     download="cadencia.mp4"
                     onClick={() => {
-                      void apuntarHecho({
-                        tipo: "video",
-                        titulo: guion?.gancho ?? "",
-                        detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
-                        corridaId,
-                      });
+                      // El apunte espera al fotograma, pero la descarga no: el
+                      // navegador ya se llevó el archivo con este mismo clic.
+                      void deVideo(resultado.url).then((portada) =>
+                        apuntarHecho({
+                          tipo: "video",
+                          titulo: guion?.gancho ?? "",
+                          detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
+                          corridaId,
+                          portada,
+                        }),
+                      );
                       setBajado(true);
                     }}
                     className="empuja mt-4 inline-block rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"

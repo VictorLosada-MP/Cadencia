@@ -15,6 +15,8 @@ import {
   type Guion,
   type Pieza,
 } from "@/types/guion";
+import { historiaQuePide } from "@/types/banco";
+import { Contarla } from "./historia";
 
 /** Lo que dejó la semana al pasar a esta pantalla. Se consume una sola vez. */
 function leerPieza(): {
@@ -58,6 +60,13 @@ export default function Guion() {
   const [cargando, setCargando] = useState<"" | "ganchos" | "pieza">("");
   const [error, setError] = useState("");
   const [faltaVoz, setFaltaVoz] = useState(false);
+  /**
+   * La historia, cuando el ángulo pide una. Vive aquí y no en el perfil: es de
+   * esta pieza y de este día, y guardarla como un campo fijo del negocio sería
+   * volver a pedírsela por adelantado.
+   */
+  const [historia, setHistoria] = useState("");
+  const pide = historiaQuePide(angulo);
 
   async function pedir(paso: "ganchos" | "pieza") {
     setCargando(paso);
@@ -74,6 +83,7 @@ export default function Guion() {
           angulo,
           idea_afilada: ganchos?.idea_afilada,
           gancho: elegido,
+          historia,
         }),
       });
       const d = await r.json();
@@ -211,13 +221,29 @@ export default function Guion() {
           className="mt-2 w-full rounded-lg border border-neutral-300 bg-white p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-teal-400"
         />
 
+        {pide && (
+          <Contarla
+            quien={pide}
+            idea={idea}
+            angulo={angulo}
+            valor={historia}
+            alCambiar={setHistoria}
+          />
+        )}
+
         <button
           onClick={() => pedir("ganchos")}
-          disabled={!formato || !idea.trim() || cargando !== ""}
+          disabled={!formato || !idea.trim() || (pide !== null && !historia.trim()) || cargando !== ""}
           className="mt-4 empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando === "ganchos" ? "Afilando…" : ganchos ? "Otros tres ganchos" : "Afilar y darme tres ganchos"}
         </button>
+        {pide && !historia.trim() && (
+          <p className="mt-2 text-sm text-neutral-500">
+            Cuéntame la historia de arriba y seguimos. Sin ella, esta pieza
+            saldría con una inventada.
+          </p>
+        )}
 
         {error && (
           <div className="mt-4 rounded-lg border-l-[3px] border-red-700 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">

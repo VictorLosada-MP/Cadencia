@@ -51,16 +51,66 @@ async function traer(url: string): Promise<Blob | null> {
   }
 }
 
-export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra[] | null) {
+/** Un apoyo que el dueño añadió él, con su momento elegido a mano. */
+export type Mio = { golpe: number; desde: number };
+
+export function useApoyos(
+  golpes: GolpeConApoyo[] | undefined,
+  palabras: Palabra[] | null,
+  duracion = 0,
+) {
   /**
    * Lo que sale del guion y de la transcripción se calcula, no se guarda: es
    * una función pura de las dos cosas. Lo único que es estado de verdad es lo
    * que el dueño decidió encima — qué imagen, y si la usa.
    */
-  const base = useMemo(
-    () => (golpes?.length && palabras?.length ? apoyosDe(golpes, palabras) : []),
-    [golpes, palabras],
-  );
+  /**
+   * Los míos: los que el dueño añade a mano.
+   *
+   * Existen porque el guion puede no pedir ninguna imagen —o pedir pocas— y
+   * antes eso dejaba la pantalla sin ninguna forma de meter una. El índice va
+   * en negativo para no chocar nunca con el de un golpe del guion.
+   */
+  const [mios, setMios] = useState<Mio[]>([]);
+
+  const base = useMemo(() => {
+    const delGuion =
+      golpes?.length && palabras?.length ? apoyosDe(golpes, palabras) : [];
+    const aMano: Apoyo[] = mios.map((m) => ({
+      golpe: m.golpe,
+      pide: "la que tú elijas",
+      texto: "",
+      momento: { desde: m.desde, hasta: m.desde + 2.5, confianza: 1 },
+      exacto: true,
+    }));
+    return [...delGuion, ...aMano].sort(
+      (a, b) => (a.momento?.desde ?? 0) - (b.momento?.desde ?? 0),
+    );
+  }, [golpes, palabras, mios]);
+
+  /** Añade uno al hueco más grande que quede, que es donde más falta hace. */
+  const agregar = useCallback(() => {
+    setMios((m) => {
+      const ocupados = [...base.map((a) => a.momento?.desde ?? 0)].sort((x, y) => x - y);
+      const bordes = [0, ...ocupados, Math.max(4, duracion)];
+      let mejor = Math.max(1, duracion / 2);
+      let hueco = 0;
+      for (let i = 0; i + 1 < bordes.length; i++) {
+        const d = bordes[i + 1] - bordes[i];
+        if (d > hueco) { hueco = d; mejor = bordes[i] + d / 2; }
+      }
+      const id = -(m.length + 1);
+      return [...m, { golpe: id, desde: Number(mejor.toFixed(2)) }];
+    });
+  }, [base, duracion]);
+
+  const quitar = useCallback((golpe: number) => {
+    setMios((m) => m.filter((x) => x.golpe !== golpe));
+  }, []);
+
+  const mover = useCallback((golpe: number, desde: number) => {
+    setMios((m) => m.map((x) => (x.golpe === golpe ? { ...x, desde } : x)));
+  }, []);
 
   type Encima = {
     imagen: Blob | null;
@@ -173,7 +223,7 @@ export function useApoyos(golpes: GolpeConApoyo[] | undefined, palabras: Palabra
     [tocar],
   );
 
-  return { lista, buscar, poner, alternar };
+  return { lista, buscar, poner, alternar, agregar, quitar, mover };
 }
 
 /**

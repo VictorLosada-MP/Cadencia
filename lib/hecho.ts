@@ -10,6 +10,8 @@ export function apuntarHecho(p: {
   titulo?: string;
   detalle?: string;
   corridaId?: string | null;
+  /** El fotograma en base64, sin el prefijo "data:". Puede faltar. */
+  portada?: string | null;
 }) {
   return fetch("/api/hecho", {
     method: "POST",
@@ -19,6 +21,7 @@ export function apuntarHecho(p: {
       titulo: p.titulo ?? "",
       detalle: p.detalle ?? "",
       corridaId: p.corridaId ?? undefined,
+      portada: p.portada ?? undefined,
     }),
   }).catch(() => null);
 }
