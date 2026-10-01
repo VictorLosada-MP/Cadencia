@@ -8,6 +8,7 @@ import { Barra } from "../barra";
 import {
   BRECHAS,
   NIVELES,
+  historiaQuePide,
   sugerenciaPorAngulo,
   type Banco,
   type PiezaSemana,
@@ -273,6 +274,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
   }
 
   const sugerida = sugerenciaPorAngulo(p.angulo ?? "");
+  const pideHistoria = historiaQuePide(p.angulo ?? "");
 
   return (
     <article className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
@@ -296,6 +298,20 @@ function Pieza({ p }: { p: PiezaSemana }) {
         <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-neutral-500">
           para que entienda · {p.trabajo}
         </p>
+
+        {pideHistoria && (
+          // Se avisa, no se pide. La historia se cuenta en la pantalla de la
+          // pieza el día que toca: tenerla que dejar escrita de antemano era
+          // trabajo por adelantado para algo que a lo mejor no llega a usar.
+          <p className="mt-3 rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-2.5 text-sm dark:border-teal-400 dark:bg-teal-950/30">
+            Este día va con{" "}
+            <strong>
+              {pideHistoria === "cliente" ? "el caso de un cliente" : "una historia tuya"}
+            </strong>
+            . No hace falta que la dejes escrita ahora: te la pido al abrirla, en
+            dos líneas y con tus palabras.
+          </p>
+        )}
 
         <p className="mt-4 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
           ¿Cómo la haces?

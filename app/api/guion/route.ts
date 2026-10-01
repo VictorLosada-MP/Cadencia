@@ -8,6 +8,9 @@ import { familiaDe, formatoPorId, PROMPT_DE, type Ganchos, type Pieza } from "@/
 
 export const maxDuration = 300;
 
+/** Lo mismo que acepta /api/historia: lo que no cabe ahí no cabe aquí. */
+const MAX_HISTORIA = 6000;
+
 type Cuerpo = {
   /** "ganchos" afila la idea y devuelve tres; "pieza" produce lo que toque. */
   paso: "ganchos" | "pieza";
@@ -18,6 +21,13 @@ type Cuerpo = {
   idea_afilada?: string;
   gancho?: string;
   perfilId?: string;
+  /**
+   * La historia que contó él, ya ordenada. Solo viene en los días que la
+   * piden. Cuando viene, es la única fuente de hechos: el prompt tiene
+   * prohibido inventar, y hasta ahora esos días salían con una historia
+   * fabricada o con una nota diciéndole que la dejara escrita en su perfil.
+   */
+  historia?: string;
 };
 
 export async function POST(request: Request) {
@@ -66,10 +76,14 @@ export async function POST(request: Request) {
       cuerpo.paso === "ganchos" ? "3-ganchos.md" : PROMPT_DE[familia],
     );
 
+    const historia = (cuerpo.historia ?? "").trim().slice(0, MAX_HISTORIA);
     const comun = [
       `## Formato elegido`,
       `${formato.nombre} — ${formato.que} (${formato.detalle})`,
       cuerpo.angulo?.trim() ? `\n## Ángulo\n${cuerpo.angulo.trim()}` : "",
+      historia
+        ? `\n## Su historia, contada por él\n\nEs la ÚNICA fuente de hechos de esta pieza. No añades ninguno.\n\n${historia}`
+        : "",
     ];
 
     const texto =
@@ -102,6 +116,7 @@ export async function POST(request: Request) {
         familia,
         idea: cuerpo.idea,
         gancho: cuerpo.gancho,
+        historia: historia || undefined,
       });
     }
 
