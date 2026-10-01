@@ -1,0 +1,20 @@
+-- Migración 7 — la portada de cada pieza entregada.
+--
+-- "Lo hecho" en texto no se reconoce. Dos videos del mismo guion se leen igual
+-- en una lista de titulares, y el dueño que entra a buscar "el del taller" no
+-- tiene por dónde agarrarlo. Un fotograma lo resuelve de un vistazo.
+--
+-- Va un JPEG pequeño dentro de la fila y no el archivo en un disco aparte, y
+-- la decisión es deliberada. Guardar los MP4 significaría almacenamiento por
+-- objetos, facturación por gigabyte y un enlace que caduca; para un reel de
+-- veinte megas por pieza, en un mes son cientos. Un fotograma de 180 píxeles
+-- de ancho pesa menos de diez kilobytes: mil piezas son diez megas, que es
+-- menos de lo que ya ocupan los guiones en texto.
+--
+-- El archivo grande se queda donde el dueño lo bajó, que es donde lo va a
+-- subir. Esta columna solo sirve para que lo encuentre.
+--
+-- base64 y no bytea porque la fila llega desde el navegador como JSON y
+-- convertirla dos veces no compra nada: se guarda como vino y se sirve
+-- decodificada en /api/hecho/portada/[id].
+alter table entregado add column if not exists portada text;

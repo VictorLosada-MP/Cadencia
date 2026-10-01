@@ -111,31 +111,9 @@ export default function PantallaHecho() {
             <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
               Uno por uno
             </h2>
-            <ul className="mt-3 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <ul className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {lista.map((e) => (
-                <li
-                  key={e.id}
-                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-neutral-100 px-4 py-3 last:border-0 dark:border-neutral-900"
-                >
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
-                      e.tipo === "video"
-                        ? "bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-300"
-                        : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                    }`}
-                  >
-                    {e.tipo}
-                  </span>
-                  <span className="min-w-0 flex-1 text-sm leading-snug">
-                    {e.titulo || <span className="text-neutral-400">sin título</span>}
-                  </span>
-                  {e.detalle && (
-                    <span className="font-mono text-[11px] text-neutral-400">{e.detalle}</span>
-                  )}
-                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">
-                    {FECHA.format(new Date(e.creado))}
-                  </span>
-                </li>
+                <Ficha key={e.id} e={e} />
               ))}
             </ul>
           </section>
@@ -151,6 +129,73 @@ export default function PantallaHecho() {
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * Una pieza, con su fotograma.
+ *
+ * El fotograma no es adorno: dos videos del mismo guion se leen igual en una
+ * lista de titulares, y el dueño que viene a buscar "el del taller" lo
+ * reconoce de un vistazo o no lo encuentra.
+ *
+ * El MP4 no está aquí y no va a estarlo: guardar los archivos sería
+ * almacenamiento por objetos y facturación por gigabyte para algo que el dueño
+ * ya tiene bajado en la carpeta desde donde lo va a subir. Esto es el registro,
+ * no el disco.
+ */
+function Ficha({ e }: { e: Entregado }) {
+  const video = e.tipo === "video";
+  return (
+    <li className="tarjeta group overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        className={`relative overflow-hidden bg-neutral-100 dark:bg-neutral-800 ${
+          video ? "aspect-[9/16]" : "aspect-[4/5]"
+        }`}
+      >
+        {e.portada ? (
+          // next/image no sirve aquí: el optimizador pide la imagen desde el
+          // servidor, sin la cookie de sesión, y esta ruta exige sesión —
+          // saldrían todas en blanco. Y optimizar un JPEG de 180 píxeles que
+          // ya pesa ocho kilobytes no ahorra nada.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/hecho/portada/${e.id}`}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          // Las piezas bajadas antes de que esto existiera no tienen
+          // fotograma, y volver atrás a inventárselo no es posible: el archivo
+          // está en el disco del dueño.
+          <div className="flex h-full w-full items-center justify-center p-3 text-center">
+            <p className="text-xs leading-snug text-neutral-400">
+              Sin portada — se bajó antes de que las guardáramos
+            </p>
+          </div>
+        )}
+        <span
+          className={`absolute left-2 top-2 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider backdrop-blur-sm ${
+            video
+              ? "bg-teal-100/90 text-teal-900 dark:bg-teal-950/90 dark:text-teal-300"
+              : "bg-amber-100/90 text-amber-900 dark:bg-amber-950/90 dark:text-amber-300"
+          }`}
+        >
+          {e.tipo}
+        </span>
+      </div>
+      <div className="p-3">
+        <p className="line-clamp-3 text-sm leading-snug">
+          {e.titulo || <span className="text-neutral-400">sin título</span>}
+        </p>
+        <p className="mt-1.5 font-mono text-[11px] tabular-nums text-neutral-500">
+          {FECHA.format(new Date(e.creado))}
+          {e.detalle && ` · ${e.detalle}`}
+        </p>
+      </div>
+    </li>
   );
 }
 

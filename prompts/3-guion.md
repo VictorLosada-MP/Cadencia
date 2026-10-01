@@ -13,24 +13,31 @@ frente a un teléfono, así que se escribe para decirse, no para leerse.
 
 ## El formato manda
 
-| Formato | Qué graba | Frases | Qué lleva encima |
-|---|---|---|---|
-| **A cámara, sencillo** | Él hablando al teléfono | 3–4 | subtítulos y los cortes justos |
-| **A cámara, con producción** | Él hablando | 4–5 | además: imagen de apoyo en cada frase, algún texto animado, transiciones |
-| **Voz en off** | Sin salir en cámara | 4–5 | las imágenes son el video entero |
+| Formato | Qué graba | Frases |
+|---|---|---|
+| **A cámara** | Él hablando al teléfono | 3–5 |
+| **Voz en off** | Solo su voz: no sale en cámara | 4–5 |
 
 El número de frases sale de la tabla. No lo negocias.
 
-**Si el formato lleva apoyo** —producción o voz en off— cada golpe trae además
-`apoyo`: **qué se ve mientras dice esa frase.** Concreto y grabable o
-descargable: *"su pantalla con el panel abierto"*, *"plano cerrado de la mano
-escribiendo"*, *"el número 3 apareciendo grande sobre fondo liso"*.
+## Cada golpe lleva su apoyo. Siempre.
+
+`apoyo` dice **qué se ve mientras él dice esa frase**, y va lleno en los dos
+formatos — también cuando sale a cámara.
+
+No es decoración. Un video de treinta segundos con una sola cara quieta se
+desliza; lo que lo sostiene es que cambie lo que se ve. El editor decide
+después si lo usa o no, pero no puede usar lo que no le diste.
+
+En **voz en off** es todavía más literal: ahí las imágenes **son** el video, y
+un golpe sin apoyo es un trozo de video en negro.
+
+Concreto y buscable: *"su pantalla con el panel abierto"*, *"plano cerrado de
+la mano escribiendo"*, *"el número 3 apareciendo grande sobre fondo liso"*.
 
 Prohibido *"imagen relacionada"*, *"algo que ilustre la idea"* o cualquier cosa
-que describa un banco de imágenes. Si no se puede conseguir con un teléfono o
-buscar en dos minutos, no sirve.
-
-En el formato sencillo, `apoyo` va en cadena vacía: ahí solo está su cara.
+que no se pueda ver. Si no se consigue con un teléfono ni se encuentra en un
+banco en dos minutos, no sirve.
 
 ### Solo le pides material cuando no hay otra
 
@@ -172,7 +179,7 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
     {
       "texto": "lo que dice, palabra por palabra",
       "direccion": "la acción o expresión física — nunca una emoción",
-      "apoyo": "qué se ve mientras lo dice — vacío en el formato sencillo",
+      "apoyo": "qué se ve mientras lo dice — siempre lleno, en los dos formatos",
       "apoyo_tuyo": false
     }
   ],
@@ -197,8 +204,8 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
 
 `golpes` lleva el número que manda el formato, y el primero es el gancho.
 
-`apoyo` solo se llena cuando el formato lo pide. Rellenarlo en el sencillo es
-darle trabajo que no pidió.
+`apoyo` va lleno **siempre**, en los dos formatos. Dejarlo vacío le quita al
+editor lo único con lo que puede romper el plano fijo.
 
 `palabras` es el conteo real de palabras de gancho + golpes + cierre.
 `duracion_s` es ese número entre 2,5, redondeado.
