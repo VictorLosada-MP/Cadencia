@@ -389,6 +389,49 @@ export type Transicion = {
   sonido: Blob | null;
 };
 
+/** Lo ancho que se guarda la portada. Lo justo para reconocerla en la ficha. */
+const PORTADA_ANCHO = 180;
+
+/**
+ * Un fotograma del montaje, en base64.
+ *
+ * No del segundo cero: el primero de un reel con carátula es el fondo antes de
+ * que entre el título, y muchas cámaras arrancan con un cuadro oscuro.
+ *
+ * Si falla —un códec que no esté en este build, un archivo raro— devuelve null
+ * y la pieza se apunta sin fotograma. Perder la ficha entera por una miniatura
+ * sería cambiar lo que importa por lo que decora.
+ */
+async function fotograma(f: FFmpeg, duracion: number): Promise<string | null> {
+  const en = Math.max(0, Math.min(1.5, duracion * 0.4));
+  try {
+    const codigo = await f.exec([
+      "-ss", en.toFixed(2),
+      "-i", "salida.mp4",
+      "-frames:v", "1",
+      "-vf", `scale=${PORTADA_ANCHO}:-2`,
+      "-q:v", "6",
+      "-f", "image2",
+      "-y", "portada.jpg",
+    ]);
+    if (codigo !== 0) return null;
+    const datos = (await f.readFile("portada.jpg")) as Uint8Array;
+    return aBase64(datos);
+  } catch {
+    return null;
+  }
+}
+
+/** btoa de un buffer, por trozos: de una vez revienta la pila con archivos grandes. */
+function aBase64(bytes: Uint8Array): string {
+  let texto = "";
+  const trozo = 0x8000;
+  for (let i = 0; i < bytes.length; i += trozo) {
+    texto += String.fromCharCode(...bytes.subarray(i, i + trozo));
+  }
+  return btoa(texto);
+}
+
 export type Montaje = {
   /**
    * Lo que grabó el dueño. En "a cámara" es el video; en "voz en off" es
@@ -441,10 +484,17 @@ export const MAX_TRANSICIONES = 8;
  * comprimir. WebM sería más rápido de producir aquí y no lo admite ninguna de
  * las dos.
  */
+/** Lo que sale de montar: el MP4 y su fotograma. */
+export type Resultado = {
+  video: Blob;
+  /** El fotograma en base64, sin el prefijo "data:". null si no salió. */
+  portada: string | null;
+};
+
 export async function montar(
   m: Montaje,
   alAvanzar?: (a: Avance) => void,
-): Promise<Blob> {
+): Promise<Resultado> {
   const f = await cargarMotor(alAvanzar);
 
   // Lo último que dijo ffmpeg antes de morir. Sin esto, un fallo de montaje
@@ -571,16 +621,25 @@ export async function montar(
     }
 
     const datos = await f.readFile("salida.mp4");
+    // La portada se saca aquí, con el motor que acaba de escribir el archivo.
+    // Antes se sacaba pintando el MP4 en un <video> del navegador, y eso falla
+    // en cuanto el navegador no sabe decodificar H.264: devolvía null sin
+    // ruido y la ficha se guardaba sin fotograma. ffmpeg decodifica lo que él
+    // mismo acaba de codificar, siempre.
+    const portada = await fotograma(f, duracion);
     alAvanzar?.({ parte: 1, mensaje: "Listo." });
     // El tipo de readFile cubre también texto; aquí siempre son bytes.
     const bytes = datos as Uint8Array;
-    return new Blob([bytes.slice().buffer as ArrayBuffer], { type: "video/mp4" });
+    return {
+      video: new Blob([bytes.slice().buffer as ArrayBuffer], { type: "video/mp4" }),
+      portada,
+    };
   } finally {
     f.off("progress", escuchar);
     f.off("log", anotar);
     // El disco virtual vive lo que vive la pestaña: un video de 200 MB que se
     // queda dentro deja sin memoria al siguiente montaje.
-    const basura = ["entrada", "salida.mp4", "subs.ass"];
+    const basura = ["entrada", "salida.mp4", "subs.ass", "portada.jpg"];
     for (let i = 0; i < MAX_INSERTOS; i++) basura.push(`ins${i}`);
     for (let i = 0; i < MAX_TRANSICIONES; i++) basura.push(`sfx${i}.wav`);
     for (const a of basura) await f.deleteFile(a).catch(() => {});

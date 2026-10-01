@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
 import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
-import { esCarrusel, grabaDe, type Carrusel, type Guion, type Pieza } from "@/types/guion";
+import {
+  esCarrusel,
+  grabaDe,
+  mismaFrase,
+  type Carrusel,
+  type Guion,
+  type Pieza,
+} from "@/types/guion";
 import { apuntarHecho } from "@/lib/hecho";
 import { deLienzo } from "@/lib/portada";
 import { Editor } from "./editor";
@@ -458,12 +465,26 @@ function EsVideo({
             ver el guion mientras grabo
           </summary>
           <div className="mt-3 space-y-2 border-l-2 border-neutral-200 pl-4 text-sm dark:border-neutral-800">
-            <p className="font-semibold">{guion.gancho}</p>
+            {/* El primer golpe ES el gancho, literal: escribirlo además arriba
+                lo dejaba dos veces seguidas en el guion que lee mientras
+                graba. El primero va en negrita, que es lo que marcaba. */}
+            {!mismaFrase(guion.gancho, guion.golpes[0]?.texto) && (
+              <p className="font-semibold">{guion.gancho}</p>
+            )}
             {guion.golpes.map((g, i) => (
-              <p key={i} className="text-neutral-700 dark:text-neutral-300">
+              <p
+                key={i}
+                className={
+                  i === 0 && mismaFrase(guion.gancho, g.texto)
+                    ? "font-semibold"
+                    : "text-neutral-700 dark:text-neutral-300"
+                }
+              >
                 {g.texto}
                 {g.direccion && (
-                  <span className="block text-xs italic text-neutral-500">{g.direccion}</span>
+                  <span className="block text-xs font-normal italic text-neutral-500">
+                    {g.direccion}
+                  </span>
                 )}
               </p>
             ))}

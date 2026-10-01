@@ -302,8 +302,57 @@ const NEGRO = "&H00000000&";
  */
 export type Caratula = { texto: string; hasta: number };
 
-/** Cuánto se queda. Medido: en las referencias, entre 1,5 y 2 segundos. */
+/** Cuánto se queda cuando no hay transcripción. Medido: 1,5–2 s en las referencias. */
 export const CARATULA_S = 1.8;
+
+/**
+ * A partir de aquí se deja de buscar el final del gancho.
+ *
+ * Un gancho son los tres primeros segundos. Si a los cuatro todavía no ha
+ * casado con lo que dijo, es que improvisó, y seguir buscando dejaría media
+ * pieza tapada por un título.
+ */
+const CARATULA_TOPE_S = 4;
+
+const trozos = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9ñáéíóúü\s]/gi, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/**
+ * Hasta cuándo dura la carátula: hasta que termina de decir el gancho.
+ *
+ * Antes duraba 1,8 segundos fijos y eso rompía dos cosas a la vez. El título
+ * desaparecía a mitad de la frase —"no coordina con el audio"— y, como los
+ * subtítulos solo se callaban mientras la línea cabía ENTERA dentro de esos
+ * 1,8 s, la línea que cruzaba el borde salía debajo del título diciendo lo
+ * mismo. El gancho se leía dos veces en pantalla.
+ *
+ * Lo que se devuelve es siempre el final de una línea, nunca un instante
+ * cualquiera: así el corte cae donde ya había uno y no se pierde ninguna
+ * palabra al silenciar las que tapa.
+ */
+export function finDelGancho(gancho: string, lineas: Linea[]): number {
+  if (!lineas.length) return CARATULA_S;
+  const quiero = trozos(gancho);
+  if (!quiero.length) return lineas[0].hasta;
+  // Con el 80% basta: la transcripción se come artículos y él cambia una
+  // palabra al decirlo. Exigir el calco dejaría la carátula sin casar nunca.
+  const basta = Math.max(1, Math.ceil(quiero.length * 0.8));
+
+  let casadas = 0;
+  let fin = lineas[0].hasta;
+  for (const l of lineas) {
+    for (const t of trozos(l.texto)) {
+      if (casadas < quiero.length && t === quiero[casadas]) casadas++;
+    }
+    fin = l.hasta;
+    if (casadas >= basta || l.hasta >= CARATULA_TOPE_S) break;
+  }
+  return fin;
+}
 
 /** Parte el gancho en renglones cortos, sin cortar palabras. */
 function enRenglones(texto: string, porRenglon = 22): string[] {
@@ -380,7 +429,11 @@ export function aASS(
   for (const l of lineas) {
     // Mientras está la carátula no hay subtítulo: dos textos a la vez sobre
     // la misma imagen no se lee ninguno.
-    if (caratula && l.hasta <= caratula.hasta) continue;
+    //
+    // Se mira por dónde EMPIEZA la línea, no por dónde acaba. Con `hasta` la
+    // línea que cruzaba el borde se colaba, y como el gancho es la primera
+    // frase, salía debajo del título diciendo exactamente lo mismo.
+    if (caratula && l.desde < caratula.hasta) continue;
 
     const ps = l.palabras.length ? l.palabras : [{ palabra: l.texto, desde: l.desde, hasta: l.hasta }];
 

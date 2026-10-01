@@ -123,6 +123,18 @@ export type Carrusel = {
   limites: string[];
 };
 
+/**
+ * Compara dos frases sin que una coma decida que son distintas.
+ *
+ * Hace falta porque el primer golpe **es** el gancho, literal: lo manda el
+ * prompt. Toda pantalla que escriba el gancho y luego liste los golpes lo
+ * repite dos veces si no lo comprueba. Se comprueba en vez de darlo por hecho:
+ * un guion viejo puede no cumplirlo.
+ */
+export const mismaFrase = (a = "", b = "") =>
+  a.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "") ===
+  b.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "");
+
 export type Pieza = Guion | Carrusel;
 
 export const esCarrusel = (p: Pieza): p is Carrusel => "laminas" in p;
