@@ -1,0 +1,15 @@
+-- Migración 8 — el plan Marca deja de contar corridas.
+--
+-- Marca es el plan de los clientes del servicio a medida: gente con la que ya
+-- hay una relación y un precio acordado, no alguien que llega de internet a
+-- probar. A esos clientes ya se les da el historial sin límite; seguir
+-- contándoles las corridas convierte una relación en un contador, y el día que
+-- uno se queda a mitad de la semana hay que atenderlo a mano igual.
+--
+-- No hace falta tocar nada más: `corridas_mes` en null ya significaba "sin
+-- límite" en `cuotaDe` y en `revisarCuota`, y la pantalla de planes ya escribe
+-- "Corridas sin límite" cuando lo ve. Lo que faltaba era ponerlo.
+--
+-- El consumo se sigue registrando en `corrida`: sin límite no es sin medir, y
+-- hace falta poder ver lo que cuesta cada cuenta.
+update plan set corridas_mes = null where id = 'marca';

@@ -7,6 +7,7 @@ import { Barra } from "../barra";
 import {
   esCarrusel,
   familiaDe,
+  mismaFrase,
   FORMATOS,
   type Carrusel,
   type Familia,
@@ -381,11 +382,6 @@ function Resultado({ p }: { p: Pieza }) {
     </section>
   );
 }
-
-/** Para comparar dos frases sin que una coma decida que son distintas. */
-const mismaFrase = (a = "", b = "") =>
-  a.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "") ===
-  b.toLowerCase().replace(/[^a-z0-9ñáéíóúü]/gi, "");
 
 function DeVideo({ g }: { g: Guion }) {
   // El primer golpe ES el gancho —lo manda el prompt, literal— así que ponerlo

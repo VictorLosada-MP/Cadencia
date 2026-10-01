@@ -15,7 +15,7 @@ import {
 } from "@/lib/silencios";
 import {
   ANIMACIONES,
-  CARATULA_S,
+  finDelGancho,
   aASS,
   enLineas,
   protegerPalabras,
@@ -37,7 +37,6 @@ import {
   type Medida,
 } from "@/lib/video";
 import { apuntarHecho } from "@/lib/hecho";
-import { deVideo } from "@/lib/portada";
 import { EFECTOS, MAX_SUBIDO_S, delArchivo, efecto, type Efecto } from "@/lib/sonido";
 import { insertosDe, useApoyos } from "./apoyo";
 import { apoyosDe } from "@/lib/apoyos";
@@ -116,6 +115,14 @@ export function Editor({
   const [correcciones, setCorrecciones] = useState<Record<number, string>>({});
 
   const [posicion, setPosicion] = useState(0.5);
+  /**
+   * La imagen que se está mirando en grande.
+   *
+   * La miniatura de la lista es de 90 píxeles de ancho y en un monitor no se
+   * distingue si la foto que trajo el banco es la que va: se aceptaba a ciegas
+   * y el fallo se veía con el MP4 ya montado, que tarda minutos.
+   */
+  const [mirando, setMirando] = useState<{ url: string; pide: string } | null>(null);
 
   /**
    * Qué suena en cada transición.
@@ -132,7 +139,12 @@ export function Editor({
 
   const [montando, setMontando] = useState(false);
   const [avance, setAvance] = useState({ parte: 0, mensaje: "" });
-  const [resultado, setResultado] = useState<{ url: string; bytes: number } | null>(null);
+  const [resultado, setResultado] = useState<{
+    url: string;
+    bytes: number;
+    /** El fotograma que va a la ficha de "lo hecho". Lo saca ffmpeg al montar. */
+    portada: string | null;
+  } | null>(null);
   const [bajado, setBajado] = useState(false);
 
   const {
@@ -238,15 +250,6 @@ export function Editor({
     return planos(enCorte, duracionDe(tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }]));
   }, [palabras, tramos, fuente]);
 
-  /** El gancho en grande sobre la primera imagen, los dos primeros segundos. */
-  const caratula = useMemo(
-    () =>
-      nivel === "completa" && guion?.gancho?.trim()
-        ? { texto: guion.gancho.trim(), hasta: CARATULA_S }
-        : null,
-    [nivel, guion],
-  );
-
   const puestos = useMemo(
     () => (fuente ? insertosDe(apoyos, tramos, fuente.duracion) : []),
     [apoyos, tramos, fuente],
@@ -267,6 +270,21 @@ export function Editor({
       })
       .filter((l): l is Linea => l !== null);
   }, [palabras, tramos, subtitular, correcciones]);
+
+  /**
+   * El gancho en grande sobre la primera imagen, mientras lo dice.
+   *
+   * Dura lo que él tarda en decirlo, sacado de los tiempos de las palabras, y
+   * no 1,8 segundos fijos. Por eso se calcula DESPUÉS de las líneas: necesita
+   * saber dónde acaban.
+   */
+  const caratula = useMemo(
+    () =>
+      nivel === "completa" && guion?.gancho?.trim()
+        ? { texto: guion.gancho.trim(), hasta: finDelGancho(guion.gancho, lineas) }
+        : null,
+    [nivel, guion, lineas],
+  );
 
   const recorte = fuente
     ? recorteDe({ ancho: fuente.ancho, alto: fuente.alto, posicion })
@@ -440,7 +458,7 @@ export function Editor({
     setFallo("");
     setResultado(null);
     try {
-      const blob = await montar(
+      const montaje = await montar(
         {
           video: fuente.archivo,
           tramos: tramos.length ? tramos : [{ desde: 0, hasta: fuente.duracion }],
@@ -461,7 +479,11 @@ export function Editor({
         },
         setAvance,
       );
-      setResultado({ url: URL.createObjectURL(blob), bytes: blob.size });
+      setResultado({
+        url: URL.createObjectURL(montaje.video),
+        bytes: montaje.video.size,
+        portada: montaje.portada,
+      });
     } catch (e) {
       setFallo(
         e instanceof Error
@@ -811,16 +833,30 @@ export function Editor({
                       key={a.golpe}
                       className="flex flex-wrap items-start gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
                     >
-                      <div className="h-20 w-14 shrink-0 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-900">
+                      <button
+                        type="button"
+                        onClick={() => a.vista && setMirando({ url: a.vista, pide: a.pide })}
+                        disabled={!a.vista}
+                        aria-label={a.vista ? "Ver la imagen en grande" : undefined}
+                        className="group/foto relative h-32 w-[72px] shrink-0 overflow-hidden rounded bg-neutral-100 disabled:cursor-default sm:h-40 sm:w-[90px] dark:bg-neutral-900"
+                      >
                         {a.vista ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={a.vista} alt="" className="h-full w-full object-cover" />
+                          <>
+                            {/* El recuadro es 9:16 y recorta igual que el video
+                                (force_original_aspect_ratio=increase + crop):
+                                lo que se ve aquí es lo que va a salir. */}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={a.vista} alt="" className="h-full w-full object-cover" />
+                            <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center font-mono text-[9px] uppercase tracking-wider text-white opacity-0 transition group-hover/foto:opacity-100">
+                              ver grande
+                            </span>
+                          </>
                         ) : (
                           <span className="flex h-full items-center justify-center text-[10px] text-neutral-400">
                             {a.buscando ? "…" : "—"}
                           </span>
                         )}
-                      </div>
+                      </button>
 
                       <div className="min-w-0 flex-1">
                         <p className="text-sm leading-snug">
@@ -1257,17 +1293,15 @@ export function Editor({
                     href={resultado.url}
                     download="cadencia.mp4"
                     onClick={() => {
-                      // El apunte espera al fotograma, pero la descarga no: el
-                      // navegador ya se llevó el archivo con este mismo clic.
-                      void deVideo(resultado.url).then((portada) =>
-                        apuntarHecho({
-                          tipo: "video",
-                          titulo: guion?.gancho ?? "",
-                          detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
-                          corridaId,
-                          portada,
-                        }),
-                      );
+                      void apuntarHecho({
+                        tipo: "video",
+                        titulo: guion?.gancho ?? "",
+                        detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
+                        corridaId,
+                        // Ya lo sacó el motor al montar: no hay que esperar a
+                        // que el navegador decodifique nada.
+                        portada: resultado.portada,
+                      });
                       setBajado(true);
                     }}
                     className="empuja mt-4 inline-block rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
@@ -1292,6 +1326,50 @@ export function Editor({
           </Paso>
         </>
       )}
+
+      {mirando && <Lupa {...mirando} cerrar={() => setMirando(null)} />}
+    </div>
+  );
+}
+
+/**
+ * La imagen de apoyo en grande, recortada como va a salir.
+ *
+ * El recuadro es 9:16 y la foto va en object-cover, que es exactamente lo que
+ * hace el montaje (`force_original_aspect_ratio=increase` y luego `crop`). Una
+ * vista previa que enseñara la foto entera mentiría justo en lo que hay que
+ * decidir: si lo que importa de esa foto se queda dentro del recorte.
+ */
+function Lupa({ url, pide, cerrar }: { url: string; pide: string; cerrar: () => void }) {
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && cerrar();
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [cerrar]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="La imagen de apoyo en grande"
+      onClick={cerrar}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+    >
+      <div className="max-h-full" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto aspect-[9/16] max-h-[78vh] overflow-hidden rounded-lg bg-neutral-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        </div>
+        <p className="mx-auto mt-3 max-w-sm text-center text-sm text-neutral-300">
+          Así va a salir, ya recortada a 9:16. Pedía: <strong>{pide}</strong>
+        </p>
+        <button
+          onClick={cerrar}
+          className="mx-auto mt-3 block rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-neutral-900"
+        >
+          Cerrar
+        </button>
+      </div>
     </div>
   );
 }
