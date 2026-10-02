@@ -27,7 +27,60 @@ export const MAX_SEGUNDOS = 180;
 export const MAX_BYTES = 300_000_000;
 
 /** Un filtro largo de más revienta la línea de comandos y la memoria. */
-const MAX_TRAMOS = 80;
+export const MAX_TRAMOS = 80;
+
+/** A lo que sale todo: el montaje, el ritmo y los insertos. */
+export const FPS = 30;
+
+/**
+ * Deja los tramos como ffmpeg los va a cortar de verdad.
+ *
+ * Dos arreglos, y los dos salen de medir el montaje de un video de tres
+ * minutos contra lo que decía la aritmética.
+ *
+ * **Uno: los bordes se cuadran a fotograma.** `trim` no corta por donde se le
+ * pide: se queda con los fotogramas enteros que caen dentro, así que cada
+ * trozo dura un múltiplo de 1/30 y no lo que se pidió. Sobre un corte no se
+ * nota; sobre ochenta se suma. Medido: con noventa cortes, la salida acababa
+ * 1,25 s más tarde de lo que decía la suma de los tramos. Los subtítulos se
+ * colocan con esa suma —`reubicar` hace la cuenta exacta—, así que lo que el
+ * dueño ve es que la letra se va separando de la voz según avanza el video.
+ * Cuadrando los bordes, la cuenta y el corte dicen lo mismo.
+ *
+ * **Dos: si sobran tramos, se funden los vecinos, no se tira la cola.** Antes
+ * se cortaba la lista por las bravas en `MAX_TRAMOS`, y tres minutos de alguien
+ * hablando dan de sobra para pasarse: el video se quedaba sin su último
+ * tercio sin decir nada. Fundir dos tramos separados por la pausa más corta
+ * devuelve una respiración de tres décimas; perder el final devuelve medio
+ * video.
+ */
+export function cuadrarTramos(tramos: Tramo[], max = MAX_TRAMOS): Tramo[] {
+  const paso = 1 / FPS;
+  const alFotograma = (t: number) => Math.round(t / paso) * paso;
+
+  let lista = tramos
+    .map((t) => ({ desde: alFotograma(t.desde), hasta: alFotograma(t.hasta) }))
+    // Un tramo que al cuadrarse se queda sin un solo fotograma no es un tramo.
+    .filter((t) => t.hasta - t.desde >= paso);
+
+  while (lista.length > max) {
+    let cual = 0;
+    let menor = Infinity;
+    for (let i = 1; i < lista.length; i++) {
+      const hueco = lista[i].desde - lista[i - 1].hasta;
+      if (hueco < menor) {
+        menor = hueco;
+        cual = i;
+      }
+    }
+    lista = [
+      ...lista.slice(0, cual - 1),
+      { desde: lista[cual - 1].desde, hasta: lista[cual].hasta },
+      ...lista.slice(cual + 1),
+    ];
+  }
+  return lista;
+}
 
 export type Encuadre = {
   /** Ancho y alto del video de origen, en píxeles. */
@@ -149,13 +202,24 @@ export function filtros(
   const usados = tramos.slice(0, MAX_TRAMOS);
   const partes: string[] = [];
 
+  // El video se iguala a 30 fps exactos ANTES de cortarlo, no después.
+  //
+  // Es la otra mitad de `cuadrarTramos`. De nada sirve pedir los cortes en
+  // múltiplos de 1/30 si la fuente va a 29,97 o trae fotogramas de duración
+  // variable —lo que graba cualquier teléfono—: los fotogramas no caerían
+  // donde se pide y cada trozo volvería a durar un poco de más o de menos.
+  // Igualando aquí, cada trozo dura exactamente los fotogramas que pide la
+  // cuenta, y la cuenta es la misma con la que se colocan los subtítulos.
+  const salidas = usados.map((_, i) => `[c${i}]`).join("");
+  partes.push(`[0:v]fps=${FPS},split=${usados.length}${salidas}`);
+
   usados.forEach((t, i) => {
     const desde = t.desde.toFixed(3);
     const hasta = t.hasta.toFixed(3);
     // setpts/asetpts reinician el reloj de cada trozo. Sin eso, concat los
     // pega conservando los tiempos viejos y el video queda con huecos
     // congelados justo donde se supone que se quitó el silencio.
-    partes.push(`[0:v]trim=start=${desde}:end=${hasta},setpts=PTS-STARTPTS[v${i}]`);
+    partes.push(`[c${i}]trim=start=${desde}:end=${hasta},setpts=PTS-STARTPTS[v${i}]`);
     if (conAudio) {
       // Un fundido de 25 ms a cada lado del corte.
       //
