@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
@@ -19,7 +19,26 @@ import {
 import { historiaQuePide } from "@/types/banco";
 import { Contarla } from "./historia";
 
-/** Lo que dejó la semana al pasar a esta pantalla. Se consume una sola vez. */
+const CAJA = "cadencia:pieza";
+
+/**
+ * Lo que dejó la semana al pasar a esta pantalla.
+ *
+ * **Leer no borra.** Borrar aquí era el fallo, y era de los malos: esto corre
+ * dentro del render, y un render se puede pintar y tirar antes de llegar a la
+ * pantalla —esta pieza entra por `next/dynamic`, así que React la renderiza,
+ * espera al módulo y vuelve a empezar—. La lectura que se tiraba ya se había
+ * llevado el dato por delante, y el reintento no encontraba nada.
+ *
+ * Cuando pasaba, la semana se perdía entera: sin idea, sin ángulo y sin el
+ * recuadro de la historia, y el botón de avanzar se quedaba apagado sin decir
+ * por qué. Y era intermitente, que es lo peor de todo, porque dependía de si
+ * ese render concreto sobrevivía.
+ *
+ * Ahora leer es idempotente —puede correr las veces que haga falta y siempre
+ * devuelve lo mismo— y el borrado va en un efecto, que solo corre cuando el
+ * montaje ya está en pantalla.
+ */
 function leerPieza(): {
   idea?: string;
   angulo?: string;
@@ -27,10 +46,8 @@ function leerPieza(): {
   familia?: string;
 } | null {
   try {
-    const crudo = sessionStorage.getItem("cadencia:pieza");
-    if (!crudo) return null;
-    sessionStorage.removeItem("cadencia:pieza");
-    return JSON.parse(crudo);
+    const crudo = sessionStorage.getItem(CAJA);
+    return crudo ? JSON.parse(crudo) : null;
   } catch {
     return null;
   }
@@ -55,6 +72,17 @@ export default function Guion() {
   const [idea, setIdea] = useState(venida?.idea ?? "");
   const [angulo, setAngulo] = useState(venida?.angulo ?? "");
   const [deLaSemana] = useState<string | null>(venida?.dia ?? null);
+
+  // Ya está leído y en el estado: se borra para que volver aquí mañana no
+  // vuelva a precargar la pieza del jueves pasado. En un efecto y no arriba,
+  // porque aquí el montaje ya está en pantalla y no se va a descartar.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(CAJA);
+    } catch {
+      // Sin sessionStorage no hay nada que borrar.
+    }
+  }, []);
   const [ganchos, setGanchos] = useState<Ganchos | null>(null);
   const [elegido, setElegido] = useState<string | null>(null);
   const [pieza, setPieza] = useState<Pieza | null>(null);
@@ -68,6 +96,20 @@ export default function Guion() {
    */
   const [historia, setHistoria] = useState("");
   const pide = historiaQuePide(angulo);
+
+  /**
+   * Qué falta para poder seguir.
+   *
+   * Dicho, no insinuado. El botón se quedaba apagado sin explicar por qué:
+   * quien había escrito su historia entera y lo veía gris daba por hecho que
+   * estaba roto, y no le faltaba razón — un botón que no se deja pulsar y no
+   * dice qué falta es indistinguible de uno averiado.
+   */
+  const falta = [
+    !formato && "elige arriba qué vas a grabar",
+    !idea.trim() && "escribe de qué va",
+    pide !== null && !historia.trim() && "cuéntame la historia",
+  ].filter((x): x is string => Boolean(x));
 
   async function pedir(paso: "ganchos" | "pieza") {
     setCargando(paso);
@@ -234,15 +276,17 @@ export default function Guion() {
 
         <button
           onClick={() => pedir("ganchos")}
-          disabled={!formato || !idea.trim() || (pide !== null && !historia.trim()) || cargando !== ""}
+          disabled={falta.length > 0 || cargando !== ""}
           className="mt-4 empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
           {cargando === "ganchos" ? "Afilando…" : ganchos ? "Otros tres ganchos" : "Afilar y darme tres ganchos"}
         </button>
-        {pide && !historia.trim() && (
+        {falta.length > 0 && (
           <p className="mt-2 text-sm text-neutral-500">
-            Cuéntame la historia de arriba y seguimos. Sin ella, esta pieza
-            saldría con una inventada.
+            Para seguir, {falta.length === 1 ? falta[0] : `${falta.slice(0, -1).join(", ")} y ${falta[falta.length - 1]}`}.
+            {pide !== null && !historia.trim() && (
+              <> Sin la historia, esta pieza saldría con una inventada.</>
+            )}
           </p>
         )}
 

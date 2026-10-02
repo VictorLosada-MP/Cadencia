@@ -25,6 +25,16 @@ export default function Lista() {
   const [corridaId, setCorridaId] = useState<string | null>(null);
   const [formato, setFormato] = useState<string>("camara");
   const [cargando, setCargando] = useState(true);
+  /**
+   * "Ya lo tengo grabado": se monta sin guion escrito.
+   *
+   * Es la puerta del que llega con el video hecho porque lo tenía en la
+   * cabeza. Obligarle a pasar por el paso 3 era obligarle a inventarse una
+   * idea para que el sistema le escribiera un texto que él ya dijo mejor — y
+   * al que llega de internet a probar, a pasar antes por el diagnóstico y la
+   * semana, que es la fricción más alta que tiene esto.
+   */
+  const [grabado, setGrabado] = useState(false);
 
   useEffect(() => {
     if (!sesion) return;
@@ -76,26 +86,32 @@ export default function Lista() {
         </p>
         <h1 className="mt-4 text-5xl font-bold leading-none tracking-tight">Lista para subir</h1>
         <p className="mt-4 max-w-xl text-neutral-600 dark:text-neutral-400">
-          Aquí lo que escribiste en el paso 3 se convierte en el archivo que
-          subes. Todo se arma en tu navegador: nada se sube a ningún servidor.
+          Aquí se convierte en el archivo que subes: lo que escribiste en el
+          paso 3, o lo que ya grabaste por tu cuenta. Todo se arma en tu
+          navegador: nada se sube a ningún servidor.
         </p>
       </header>
 
       {cargando ? (
         <p className="mt-9 text-sm text-neutral-500">Buscando lo último que escribiste…</p>
+      ) : grabado ? (
+        <YaGrabado volver={() => setGrabado(false)} />
       ) : !pieza ? (
-        <div className="mt-9 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-            Todavía no hay nada que armar. Escribe una pieza en el paso 3 y
-            vuelve — si es un carrusel, aquí salen las láminas listas.
-          </p>
-          <Link
-            href="/pieza"
-            className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
-          >
-            ir a escribir la pieza →
-          </Link>
-        </div>
+        <>
+          <div className="revela mt-9 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+            <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+              Todavía no hay nada escrito que armar. Escribe una pieza en el
+              paso 3 y vuelve — si es un carrusel, aquí salen las láminas listas.
+            </p>
+            <Link
+              href="/pieza"
+              className="mt-3 inline-block font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+            >
+              ir a escribir la pieza →
+            </Link>
+          </div>
+          <Puerta abrir={() => setGrabado(true)} />
+        </>
       ) : esCarrusel(pieza) ? (
         <DeCarrusel
           c={pieza}
@@ -105,9 +121,86 @@ export default function Lista() {
           corridaId={corridaId}
         />
       ) : (
-        <EsVideo guion={pieza as Guion} corridaId={corridaId} formato={formato} />
+        <>
+          <EsVideo guion={pieza as Guion} corridaId={corridaId} formato={formato} />
+          <Puerta abrir={() => setGrabado(true)} discreta />
+        </>
       )}
     </main>
+  );
+}
+
+/**
+ * La otra puerta: montar algo que ya está grabado.
+ *
+ * Discreta cuando ya hay una pieza escrita —ahí la principal es la de arriba—
+ * y a la vista cuando no hay nada, que es cuando esta pantalla se quedaba en
+ * un callejón sin salida.
+ */
+function Puerta({ abrir, discreta }: { abrir: () => void; discreta?: boolean }) {
+  if (discreta) {
+    return (
+      <p className="revela mt-10 border-t border-neutral-200 pt-6 text-sm text-neutral-500 dark:border-neutral-800">
+        ¿Grabaste otra cosa, sin guion?{" "}
+        <button
+          onClick={abrir}
+          className="font-semibold text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+        >
+          Móntala igual
+        </button>{" "}
+        — el guion sale de lo que dijiste.
+      </p>
+    );
+  }
+
+  return (
+    <section
+      className="revela mt-6 rounded-lg border-2 border-teal-700/40 bg-teal-50/50 p-5 dark:border-teal-400/30 dark:bg-teal-950/20"
+      style={{ ["--tarda" as string]: "0.06s" }}
+    >
+      <p className="font-mono text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-400">
+        O si no
+      </p>
+      <p className="mt-2 text-lg font-semibold leading-snug">Ya lo tengo grabado</p>
+      <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+        Lo tenías en la cabeza y lo dijiste. Súbelo tal cual:{" "}
+        <strong>el guion sale de lo que dijiste</strong>, repartido en los
+        bloques donde callaste. De ahí salen los cortes, los subtítulos, la
+        carátula y las transiciones, sin pasar por el paso 3 y sin gastar una
+        corrida.
+      </p>
+      <button
+        onClick={abrir}
+        className="empuja mt-4 rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white dark:bg-teal-600"
+      >
+        Subir lo que grabé
+      </button>
+    </section>
+  );
+}
+
+function YaGrabado({ volver }: { volver: () => void }) {
+  return (
+    <section className="revela mt-9">
+      <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <p className="font-semibold">Lo que grabaste, sin guion escrito</p>
+          <button
+            onClick={volver}
+            className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
+          >
+            volver a lo escrito
+          </button>
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+          Súbelo y saca los subtítulos: de ahí sale el guion, con tus palabras y
+          sin cambiar ninguna. Lo único que no se puede sacar de tu voz es qué
+          imagen va encima de cada bloque, y eso se pide aparte en el paso 3b.
+        </p>
+      </div>
+
+      <Editor deLaVoz />
+    </section>
   );
 }
 

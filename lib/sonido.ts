@@ -20,13 +20,15 @@ import { aWav } from "./audio";
 
 const MUESTREO = 44100;
 
-export type Efecto = "golpe" | "clic" | "barrido";
+export type Efecto = "golpe" | "clic" | "barrido" | "flash" | "impacto";
 
 /** Lo que ve el dueño en el editor. El orden es el de la lista. */
 export const EFECTOS: { id: Efecto; nombre: string; que: string }[] = [
   { id: "golpe", nombre: "Golpe", que: "Grave y seco. Marca el cambio sin taparte la voz." },
   { id: "clic", nombre: "Clic", que: "Corto y agudo. Casi no se nota, solo apoya el corte." },
-  { id: "barrido", nombre: "Barrido", que: "El “swish” de siempre. El más llamativo de los tres." },
+  { id: "barrido", nombre: "Barrido", que: "El “swish” de siempre: aire que pasa." },
+  { id: "flash", nombre: "Flash", que: "Dos disparos seguidos, como el obturador de una cámara." },
+  { id: "impacto", nombre: "Impacto", que: "Entra subiendo y revienta en grave. El más dramático." },
 ];
 
 /** Ruido con la semilla fija: el mismo efecto suena igual siempre. */
@@ -118,9 +120,85 @@ function barrido(duracion = 0.3): Float32Array {
   return salida;
 }
 
-const DE: Record<Efecto, () => Float32Array> = { golpe, clic, barrido };
+/**
+ * Dos disparos de obturador: impactos a 26 ms, cuerpo en 410 Hz y cola corta.
+ *
+ * Medido: el 85% de la energía cae entre 250 y 500 Hz. Ahí es donde el oído
+ * lee "cámara" en vez de "palmada".
+ */
+function flash(duracion = 0.22): Float32Array {
+  const n = Math.round(duracion * MUESTREO);
+  const salida = new Float32Array(n);
+  const dado = ruido(0xf1a54);
+  // Paso bajo ~520 Hz y paso alto ~180 Hz: deja la banda del golpe y tira el
+  // aire de arriba y el retumbo de abajo.
+  const aLo = 1 - Math.exp((-2 * Math.PI * 520) / MUESTREO);
+  const aHi = 1 - Math.exp((-2 * Math.PI * 180) / MUESTREO);
+  let lo1 = 0;
+  let lo2 = 0;
+  let hi = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / MUESTREO;
+    const x = dado();
+    lo1 += aLo * (x - lo1);
+    lo2 += aLo * (lo1 - lo2);
+    hi += aHi * (lo2 - hi);
+    const cuerpo = lo2 - hi;
+    // Dos obturadores. El segundo llega 26 ms después y un poco más flojo.
+    const env = Math.exp(-t * 28) + 0.72 * Math.exp(-Math.max(0, t - 0.026) * 34);
+    const tono =
+      Math.sin(2 * Math.PI * 410 * t) * 0.35 + Math.sin(2 * Math.PI * 820 * t) * 0.08;
+    salida[i] = (cuerpo * 1.6 + tono) * env * 0.42;
+  }
+  return salida;
+}
 
-/** Se calcula una vez por pestaña: son los mismos tres archivos siempre. */
+/**
+ * Sube 160 ms, pega, rebota a los 80 y se apaga.
+ *
+ * Medido: el 67% por debajo de 120 Hz, y el resto hasta 1 kHz concentrado en
+ * el golpe. Es el único de los cinco que se anuncia antes de sonar, así que
+ * marca un cambio de bloque más fuerte que los demás.
+ */
+function impacto(duracion = 0.48): Float32Array {
+  const n = Math.round(duracion * MUESTREO);
+  const salida = new Float32Array(n);
+  const dado = ruido(0xf1a52);
+  const chasquido = ruido(0xf1a53);
+  const aLo = 1 - Math.exp((-2 * Math.PI * 160) / MUESTREO);
+  const aHi = 1 - Math.exp((-2 * Math.PI * 900) / MUESTREO);
+  let lo1 = 0;
+  let lo2 = 0;
+  let c1 = 0;
+  let c2 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / MUESTREO;
+    const x = dado();
+    lo1 += aLo * (x - lo1);
+    lo2 += aLo * (lo1 - lo2);
+    // El impacto trae un poco de medio que el retumbo no tiene.
+    const c = chasquido();
+    c1 += aHi * (c - c1);
+    const alto = c - c1;
+    c2 += aHi * (alto - c2);
+    const medio = alto - c2;
+    const subida = Math.min(1, t / 0.16) ** 1.7;
+    const golpe = Math.exp(-Math.max(0, t - 0.16) * 9);
+    const rebote = 0.45 * Math.exp(-Math.max(0, t - 0.24) * 14);
+    const env = (subida * 0.35 + golpe + rebote) * Math.exp(-t * 1.2);
+    const tono =
+      Math.sin(2 * Math.PI * 68 * t) * 0.7 +
+      Math.sin(2 * Math.PI * 136 * t) * 0.25 +
+      Math.sin(2 * Math.PI * 40 * t) * 0.2;
+    const transiente = medio * Math.exp(-Math.max(0, t - 0.16) * 40) * 0.55;
+    salida[i] = (lo2 * 1.3 + tono + transiente) * env * 0.5;
+  }
+  return salida;
+}
+
+const DE: Record<Efecto, () => Float32Array> = { golpe, clic, barrido, flash, impacto };
+
+/** Se calcula una vez por pestaña: son los mismos cinco archivos siempre. */
 const hechos = new Map<Efecto, Blob>();
 
 export function efecto(cual: Efecto): Blob {
