@@ -41,6 +41,8 @@ import { EFECTOS, MAX_SUBIDO_S, delArchivo, efecto, type Efecto } from "@/lib/so
 import { insertosDe, useApoyos } from "./apoyo";
 import { apoyosDe } from "@/lib/apoyos";
 import { planos } from "@/lib/ritmo";
+import { guionDeLaVoz } from "@/lib/deTranscripcion";
+import type { Guion } from "@/types/guion";
 import { Onda } from "./onda";
 import { Siguiente } from "./publicar";
 
@@ -72,13 +74,23 @@ export function Editor({
   guion,
   corridaId,
   graba,
+  deLaVoz,
 }: {
   guion?: {
     descripcion?: string;
     gancho?: string;
     golpes?: { texto: string; apoyo?: string; apoyo_tuyo?: boolean }[];
-  };
+  } | null;
   corridaId?: string | null;
+  /**
+   * "Ya lo tengo grabado": no hay guion escrito y sale de lo que dijo.
+   *
+   * El dueño que llega con el video hecho no debería inventarse una idea para
+   * que el sistema le escriba un texto que él ya dijo mejor. Se transcribe y
+   * el guion se reparte en los bloques donde calló: de ahí salen la carátula,
+   * las transiciones y el ritmo sin llamar a ningún modelo.
+   */
+  deLaVoz?: boolean;
   /**
    * Qué grabó el dueño. En "voz en off" es SOLO audio, y entonces el video no
    * existe: lo arma el sistema con las imágenes. Pedirle un video en ese
@@ -87,11 +99,15 @@ export function Editor({
   graba?: "video" | "audio";
 }) {
   const soloVoz = graba === "audio";
+  /** El sacado de la transcripción, cuando no hay ninguno escrito. */
+  const [suyo, setSuyo] = useState<Guion | null>(null);
+  const [buscandoApoyos, setBuscandoApoyos] = useState(false);
+  const elGuion = guion ?? suyo;
   const [nivel, setNivel] = useState<"base" | "completa">("completa");
   // El guion pide imágenes de apoyo cuando el formato es "con producción" o
   // "voz en off". El editor todavía no las coloca solo, así que lo dice y las
   // pone delante: es lo que hace falta tener a mano mientras se graba.
-  const conApoyo = (guion?.golpes ?? []).filter((g) => g.apoyo?.trim());
+  const conApoyo = (elGuion?.golpes ?? []).filter((g) => g.apoyo?.trim());
   const [fuente, setFuente] = useState<Fuente | null>(null);
   const [fallo, setFallo] = useState("");
   const [analizando, setAnalizando] = useState(false);
@@ -155,7 +171,7 @@ export function Editor({
     agregar,
     quitar,
     mover,
-  } = useApoyos(guion?.golpes, palabras, fuente?.duracion ?? 0);
+  } = useApoyos(elGuion?.golpes, palabras, fuente?.duracion ?? 0);
 
 
   const video = useRef<HTMLVideoElement>(null);
@@ -215,11 +231,11 @@ export function Editor({
    * quince. Los bloques son tres o cuatro.
    */
   const transiciones = useMemo(() => {
-    if (!palabras?.length || !guion?.golpes?.length) return [];
+    if (!palabras?.length || !elGuion?.golpes?.length) return [];
     // Los mismos momentos que los apoyos: se reparten aunque no se encuentre
     // la frase literal. Antes usaban el buscador estricto y, como solo el
     // gancho casa palabra por palabra, salía UNA transición en todo el video.
-    return apoyosDeGolpes(guion.golpes, palabras)
+    return apoyosDeGolpes(elGuion.golpes, palabras)
       .map((m) => {
         const t = reubicar(m, tramos);
         return t === null ? null : { en: t, sonido };
@@ -228,7 +244,7 @@ export function Editor({
       // La primera del video no: no hay de dónde venir.
       .filter((t) => t.en > 0.4)
       .slice(0, MAX_TRANSICIONES);
-  }, [palabras, guion, tramos, sonido]);
+  }, [palabras, elGuion, tramos, sonido]);
 
   /**
    * El ritmo, en tiempos del video ya cortado.
@@ -280,10 +296,10 @@ export function Editor({
    */
   const caratula = useMemo(
     () =>
-      nivel === "completa" && guion?.gancho?.trim()
-        ? { texto: guion.gancho.trim(), hasta: finDelGancho(guion.gancho, lineas) }
+      nivel === "completa" && elGuion?.gancho?.trim()
+        ? { texto: elGuion.gancho.trim(), hasta: finDelGancho(elGuion.gancho, lineas) }
         : null,
-    [nivel, guion, lineas],
+    [nivel, elGuion, lineas],
   );
 
   const recorte = fuente
@@ -440,15 +456,53 @@ export function Editor({
       const r = await fetch("/api/voz", { method: "POST", body: cuerpo });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo transcribir.");
-      setPalabras(
-        ((d.palabras ?? []) as Palabra[]).map((p, i) => ({ ...p, i })),
-      );
+      const dichas = ((d.palabras ?? []) as Palabra[]).map((p, i) => ({ ...p, i }));
+      setPalabras(dichas);
       setCorrecciones({});
       setSubtitular(true);
+      // Sin guion escrito, el guion es lo que acaba de decir. Se reparte en
+      // los bloques donde calló, aquí mismo y sin llamar a ningún modelo: de
+      // ahí salen ya la carátula, las transiciones y el ritmo.
+      if (deLaVoz && !guion) setSuyo(guionDeLaVoz(dichas));
     } catch (e) {
       setFallo(e instanceof Error ? e.message : "No se pudo transcribir.");
     } finally {
       setTranscribiendo(false);
+    }
+  }
+
+  /**
+   * Qué se ve encima de cada bloque. Lo único que no sale de su propia voz.
+   *
+   * Va aparte y a petición: sin esto el montaje ya da cortes, subtítulos,
+   * carátula, ritmo y transiciones, y eso no debería depender de que le quede
+   * cuota ni de esperar a un modelo.
+   */
+  async function pedirApoyos() {
+    if (!suyo?.golpes?.length) return;
+    setBuscandoApoyos(true);
+    setFallo("");
+    try {
+      const r = await fetch("/api/apoyos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bloques: suyo.golpes.map((g) => g.texto) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No se pudo.");
+      const lista = (d.apoyos ?? []) as { apoyo: string; apoyo_tuyo?: boolean }[];
+      setSuyo({
+        ...suyo,
+        golpes: suyo.golpes.map((g, i) => ({
+          ...g,
+          apoyo: lista[i]?.apoyo ?? "",
+          apoyo_tuyo: Boolean(lista[i]?.apoyo_tuyo),
+        })),
+      });
+    } catch (e) {
+      setFallo(e instanceof Error ? e.message : "No se pudieron sacar las imágenes.");
+    } finally {
+      setBuscandoApoyos(false);
     }
   }
 
@@ -701,7 +755,11 @@ export function Editor({
             n="3"
             titulo="Los subtítulos"
             hecho={Boolean(palabras?.length)}
-            nota="Es lo único de todo el editor que sale de tu máquina, y sale solo el audio —nunca el video. Si lo saltas, el montaje funciona igual."
+            nota={
+              deLaVoz
+                ? "Aquí sale además el guion: lo que dijiste, repartido en los bloques donde callaste. Es lo único de todo el editor que sale de tu máquina, y sale solo el audio."
+                : "Es lo único de todo el editor que sale de tu máquina, y sale solo el audio —nunca el video. Si lo saltas, el montaje funciona igual."
+            }
           >
             {!conAudio ? (
               <p className="text-sm text-neutral-500">Sin audio no hay nada que subtitular.</p>
@@ -820,11 +878,36 @@ export function Editor({
                   : "Saca primero los subtítulos: sin ellos no se sabe en qué segundo dices cada frase."
               }
             >
+              {deLaVoz && palabras && conApoyo.length === 0 && (
+                <div className="mb-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+                  <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+                    El guion salió de lo que dijiste, así que los cortes, los
+                    subtítulos, la carátula y las transiciones ya están. Lo único
+                    que no se puede sacar de tu voz es <strong>qué se ve encima</strong>
+                    {" "}de cada bloque.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => void pedirApoyos()}
+                      disabled={buscandoApoyos}
+                      className="empuja rounded-full border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-teal-400 dark:text-teal-300 dark:hover:bg-teal-950/40"
+                    >
+                      {buscandoApoyos ? "Mirándolo…" : "Decirme qué imágenes van"}
+                    </button>
+                    <p className="text-xs text-neutral-500">
+                      No toca una palabra de lo que dijiste. No gasta corrida.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {!palabras ? (
                 <p className="text-sm text-neutral-500">
-                  {conApoyo.length
-                    ? `${conApoyo.length} ${conApoyo.length === 1 ? "imagen pendiente" : "imágenes pendientes"}.`
-                    : "Este guion no pide ninguna, pero podrás añadir las tuyas."}
+                  {deLaVoz
+                    ? "Saca primero los subtítulos: de ahí sale el guion."
+                    : conApoyo.length
+                      ? `${conApoyo.length} ${conApoyo.length === 1 ? "imagen pendiente" : "imágenes pendientes"}.`
+                      : "Este guion no pide ninguna, pero podrás añadir las tuyas."}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -898,7 +981,7 @@ export function Editor({
                         )}
 
                         <div className="mt-2 flex flex-wrap items-center gap-3">
-                          {esTuya(guion, a.golpe) ? (
+                          {esTuya(elGuion, a.golpe) ? (
                             <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-amber-900 dark:bg-amber-950 dark:text-amber-300">
                               tiene que ser tuya
                             </span>
@@ -1295,7 +1378,7 @@ export function Editor({
                     onClick={() => {
                       void apuntarHecho({
                         tipo: "video",
-                        titulo: guion?.gancho ?? "",
+                        titulo: elGuion?.gancho ?? "",
                         detalle: `${reloj(duracionFinal)} · ${SALIDA.ancho}×${SALIDA.alto}`,
                         corridaId,
                         // Ya lo sacó el motor al montar: no hay que esperar a
@@ -1308,13 +1391,13 @@ export function Editor({
                   >
                     Descargar el MP4
                   </a>
-                  {guion?.descripcion && (
+                  {elGuion?.descripcion && (
                     <div className="mt-5">
                       <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                         La descripción que escribiste en el paso 3
                       </p>
                       <p className="mt-1 whitespace-pre-wrap rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-                        {guion.descripcion}
+                        {elGuion.descripcion}
                       </p>
                     </div>
                   )}
@@ -1415,7 +1498,7 @@ function apoyosDeGolpes(golpes: { texto: string }[], palabras: Palabra[]): numbe
 
 /** Si el guion marcó ese apoyo como material suyo, no se busca: se le pide. */
 function esTuya(
-  guion: { golpes?: { apoyo_tuyo?: boolean }[] } | undefined,
+  guion: { golpes?: { apoyo_tuyo?: boolean }[] } | null | undefined,
   golpe: number,
 ): boolean {
   return Boolean(guion?.golpes?.[golpe]?.apoyo_tuyo);
