@@ -30,6 +30,7 @@ import {
   MAX_SEGUNDOS,
   MAX_TRANSICIONES,
   SALIDA,
+  cuadrarTramos,
   extraerAudio,
   medirConMotor,
   montar,
@@ -182,16 +183,18 @@ export function Editor({
   // porque la envolvente ya está: decodificar es lo que costaba.
   const tramos: Tramo[] = useMemo(() => {
     if (!env || !fuente) return [];
-    if (!cortar) return [{ desde: 0, hasta: fuente.duracion }];
+    if (!cortar) return cuadrarTramos([{ desde: 0, hasta: fuente.duracion }]);
     const crudos = tramosAudibles(env, fuente.duracion, ajustes);
-    if (!palabras?.length) return crudos;
+    if (!palabras?.length) return cuadrarTramos(crudos);
     // En cuanto hay transcripción, ningún corte puede partir una palabra. Es
     // lo que hacía que el video dijera media palabra y además se quedara sin
     // su subtítulo: el arranque de una ese suave cae por debajo del umbral.
     const protegidos = protegerPalabras(crudos, palabras);
     // Y las muletillas se quitan por lo que SON, no por su volumen: un "eh"
     // suena de sobra para pasar cualquier umbral.
-    return quitarMuletillas ? sinMuletillas(protegidos, palabras) : protegidos;
+    return cuadrarTramos(
+      quitarMuletillas ? sinMuletillas(protegidos, palabras) : protegidos,
+    );
   }, [env, fuente, ajustes, cortar, palabras, quitarMuletillas]);
 
   /** El WAV que se le pasa a ffmpeg. El suyo manda si lo trajo. */

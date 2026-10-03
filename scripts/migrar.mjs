@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 /**
- * Corre las migraciones de db/ en orden, una sola vez cada una.
+ * Corre los archivos de db/ en orden. Todos, cada vez.
+ *
+ * No hay cuaderno que lleve la cuenta de cuáles ya pasaron: las consultas viven
+ * en el código y el esquema vive en db/, así que una tabla que solo guardaba
+ * nombres de archivo era una pieza más que mantener para no repetir un trabajo
+ * que es barato repetir.
+ *
+ * El trato que eso impone, y es el único que lo sostiene: **cada archivo de db/
+ * tiene que poder correrse dos veces seguidas sin cambiar el resultado.**
+ * `create table if not exists`, `add column if not exists`, `create or replace`,
+ * `on conflict do nothing`. Una orden que no aguante repetirse —un `insert` sin
+ * conflicto, un `update` que suma en vez de fijar— corrompería los datos en el
+ * siguiente despliegue y sin avisar.
  *
  * En Node y no con psql a propósito: psql no viene instalado en Windows ni en
  * medio mundo, y pedirle a alguien que instale una herramienta de línea de
@@ -36,31 +48,17 @@ const archivos = fs
   .sort();
 
 try {
-  await pool.query(`
-    create table if not exists migracion (
-      nombre   text primary key,
-      aplicada timestamptz not null default now()
-    )`);
-
-  const { rows } = await pool.query("select nombre from migracion");
-  const hechas = new Set(rows.map((r) => r.nombre));
-
-  let nuevas = 0;
+  let hechos = 0;
   for (const archivo of archivos) {
-    if (hechas.has(archivo)) {
-      console.log(`  ya estaba   ${archivo}`);
-      continue;
-    }
     const sql = fs.readFileSync(path.join(RAIZ, "db", archivo), "utf8");
     const cliente = await pool.connect();
     try {
-      // Cada migración va entera o no va: a medias es peor que no correrla.
+      // Cada archivo va entero o no va: a medias es peor que no correrlo.
       await cliente.query("begin");
       await cliente.query(sql);
-      await cliente.query("insert into migracion (nombre) values ($1)", [archivo]);
       await cliente.query("commit");
-      console.log(`  aplicada    ${archivo}`);
-      nuevas++;
+      console.log(`  ok   ${archivo}`);
+      hechos++;
     } catch (e) {
       await cliente.query("rollback").catch(() => {});
       console.error(`\n  FALLÓ       ${archivo}`);
@@ -75,9 +73,7 @@ try {
 
   if (!process.exitCode) {
     console.log(
-      nuevas === 0
-        ? "\nNada que hacer: la base ya está al día.\n"
-        : `\n${nuevas} ${nuevas === 1 ? "migración aplicada" : "migraciones aplicadas"}. Arranca con: npm run dev\n`,
+      `\n${hechos} ${hechos === 1 ? "archivo" : "archivos"} al día. Arranca con: npm run dev\n`,
     );
   }
 } catch (e) {
