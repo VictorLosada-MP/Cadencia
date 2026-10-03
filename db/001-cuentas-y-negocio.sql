@@ -6,6 +6,11 @@
 --
 -- Se corre con:  npm run migrar
 --
+-- Todos los archivos de db/ se corren ENTEROS en cada `npm run migrar`: no hay
+-- tabla que lleve la cuenta de cuáles ya pasaron. Por eso cada orden de aquí
+-- tiene que poder repetirse sin romper nada — `if not exists`, `or replace`,
+-- `on conflict do nothing`. Es la regla que sostiene todo el sistema.
+--
 -- Las cuatro primeras tablas son las que Better Auth espera. Están aquí y no
 -- generadas por su CLI a propósito: así el esquema entero vive en el
 -- repositorio, se lee, se versiona y no depende de que una herramienta encuentre
@@ -25,12 +30,15 @@ create table if not exists "user" (
   image           text,
   "createdAt"     timestamptz not null default now(),
   "updatedAt"     timestamptz not null default now(),
-  -- Del complemento de administración: es lo que permite dar de alta a un
-  -- cliente de la marca y regalarle la cuenta sin tocar la base a mano.
-  role            text,
-  banned          boolean default false,
-  "banReason"     text,
-  "banExpires"    timestamptz
+  -- Nuestra, no de la librería: es para el panel de administración de más
+  -- adelante. Vacía en todo el mundo menos en quien administre.
+  --
+  -- Aquí vivían también `banned`, `banReason` y `banExpires`, que venían del
+  -- complemento `admin()` de Better Auth. Se quitaron en la migración 009: no
+  -- hay a quién bloquear. Quien deja de pagar no se bloquea, se queda sin
+  -- cuota — el portero de `revisarCuota` cierra la puerta de crear y deja
+  -- abierta la de leer lo que ya pagó, que es lo correcto.
+  role            text
 );
 
 create table if not exists session (
@@ -41,8 +49,7 @@ create table if not exists session (
   "updatedAt"      timestamptz not null default now(),
   "ipAddress"      text,
   "userAgent"      text,
-  "userId"         text not null references "user"(id) on delete cascade,
-  "impersonatedBy" text
+  "userId"         text not null references "user"(id) on delete cascade
 );
 
 create index if not exists session_usuario on session ("userId");
