@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { usuarioActual } from "@/lib/negocio";
-import { adminActual, cuentas, llaveCorrecta } from "@/lib/panel";
+import { adminActual, cuentas, llaveCorrecta, resumen } from "@/lib/panel";
 import { Panel } from "./panel";
 
 export const dynamic = "force-dynamic";
@@ -43,5 +43,13 @@ export default async function PaginaPanel({
   const admin = await adminActual();
   if (!admin) notFound();
 
-  return <Panel llave={llave} lista={await cuentas()} quien={admin.email} />;
+  const [primera, cifras] = await Promise.all([cuentas(), resumen()]);
+  return (
+    <Panel
+      llave={llave}
+      inicial={primera}
+      resumen={cifras}
+      quien={admin.email}
+    />
+  );
 }

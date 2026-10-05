@@ -60,41 +60,113 @@ export function enlaceDelPanel(): string | null {
   return llave && llave.length >= 16 ? `/panel/${llave}` : null;
 }
 
+/** Cuántas caben en una pantalla sin tener que buscar con el dedo. */
+export const POR_PAGINA = 25;
+
+export type Pagina = {
+  lista: Cuenta[];
+  /** Cuántas cuentas casan con la búsqueda, no cuántas vienen en esta página. */
+  total: number;
+};
+
+export type Resumen = {
+  cuentas: number;
+  con_negocio: number;
+  vips: number;
+  corridas_mes: number;
+};
+
 /**
- * Las cuentas, con lo que hace falta para decidir.
+ * Las cuatro cifras de arriba, de TODAS las cuentas.
  *
- * Una sola consulta con subconsultas y no una por cuenta: con doscientas
- * cuentas, lo segundo son seiscientas idas y vueltas a la base para pintar una
- * tabla.
+ * Aparte de la lista a propósito: si salieran de contar las filas que se
+ * pintan, el día que haya mil cuentas dirían «25 cuentas» con toda la cara.
  */
-export function cuentas(): Promise<Cuenta[]> {
-  return consultar<Cuenta>(
-    `select u.id,
-            u.email,
-            u.name                        as nombre,
-            u."createdAt"                 as creado,
-            n.id                          as negocio_id,
-            n.oferta, n.cliente, n.despues,
-            n.nombre                      as negocio_nombre,
-            coalesce(s.plan_id, 'prueba') as plan,
-            case
-              when s.cortesia_plan is not null
-               and (s.cortesia_hasta is null or s.cortesia_hasta > now())
-              then s.cortesia_plan
-            end                           as cortesia,
-            s.cortesia_hasta,
-            (select count(*) from corrida c
-              where c.negocio_id = n.id
-                and c.creado >= date_trunc('month', now()))::int as corridas_mes,
-            (select count(*) from corrida c where c.negocio_id = n.id)::int as corridas_total,
-            (select count(*) from entregado e where e.negocio_id = n.id)::int as entregados,
-            (select max(c.creado) from corrida c where c.negocio_id = n.id) as ultima
+export function resumen(): Promise<Resumen | null> {
+  return una<Resumen>(
+    `select count(*)::int as cuentas,
+            count(n.id)::int as con_negocio,
+            count(*) filter (
+              where s.cortesia_plan = $1
+                and (s.cortesia_hasta is null or s.cortesia_hasta > now())
+            )::int as vips,
+            (select count(*)::int from corrida
+              where creado >= date_trunc('month', now())) as corridas_mes
        from "user" u
        left join negocio n     on n.usuario_id = u.id
-       left join suscripcion s on s.usuario_id = u.id
-      order by u."createdAt" desc
-      limit 500`,
+       left join suscripcion s on s.usuario_id = u.id`,
+    [VIP],
   );
+}
+
+/**
+ * Una página de cuentas, con lo que hace falta para decidir.
+ *
+ * Se pagina y se busca EN LA BASE, no en el navegador. Traer las mil cuentas
+ * con su oferta, su cliente y su después para enseñar veinticinco son varios
+ * megas de prosa en cada carga, y una búsqueda que solo encuentra lo que ya se
+ * había bajado no es una búsqueda.
+ *
+ * Y una sola consulta con subconsultas, no una por cuenta: lo segundo son
+ * setenta y cinco idas y vueltas a la base para pintar una tabla.
+ */
+export async function cuentas(
+  { busca = "", pagina = 0 }: { busca?: string; pagina?: number } = {},
+): Promise<Pagina> {
+  const q = busca.trim().slice(0, 120);
+  // `%` y `_` son comodines de LIKE: sin escaparlos, buscar «100_%» traería
+  // cosas que no se parecen en nada a lo que se escribió.
+  const patron = q ? `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%` : null;
+  const desde = Math.max(0, Math.floor(pagina)) * POR_PAGINA;
+
+  const donde = patron
+    ? `where u.email ilike $1 escape '\\'
+          or u.name  ilike $1 escape '\\'
+          or n.oferta ilike $1 escape '\\'
+          or n.nombre ilike $1 escape '\\'`
+    : "";
+
+  const [lista, cuenta] = await Promise.all([
+    consultar<Cuenta>(
+      `select u.id,
+              u.email,
+              u.name                        as nombre,
+              u."createdAt"                 as creado,
+              n.id                          as negocio_id,
+              n.oferta, n.cliente, n.despues,
+              n.nombre                      as negocio_nombre,
+              coalesce(s.plan_id, 'prueba') as plan,
+              case
+                when s.cortesia_plan is not null
+                 and (s.cortesia_hasta is null or s.cortesia_hasta > now())
+                then s.cortesia_plan
+              end                           as cortesia,
+              s.cortesia_hasta,
+              (select count(*) from corrida c
+                where c.negocio_id = n.id
+                  and c.creado >= date_trunc('month', now()))::int as corridas_mes,
+              (select count(*) from corrida c where c.negocio_id = n.id)::int as corridas_total,
+              (select count(*) from entregado e where e.negocio_id = n.id)::int as entregados,
+              (select max(c.creado) from corrida c where c.negocio_id = n.id) as ultima
+         from "user" u
+         left join negocio n     on n.usuario_id = u.id
+         left join suscripcion s on s.usuario_id = u.id
+         ${donde}
+        order by u."createdAt" desc
+        limit ${POR_PAGINA} offset ${desde}`,
+      patron ? [patron] : [],
+    ),
+    una<{ n: number }>(
+      `select count(*)::int as n
+         from "user" u
+         left join negocio n     on n.usuario_id = u.id
+         left join suscripcion s on s.usuario_id = u.id
+         ${donde}`,
+      patron ? [patron] : [],
+    ),
+  ]);
+
+  return { lista, total: cuenta?.n ?? lista.length };
 }
 
 /**

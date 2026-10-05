@@ -1,6 +1,33 @@
-import { adminActual, llaveCorrecta, ponerVip, quitarVip } from "@/lib/panel";
+import { adminActual, cuentas, llaveCorrecta, ponerVip, quitarVip } from "@/lib/panel";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Una página de la tabla, para pasar de página y para buscar.
+ *
+ * Los dos cerrojos otra vez: la llave viaja en la consulta y el rol se mira en
+ * la sesión. La pantalla ya los comprobó al cargar, pero la pantalla es un
+ * cliente y un cliente se puede saltar.
+ */
+export async function GET(request: Request) {
+  const u = new URL(request.url);
+  if (!llaveCorrecta(u.searchParams.get("llave") ?? "")) {
+    return new Response(null, { status: 404 });
+  }
+  if (!(await adminActual())) return new Response(null, { status: 404 });
+
+  try {
+    return Response.json(
+      await cuentas({
+        busca: u.searchParams.get("q") ?? "",
+        pagina: Number(u.searchParams.get("p") ?? 0) || 0,
+      }),
+    );
+  } catch (e) {
+    console.error("panel:", e instanceof Error ? e.message : e);
+    return Response.json({ error: "No se pudo leer." }, { status: 500 });
+  }
+}
 
 /**
  * El único botón del panel: poner o quitar el VIP.
