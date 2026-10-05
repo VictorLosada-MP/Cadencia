@@ -12,6 +12,8 @@
     "secreto": "node scripts/secreto.mjs",
     "clave": "node scripts/clave.mjs",
     "cortesia": "node scripts/cortesia.mjs",
+    "rol": "node scripts/rol.mjs",
+    "llave": "node scripts/llave.mjs",
     "modelos": "node scripts/modelos.mjs",
     "ffmpeg": "node scripts/ffmpeg.mjs",
     "postinstall": "node scripts/ffmpeg.mjs"

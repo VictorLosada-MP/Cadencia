@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { enviar } from "@/lib/correo";
-import { pool } from "@/lib/db";
+import { consultar, pool } from "@/lib/db";
 
 /** El origen de despliegue más el de desarrollo, sin barra final y sin repetir. */
 function origenes(): string[] {
@@ -39,6 +39,21 @@ function crear() {
       // olvidado en una bandeja no siga abriendo la cuenta.
       resetPasswordTokenExpiresIn: 3600,
       sendResetPassword: async ({ user, url }) => {
+        // De paso, fuera los tokens vencidos.
+        //
+        // `verification` no puede tener clave foránea a `user` —un token
+        // existe antes de saber de quién es, y tiene que morir solo al
+        // caducar— así que nada los limpiaba y se quedaban para siempre. Aquí
+        // y no en una tarea aparte porque es el único momento en que la tabla
+        // se toca, y porque una tarea programada es una pieza más que
+        // mantener para borrar unos bytes.
+        //
+        // Antes de mandar el correo y sin `await` que lo retrase: si la
+        // limpieza falla, el dueño tiene que recibir su enlace igual.
+        void consultar(`delete from verification where "expiresAt" < now()`).catch(
+          (e) => console.error("limpiar verification:", e instanceof Error ? e.message : e),
+        );
+
         await enviar({
           para: user.email,
           asunto: "Cambiar tu contraseña de Cadencia",
