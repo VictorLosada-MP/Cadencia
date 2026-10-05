@@ -32,15 +32,32 @@ export function llaveCorrecta(llave: string): boolean {
   return llave === buena;
 }
 
+export async function esAdmin(usuarioId: string): Promise<boolean> {
+  const fila = await una<{ role: string | null }>(
+    `select role from "user" where id = $1`,
+    [usuarioId],
+  );
+  return fila?.role === "admin";
+}
+
 /** El usuario de esta petición, solo si administra. */
 export async function adminActual() {
   const u = await usuarioActual();
   if (!u) return null;
-  const fila = await una<{ role: string | null }>(
-    `select role from "user" where id = $1`,
-    [u.id],
-  );
-  return fila?.role === "admin" ? u : null;
+  return (await esAdmin(u.id)) ? u : null;
+}
+
+/**
+ * La dirección del panel, para enseñársela a quien ya puede entrar.
+ *
+ * Quien administra no tiene por qué acordarse de una dirección de treinta
+ * caracteres ni guardarla en un marcador. Se le pinta en la barra y ya está —
+ * y solo a él: esto devuelve null para todos los demás, así que la llave nunca
+ * llega al navegador de quien no la podría usar igualmente.
+ */
+export function enlaceDelPanel(): string | null {
+  const llave = process.env.PANEL_LLAVE?.trim();
+  return llave && llave.length >= 16 ? `/panel/${llave}` : null;
 }
 
 /**
