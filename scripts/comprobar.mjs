@@ -19,6 +19,11 @@ const mal = (m, arreglo) => {
   console.log(`  FALTA ${m}`);
   if (arreglo) console.log(`        → ${arreglo}`);
 };
+/** Ni bien ni mal: funciona en local y no funcionaría en producción. */
+const ojo = (m, arreglo) => {
+  console.log(`  OJO   ${m}`);
+  if (arreglo) console.log(`        → ${arreglo}`);
+};
 
 console.log("\nDe dónde leo");
 if (fuentes.length === 0) {
@@ -106,6 +111,34 @@ if (!secreto) {
 
 if (env.BETTER_AUTH_URL) bien(`BETTER_AUTH_URL = ${env.BETTER_AUTH_URL}`);
 else mal("BETTER_AUTH_URL vacía", "en local: http://localhost:3000");
+
+// El correo no es opcional en cuanto el sitio está publicado, y es el único
+// trozo del sistema que falla EN SILENCIO: sin proveedor, "olvidé mi
+// contraseña" sigue contestando que todo fue bien y el mensaje se queda en la
+// terminal del servidor, donde nadie lo lee. En local eso es lo correcto; en
+// producción es un usuario que se quedó fuera de su cuenta para siempre.
+if (env.RESEND_API_KEY && env.CORREO_DESDE) {
+  bien(`el correo sale por Resend, desde ${env.CORREO_DESDE}`);
+} else if (/localhost|127\.0\.0\.1/.test(env.BETTER_AUTH_URL ?? "")) {
+  ojo(
+    "sin proveedor de correo: los enlaces salen por la terminal",
+    "en local está bien. Antes de publicar: RESEND_API_KEY y CORREO_DESDE",
+  );
+} else {
+  mal(
+    "sin proveedor de correo, y esto NO es local",
+    "nadie va a recibir el enlace de «olvidé mi contraseña». Pon RESEND_API_KEY y CORREO_DESDE",
+  );
+}
+
+const panel = env.PANEL_LLAVE?.trim();
+if (!panel) {
+  ojo("PANEL_LLAVE vacía: el panel de administración no existe", "npm run llave");
+} else if (panel.length < 16) {
+  mal("PANEL_LLAVE demasiado corta", "npm run llave");
+} else {
+  bien(`el panel está en /panel/${panel.slice(0, 6)}…`);
+}
 
 if (urlUsable) {
   console.log("\nProbando la conexión…");
