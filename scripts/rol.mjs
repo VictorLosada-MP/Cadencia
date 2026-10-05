@@ -9,6 +9,15 @@
  *   npm run rol                              → quién administra hoy
  *   npm run rol -- correo@x.com admin        → se lo da
  *   npm run rol -- correo@x.com quitar       → se lo quita
+ *
+ * Esto no crea ninguna cuenta ni ninguna forma distinta de entrar: la cuenta se
+ * crea en /entrar como la de cualquiera, y se entra igual que cualquiera. Un
+ * rol es un permiso ENCIMA de una cuenta normal.
+ *
+ * Y es exactamente lo mismo que correr esto en el SQL del proveedor, por si no
+ * tienes la base a mano desde aquí:
+ *
+ *   update "user" set role = 'admin' where lower(email) = 'tu@correo.com';
  */
 import { cargarEnv, opcionesSSL, revisarURL } from "./entorno.mjs";
 import { normalizarURL } from "../lib/postgres-url.mjs";

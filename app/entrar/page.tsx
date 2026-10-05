@@ -1,12 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { requestPasswordReset, signIn, signUp } from "@/lib/auth-cliente";
 
-export default function Entrar() {
+/**
+ * A dónde se va después de entrar.
+ *
+ * Solo rutas de aquí dentro: una dirección completa en el parámetro convertiría
+ * esta pantalla en un trampolín para mandar a alguien a otro sitio después de
+ * poner su contraseña. Por eso tiene que empezar por una sola barra —`//otro.com`
+ * es una dirección de fuera disfrazada de ruta.
+ */
+function aDonde(volver: string | null): string {
+  if (!volver || !volver.startsWith("/") || volver.startsWith("//")) return "/diagnostico";
+  return volver;
+}
+
+function Formulario() {
   const router = useRouter();
+  const volver = aDonde(useSearchParams().get("volver"));
   const [modo, setModo] = useState<"entrar" | "crear" | "olvide">("entrar");
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
@@ -43,7 +57,7 @@ export default function Entrar() {
       );
       return;
     }
-    router.push("/diagnostico");
+    router.push(volver);
     router.refresh();
   }
 
@@ -212,5 +226,18 @@ function Campo({
       />
       {nota && <p className="mt-1 text-xs text-neutral-500">{nota}</p>}
     </div>
+  );
+}
+
+/**
+ * `useSearchParams` obliga a envolverlo: esta pantalla se pinta estática y el
+ * parámetro solo existe en el navegador. Sin la frontera, el montaje avisa y
+ * la página entera pasaría a renderizarse en cada petición sin necesidad.
+ */
+export default function Entrar() {
+  return (
+    <Suspense fallback={<main className="min-h-svh" />}>
+      <Formulario />
+    </Suspense>
   );
 }

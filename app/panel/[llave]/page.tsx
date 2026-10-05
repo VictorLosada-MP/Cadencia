@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { usuarioActual } from "@/lib/negocio";
 import { adminActual, cuentas, llaveCorrecta } from "@/lib/panel";
 import { Panel } from "./panel";
 
@@ -13,9 +14,20 @@ export const metadata = {
 /**
  * El panel, detrás de dos cerrojos.
  *
- * Los dos fallan con el MISMO 404 que una dirección inventada. Un 401 o un
- * "no autorizado" le confirmaría a quien esté probando direcciones que ahí
- * detrás hay algo; un 404 no le dice nada.
+ * Aquí no hay una entrada aparte: se entra por la misma pantalla que todo el
+ * mundo, con el mismo correo y la misma contraseña. Lo que decide si este
+ * panel se abre no es cómo entraste, es qué dice `role` en la base.
+ *
+ * Los tres caminos, y la diferencia entre ellos importa:
+ *
+ * - **Llave mala** → 404, el mismo que una dirección inventada. Un 401 le
+ *   confirmaría a quien está probando direcciones que ahí detrás hay algo.
+ * - **Llave buena y sin sesión** → a la pantalla de entrar, y vuelve aquí al
+ *   terminar. Esto no filtra nada: quien ya tiene la llave en la mano sabe de
+ *   sobra que la dirección existe, y mandarle un 404 solo le dejaría mirando
+ *   una pared sin saber que le faltaba iniciar sesión.
+ * - **Llave buena, con sesión y sin el rol** → 404 otra vez. A alguien que ya
+ *   está dentro del sistema no se le cuenta que existe un panel.
  */
 export default async function PaginaPanel({
   params,
@@ -24,6 +36,9 @@ export default async function PaginaPanel({
 }) {
   const { llave } = await params;
   if (!llaveCorrecta(llave)) notFound();
+
+  const quien = await usuarioActual();
+  if (!quien) redirect(`/entrar?volver=${encodeURIComponent(`/panel/${llave}`)}`);
 
   const admin = await adminActual();
   if (!admin) notFound();
