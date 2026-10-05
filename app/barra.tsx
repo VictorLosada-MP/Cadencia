@@ -34,6 +34,15 @@ export function Barra() {
   const { data: sesion } = useSession();
   const router = useRouter();
   const [cuota, setCuota] = useState<Cuota | null>(null);
+  /**
+   * La dirección del panel, solo para quien administra.
+   *
+   * Está aquí porque la pregunta razonable es «entro y no me lleva al panel».
+   * Y no lleva: entrar es entrar, igual para todos. Lo que faltaba era que,
+   * una vez dentro, quien administra tuviera cómo llegar sin acordarse de una
+   * dirección de treinta caracteres. Para los demás llega en null.
+   */
+  const [panel, setPanel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sesion) return;
@@ -41,7 +50,9 @@ export function Barra() {
     fetch("/api/cuota")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (vivo && d?.cuota) setCuota(d.cuota);
+        if (!vivo) return;
+        if (d?.cuota) setCuota(d.cuota);
+        setPanel(d?.panel ?? null);
       })
       .catch(() => {});
     return () => {
@@ -92,6 +103,14 @@ export function Barra() {
             >
               {cuota.usadas}/{cuota.limite}
               {cuota.cortesia && " · cortesía"}
+            </Link>
+          )}
+          {panel && (
+            <Link
+              href={panel}
+              className="rounded-full border border-teal-700 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition-colors hover:bg-teal-50 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/30"
+            >
+              Panel
             </Link>
           )}
           <span className="hidden font-mono sm:inline">{sesion.user.email}</span>
