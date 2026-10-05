@@ -8,6 +8,8 @@ export type Plan = {
   corridas_total: number | null;
   negocios: number;
   historial_meses: number | null;
+  /** Falso en el VIP: existe, se regala, y no sale en la página de precios. */
+  publico: boolean;
 };
 
 export type Cuota = {
@@ -122,6 +124,12 @@ export async function revisarCuota(
   return { ok: false, mensaje, cuota };
 }
 
+/**
+ * Los planes que se anuncian. El VIP no está, y es el motivo de la columna.
+ *
+ * Un plan de cero euros con todo ilimitado en la lista pública no sería una
+ * oferta: sería la puerta de atrás, anunciada.
+ */
 export async function planesDisponibles(): Promise<Plan[]> {
-  return consultar<Plan>(`select * from plan order by orden`);
+  return consultar<Plan>(`select * from plan where publico order by orden`);
 }
