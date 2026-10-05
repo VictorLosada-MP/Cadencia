@@ -12,3 +12,6 @@ console.log(`\nPANEL_LLAVE=${llave}\n`);
 console.log(`El panel queda en:  /panel/${llave}\n`);
 console.log("Cópialo a .env.local y a las variables del despliegue.");
 console.log("Si lo cambias, la dirección anterior deja de existir.\n");
+console.log("Con esto sola no entra nadie. Crea tu cuenta en /entrar como");
+console.log("cualquiera y márcala como administradora en la base:\n");
+console.log("  npm run rol -- tu@correo.com admin\n");
