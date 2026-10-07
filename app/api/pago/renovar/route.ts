@@ -16,10 +16,10 @@ export const dynamic = "force-dynamic";
  * esperar otro mes, y una tarea que no corrió un día no deja a nadie sin plan.
  */
 async function correr(request: Request) {
-  const esperado = process.env.CRON_SECRET?.trim();
+  const esperado = process.env.RENOVAR_PLAN_SECRET?.trim();
   if (!esperado || esperado.length < 16) return new Response(null, { status: 503 });
 
-  // Vercel manda `Authorization: Bearer <CRON_SECRET>` en sus tareas.
+  // Vercel manda `Authorization: Bearer <RENOVAR_PLAN_SECRET>` en sus tareas.
   const dado = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const a = Buffer.from(dado);
   const b = Buffer.from(esperado);
