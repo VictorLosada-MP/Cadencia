@@ -18,6 +18,11 @@ function limite(p: Plan): string {
   return "Corridas sin límite";
 }
 
+/** El precio que se cobra, en pesos y escrito como se lee en Colombia. */
+export function pesos(cop: number | null): string {
+  return cop ? `$${cop.toLocaleString("es-CO")}` : "";
+}
+
 function precio(p: Plan): string {
   const n = Number(p.precio_mes);
   return Number.isFinite(n) && n > 0 ? `US$${n % 1 === 0 ? n : n.toFixed(2)}` : "Gratis";
@@ -140,7 +145,12 @@ export function Planes({
                     {gratis ? "Empezar gratis" : "Quiero este plan"}
                   </Link>
                 ) : p.precio_cop ? (
-                  <Pagar plan={p.id} nombre={p.nombre} destaca={destaca} />
+                  <Pagar
+                    plan={p.id}
+                    nombre={p.nombre}
+                    precio={pesos(p.precio_cop)}
+                    destaca={destaca}
+                  />
                 ) : (
                   <span className="block rounded-full border border-neutral-300 px-5 py-3 text-center text-sm text-neutral-500 dark:border-neutral-700">
                     Precio por definir

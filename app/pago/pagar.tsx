@@ -1,84 +1,52 @@
 "use client";
 
 import { useState } from "react";
+import { Tarjeta } from "./tarjeta";
 
 /**
- * El botón de pagar.
+ * El botón de suscribirse.
  *
- * Pide al servidor la referencia y la firma, y con ellas manda un formulario
- * normal al checkout de Wompi. Un formulario y no una redirección con la
- * información en la URL: así el monto y la firma no acaban en el historial del
- * navegador ni en la cabecera `Referer` de la página siguiente.
+ * Abre el formulario de tarjeta en vez de llevar al checkout de Wompi, porque
+ * el checkout cobra UNA vez y no sabe guardar el medio de pago: para que se
+ * cobre solo cada mes hace falta una fuente de pago, y eso solo se crea por
+ * API con una tarjeta ya tokenizada.
  *
- * Aquí no se decide ningún precio. Lo que vuelve del servidor ya viene firmado
- * contra el monto del plan, y Wompi rechaza el cobro si no cuadran.
+ * Aquí no se decide ningún precio: el monto se lee del plan en el servidor y se
+ * firma allí. Lo que viaja desde esta pantalla es qué plan, nada más.
  */
 export function Pagar({
   plan,
   nombre,
+  precio,
   destaca,
 }: {
   plan: string;
   nombre: string;
+  /** Lo que se le enseña. El que se cobra sale de la base, no de aquí. */
+  precio: string;
   destaca?: boolean;
 }) {
-  const [yendo, setYendo] = useState(false);
-  const [fallo, setFallo] = useState("");
-
-  async function ir() {
-    setYendo(true);
-    setFallo("");
-    try {
-      const r = await fetch("/api/pago", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "No se pudo empezar el pago.");
-
-      const f = document.createElement("form");
-      f.method = "POST";
-      f.action = d.checkout;
-      const campos: Record<string, string> = {
-        "public-key": d.publica,
-        currency: d.moneda,
-        "amount-in-cents": String(d.centavos),
-        reference: d.referencia,
-        "signature:integrity": d.firma,
-        "customer-data:email": d.correo,
-        "redirect-url": `${window.location.origin}/pago`,
-      };
-      for (const [k, v] of Object.entries(campos)) {
-        const i = document.createElement("input");
-        i.type = "hidden";
-        i.name = k;
-        i.value = v;
-        f.appendChild(i);
-      }
-      document.body.appendChild(f);
-      f.submit();
-    } catch (e) {
-      setFallo(e instanceof Error ? e.message : "No se pudo empezar el pago.");
-      setYendo(false);
-    }
-  }
+  const [abierto, setAbierto] = useState(false);
 
   return (
     <>
       <button
-        onClick={() => void ir()}
-        disabled={yendo}
-        className={`empuja block w-full rounded-full px-5 py-3 text-center font-semibold disabled:opacity-50 ${
+        onClick={() => setAbierto(true)}
+        className={`empuja block w-full rounded-full px-5 py-3 text-center font-semibold ${
           destaca
             ? "bg-teal-700 text-white dark:bg-teal-600"
             : "border border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
         }`}
       >
-        {yendo ? "Llevándote a pagar…" : `Pagar ${nombre}`}
+        Suscribirme a {nombre}
       </button>
-      {fallo && (
-        <p className="mt-2 text-center text-xs text-red-700 dark:text-red-400">{fallo}</p>
+      {abierto && (
+        <Tarjeta
+          plan={plan}
+          nombre={nombre}
+          precio={precio}
+          cerrar={() => setAbierto(false)}
+        />
       )}
     </>
   );

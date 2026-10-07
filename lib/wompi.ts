@@ -25,6 +25,12 @@ export type Config = {
   publica: string;
   integridad: string;
   eventos: string;
+  /**
+   * Solo para el servidor. Es la que crea fuentes de pago y cobra, así que es
+   * la única con la que se puede mover dinero: no se devuelve nunca a ninguna
+   * pantalla ni se escribe en ningún registro.
+   */
+  privada: string;
 };
 
 /**
@@ -38,8 +44,9 @@ export function config(): Config | null {
   const publica = process.env.WOMPI_PUBLIC_KEY?.trim();
   const integridad = process.env.WOMPI_INTEGRITY_SECRET?.trim();
   const eventos = process.env.WOMPI_EVENTS_SECRET?.trim();
+  const privada = process.env.WOMPI_PRIVATE_KEY?.trim() ?? "";
   if (!publica || !integridad || !eventos) return null;
-  return { publica, integridad, eventos };
+  return { publica, integridad, eventos, privada };
 }
 
 /** Verdad cuando las claves son las de pruebas. Se dice en pantalla. */
@@ -122,4 +129,117 @@ export function eventoAutentico(
   const a = Buffer.from(mio, "utf8");
   const b = Buffer.from(dicho, "utf8");
   return { ok: a.length === b.length && timingSafeEqual(a, b), mio, dicho };
+}
+
+/**
+ * La API de Wompi. Pruebas y producción son dos direcciones distintas, y se
+ * elige por el prefijo de la clave: una clave de pruebas contra producción no
+ * falla con un error claro, simplemente no encuentra nada.
+ */
+export const api = (publica: string) =>
+  esPrueba(publica) ? "https://api-sandbox.co.uat.wompi.dev/v1" : "https://production.wompi.co/v1";
+
+async function pedir<T>(
+  url: string,
+  clave: string,
+  cuerpo?: unknown,
+): Promise<T> {
+  const r = await fetch(url, {
+    method: cuerpo ? "POST" : "GET",
+    headers: {
+      Authorization: `Bearer ${clave}`,
+      ...(cuerpo ? { "Content-Type": "application/json" } : {}),
+    },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  const texto = await r.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(texto);
+  } catch {
+    throw new Error(`Wompi contestó algo que no es JSON (${r.status}).`);
+  }
+  if (!r.ok) {
+    const e = json as { error?: { type?: string; reason?: string; messages?: unknown } };
+    throw new Error(
+      `Wompi ${r.status}: ${e.error?.reason ?? e.error?.type ?? JSON.stringify(e.error ?? json).slice(0, 200)}`,
+    );
+  }
+  return (json as { data: T }).data;
+}
+
+export type Aceptacion = {
+  /** Lo que hay que mandar firmado en cada petición con datos de una persona. */
+  token: string;
+  /** El enlace al contrato. Hay que enseñárselo: es su obligación legal y la tuya. */
+  enlace: string;
+  /** El segundo permiso, el de tratamiento de datos personales. */
+  datos: string;
+  datosEnlace: string;
+};
+
+/**
+ * Los permisos que Wompi exige enseñar antes de guardar una tarjeta.
+ *
+ * No es burocracia que se pueda saltar: sin estos dos tokens, Wompi rechaza la
+ * fuente de pago. Y el enlace se enseña de verdad en pantalla — aceptar un
+ * contrato que no se puede leer no es aceptar nada.
+ */
+export async function aceptacion(publica: string): Promise<Aceptacion> {
+  const d = await pedir<{
+    presigned_acceptance?: { acceptance_token?: string; permalink?: string };
+    presigned_personal_data_auth?: { acceptance_token?: string; permalink?: string };
+  }>(`${api(publica)}/merchants/${publica}`, publica);
+
+  return {
+    token: d.presigned_acceptance?.acceptance_token ?? "",
+    enlace: d.presigned_acceptance?.permalink ?? "",
+    datos: d.presigned_personal_data_auth?.acceptance_token ?? "",
+    datosEnlace: d.presigned_personal_data_auth?.permalink ?? "",
+  };
+}
+
+export type Fuente = { id: number; marca: string; ultimos4: string };
+
+/**
+ * Guarda la tarjeta como fuente de pago. Con la clave PRIVADA y en el servidor.
+ *
+ * Lo que entra aquí es un token que ya hizo el navegador contra Wompi: el
+ * número de la tarjeta no pasa por este servidor ni queda en ningún registro.
+ */
+export async function crearFuente(
+  c: Config,
+  p: { token: string; correo: string; aceptacion: string; datos?: string },
+): Promise<number> {
+  const d = await pedir<{ id: number }>(`${api(c.publica)}/payment_sources`, c.privada, {
+    type: "CARD",
+    token: p.token,
+    customer_email: p.correo,
+    acceptance_token: p.aceptacion,
+    ...(p.datos ? { accept_personal_auth: p.datos } : {}),
+  });
+  return d.id;
+}
+
+/**
+ * Cobra una fuente de pago guardada.
+ *
+ * `recurrent: true` es lo que le dice a Wompi —y al banco— que esto es un cobro
+ * periódico del mismo importe y no una compra nueva. Sin esa marca, los bancos
+ * rechazan más y el cliente recibe avisos de fraude por su propia suscripción.
+ */
+export async function cobrar(
+  c: Config,
+  p: { fuente: number; centavos: number; referencia: string; correo: string; cuotas?: number },
+): Promise<{ id: string; status: string }> {
+  return pedir<{ id: string; status: string }>(`${api(c.publica)}/transactions`, c.privada, {
+    amount_in_cents: p.centavos,
+    currency: MONEDA,
+    customer_email: p.correo,
+    payment_source_id: p.fuente,
+    reference: p.referencia,
+    recurrent: true,
+    signature: firmaIntegridad(p.referencia, p.centavos, c.integridad),
+    payment_method: { installments: p.cuotas ?? 1 },
+  });
 }
