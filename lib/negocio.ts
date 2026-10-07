@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { consultar, una } from "@/lib/db";
-import type { Negocio } from "@/types/negocio";
+import type { Negocio, TipoNegocio } from "@/types/negocio";
 
 export type NegocioGuardado = Negocio & {
   id: string;
+  tipo: TipoNegocio;
   nombre: string;
   actualizado: string;
 };
@@ -24,33 +25,41 @@ export async function usuarioActual() {
  */
 export function negocioDe(usuarioId: string) {
   return una<NegocioGuardado>(
-    `select id, oferta, cliente, despues, freno, accion, voz, senales, nombre,
-            actualizado
+    `select id, tipo, nombre, oferta, cliente, despues, freno, accion, voz,
+            senales, actualizado
        from negocio
       where usuario_id = $1`,
     [usuarioId],
   );
 }
 
+/** Solo lo que la columna acepta. Lo de fuera entra como «no lo dijo». */
+function tipoValido(t: unknown): TipoNegocio {
+  return t === "empresa" || t === "persona" ? t : "";
+}
+
 export async function guardarNegocio(
   usuarioId: string,
-  n: Negocio & { nombre?: string },
+  n: Negocio,
 ): Promise<NegocioGuardado> {
   const filas = await consultar<NegocioGuardado>(
-    `insert into negocio (usuario_id, oferta, cliente, despues, freno, accion, voz, senales, nombre)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `insert into negocio (usuario_id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      on conflict (usuario_id) do update set
+       tipo    = excluded.tipo,
+       nombre  = excluded.nombre,
        oferta  = excluded.oferta,
        cliente = excluded.cliente,
        despues = excluded.despues,
        freno   = excluded.freno,
        accion  = excluded.accion,
        voz     = excluded.voz,
-       senales = excluded.senales,
-       nombre  = excluded.nombre
-     returning id, oferta, cliente, despues, freno, accion, voz, senales, nombre, actualizado`,
+       senales = excluded.senales
+     returning id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales, actualizado`,
     [
       usuarioId,
+      tipoValido(n.tipo),
+      n.nombre?.trim() ?? "",
       n.oferta.trim(),
       n.cliente.trim(),
       n.despues.trim(),
@@ -58,7 +67,6 @@ export async function guardarNegocio(
       n.accion?.trim() ?? "",
       n.voz?.trim() ?? "",
       n.senales?.trim() ?? "",
-      n.nombre?.trim() ?? "",
     ],
   );
   return filas[0];

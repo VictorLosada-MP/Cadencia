@@ -6,12 +6,22 @@ import {
   CAMPOS_EXTRA,
   CAMPOS_NUCLEO,
   CAMPO_VOZ,
+  TIPOS,
+  etiquetaNombre,
   negocioListo,
+  pistaNombre,
   type Negocio,
+  type TipoNegocio,
 } from "@/types/negocio";
 
 /** El negocio en blanco: lo mismo que ve alguien que llega por primera vez. */
-export const NEGOCIO_VACIO: Negocio = { oferta: "", cliente: "", despues: "" };
+export const NEGOCIO_VACIO: Negocio = {
+  tipo: "",
+  nombre: "",
+  oferta: "",
+  cliente: "",
+  despues: "",
+};
 
 const BORRADOR = "negocio";
 
@@ -58,7 +68,10 @@ export function tieneAlgo(n: Negocio | null): boolean {
  */
 export function desdeBase(n: Record<string, unknown>): Negocio {
   const t = (v: unknown) => (typeof v === "string" ? v : "");
+  const tipo = t(n.tipo);
   return {
+    tipo: (tipo === "empresa" || tipo === "persona" ? tipo : "") as TipoNegocio,
+    nombre: t(n.nombre),
     oferta: t(n.oferta),
     cliente: t(n.cliente),
     despues: t(n.despues),
@@ -103,9 +116,73 @@ export function BloqueNegocio({
     }
   }
 
+  const falta = [
+    !negocio.tipo && "decir si es una empresa o eres tú",
+    !negocio.nombre?.trim() && etiquetaNombre(negocio.tipo).toLowerCase(),
+    ...CAMPOS_NUCLEO.filter((c) => !negocio[c.id]?.trim()).map((c) =>
+      c.etiqueta.toLowerCase(),
+    ),
+  ].filter((x): x is string => Boolean(x));
+
   return (
     <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="space-y-3">
+          {/*
+            Quién es, antes de qué vende.
+            El diagnóstico juzga el nombre del perfil como su primer punto, y
+            ese juicio es distinto según el caso: una empresa ya tiene nombre
+            registrado y lo que se corrige es lo que va al lado; una marca
+            personal se llama como su dueño y ahí el arreglo sí es el nombre.
+            Hasta ahora no se preguntaba, así que corregía a ciegas.
+          */}
+          <fieldset>
+            <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+              Tu negocio es
+            </legend>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {TIPOS.map((t) => {
+                const puesto = negocio.tipo === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={puesto}
+                    onClick={() => onCambio({ tipo: t.id })}
+                    title={t.pista}
+                    className={`empuja rounded-full border px-3.5 py-1.5 text-sm transition ${
+                      puesto
+                        ? "border-teal-700 bg-teal-50 font-semibold text-teal-800 dark:border-teal-400 dark:bg-teal-950/40 dark:text-teal-300"
+                        : "border-neutral-300 text-neutral-600 hover:border-teal-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-teal-400"
+                    }`}
+                  >
+                    {t.etiqueta}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-neutral-500">
+              {TIPOS.find((t) => t.id === negocio.tipo)?.pista ??
+                "Cambia lo que el diagnóstico te puede corregir del nombre."}
+            </p>
+          </fieldset>
+
+          <div>
+            <label
+              htmlFor="nombre"
+              className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
+            >
+              {etiquetaNombre(negocio.tipo)}
+            </label>
+            <input
+              id="nombre"
+              type="text"
+              value={negocio.nombre ?? ""}
+              onChange={(e) => onCambio({ nombre: e.target.value })}
+              placeholder={pistaNombre(negocio.tipo)}
+              className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+            />
+          </div>
+
           {CAMPOS_NUCLEO.map((c) => (
             <div key={c.id}>
               <label
@@ -175,6 +252,16 @@ export function BloqueNegocio({
                 />
               </div>
             ))}
+
+          {/*
+            Qué falta, por su nombre. Un botón apagado sin decir por qué deja
+            a la gente tocándolo: ya pasó con el de la pieza.
+          */}
+          {falta.length > 0 && (
+            <p className="text-xs text-amber-700 dark:text-amber-500">
+              Falta {falta.join(", ")}.
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <button

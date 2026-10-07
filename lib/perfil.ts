@@ -6,6 +6,14 @@ const RAIZ = process.cwd();
 export type Perfil = {
   id: string;
   nombre: string;
+  /**
+   * De qué clase es el negocio: `"empresa"`, `"persona"` o vacío si no lo dijo.
+   *
+   * Va al prompt porque el primer punto del diagnóstico es el nombre del
+   * perfil, y sin esto se corrige a ciegas: a una empresa con razón social se
+   * le acababa proponiendo que se llamara de otra forma.
+   */
+  tipo: string;
   nucleo: {
     oferta: string;
     cliente: string;
@@ -26,6 +34,8 @@ export type Perfil = {
  * cambia es de dónde salió, no qué es.
  */
 export function perfilDesdeNegocio(n: {
+  tipo?: string;
+  nombre?: string;
   oferta: string;
   cliente: string;
   despues: string;
@@ -34,7 +44,8 @@ export function perfilDesdeNegocio(n: {
 }): Perfil {
   return {
     id: "en-linea",
-    nombre: "",
+    nombre: n.nombre?.trim() ?? "",
+    tipo: n.tipo?.trim() ?? "",
     nucleo: {
       oferta: n.oferta.trim(),
       cliente: n.cliente.trim(),

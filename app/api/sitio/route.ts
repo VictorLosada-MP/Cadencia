@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   // Leer una página no llama al modelo y no cuesta, pero abre una petición
   // desde el servidor: una cuenta agotada no la abre.
   const negocio = await negocioDe(usuario.id);
-  const permiso = await revisarCuota(usuario.id, negocio?.id ?? null);
+  const permiso = await revisarCuota(usuario.id, negocio?.id ?? null, 1, { intermedio: true });
   if (!permiso.ok) {
     return Response.json({ error: permiso.mensaje, agotada: true }, { status: 402 });
   }

@@ -31,9 +31,25 @@ pasa es una mejora verificable.
 En este orden — de impacto en conversión. No lo cambies.
 
 **1 · Nombre**
-Pasa si el campo contiene, además del nombre propio, al menos una palabra que
-alguien escribiría en un buscador para encontrar este servicio.
+Pasa si el campo contiene, además del nombre del negocio, al menos una palabra
+que alguien escribiría en un buscador para encontrar este servicio.
 `"Víctor Losada"` no pasa. `"Víctor Losada · Sistemas con IA"` pasa.
+
+El bloque **Quién es** del contexto dice si el negocio es una empresa o una
+marca personal, y eso manda sobre este punto:
+
+- **Empresa.** El nombre no se toca. Puede ser su razón social, su dominio y lo
+  que está en sus facturas, así que proponerle otro no es una corrección: es
+  pedirle que cambie su negocio por un punto de un diagnóstico. Lo que se
+  corrige es el descriptor que va al lado, con el nombre copiado tal cual.
+  `"Bellavista Coffee Farm"` ya trae "coffee": antes de marcarlo como que no
+  pasa, mira si el nombre ya contiene la palabra buscable.
+- **Marca personal.** El nombre propio tampoco se quita ni se reescribe, pero
+  aquí la corrección sí es el nombre: el nombre propio más la palabra por la
+  que lo buscarían.
+- **No lo dijo.** Devuelve este punto con `aplica: false` y `corregido` en
+  cadena vacía. No inventes de qué clase es por cómo suena el nombre: un
+  apellido puede ser una empresa y una empresa puede llamarse como su dueña.
 
 **2 · Primera línea**
 Pasa si la primera oración legible nombra **a quién le sirve** o **qué problema

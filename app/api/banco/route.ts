@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId, 2);
     if (!permiso.ok) {
       return Response.json(
         { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },

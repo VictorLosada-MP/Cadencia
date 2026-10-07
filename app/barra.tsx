@@ -22,6 +22,9 @@ type Cuota = {
   cortesia: boolean;
   usadas: number;
   limite: number | null;
+  /** En la prueba el contador son funciones probadas, no corridas gastadas. */
+  porFuncion: boolean;
+  cerrada: boolean;
 };
 
 const PASTILLA =
@@ -92,9 +95,13 @@ export function Barra() {
             <Link
               href="/planes"
               title={
-                cuota.cortesia
-                  ? `Plan ${cuota.plan.nombre}, de cortesía`
-                  : `Plan ${cuota.plan.nombre}`
+                [
+                  `Plan ${cuota.plan.nombre}`,
+                  cuota.cortesia ? ", de cortesía" : "",
+                  cuota.porFuncion
+                    ? ` · ${cuota.usadas} de ${cuota.limite} funciones probadas`
+                    : "",
+                ].join("")
               }
               className={`rounded-full border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors ${
                 cerca

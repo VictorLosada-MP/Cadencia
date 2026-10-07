@@ -4,6 +4,19 @@
  * perfil, cualquier prueba con otro negocio corría contra el dossier ajeno.
  */
 export type Negocio = {
+  /**
+   * Empresa o marca personal. Vacío mientras no lo haya dicho.
+   *
+   * No es una etiqueta de catálogo: cambia la corrección. El primer punto del
+   * diagnóstico juzga el nombre del perfil, y a una empresa con razón social
+   * no se le propone otro nombre —eso no es una corrección, es pedirle que
+   * cambie su dominio y su facturación—, mientras que a una marca personal
+   * añadirle al lado la palabra por la que la buscan sí es el arreglo real.
+   * Sin este campo las dos recibían la misma reprimenda.
+   */
+  tipo?: TipoNegocio;
+  /** El nombre con el que lo encuentran: el de la empresa, o el suyo. */
+  nombre?: string;
   /** Qué vende. */
   oferta: string;
   /** A quién le sirve. */
@@ -19,6 +32,34 @@ export type Negocio = {
   /** Lo que le escriben y le preguntan. Dice en qué escalón está su audiencia. */
   senales?: string;
 };
+
+export type TipoNegocio = "" | "empresa" | "persona";
+
+export const TIPOS: { id: Exclude<TipoNegocio, "">; etiqueta: string; pista: string }[] = [
+  {
+    id: "empresa",
+    etiqueta: "Una empresa",
+    pista: "El negocio tiene nombre propio, distinto del tuyo",
+  },
+  {
+    id: "persona",
+    etiqueta: "Marca personal",
+    pista: "La cara y el nombre del negocio eres tú",
+  },
+];
+
+/** La etiqueta del campo del nombre. Cambia porque no se pide lo mismo. */
+export function etiquetaNombre(tipo: TipoNegocio | undefined): string {
+  if (tipo === "empresa") return "Nombre de la empresa";
+  if (tipo === "persona") return "Tu nombre, o el de tu marca personal";
+  return "Nombre";
+}
+
+export function pistaNombre(tipo: TipoNegocio | undefined): string {
+  if (tipo === "empresa") return "Tal cual lo lleva registrado y lo escribe la gente";
+  if (tipo === "persona") return "Como apareces en tu perfil";
+  return "Primero di arriba si es una empresa o eres tú";
+}
 
 export const CAMPOS_NUCLEO = [
   {
@@ -76,6 +117,19 @@ export const CAMPOS_EXTRA = [
   },
 ];
 
+/**
+ * `tipo` y `nombre` entran en lo obligatorio.
+ *
+ * Son dos toques y una palabra, y sin ellos el diagnóstico juzga a ciegas el
+ * nombre del perfil — que es su primer punto. Pedirlos después, cuando ya
+ * escribió el veredicto, es llegar tarde.
+ */
 export function negocioListo(n: Negocio): boolean {
-  return Boolean(n.oferta?.trim() && n.cliente?.trim() && n.despues?.trim());
+  return Boolean(
+    n.tipo &&
+      n.nombre?.trim() &&
+      n.oferta?.trim() &&
+      n.cliente?.trim() &&
+      n.despues?.trim(),
+  );
 }

@@ -88,6 +88,22 @@ function Formulario() {
           : "Es la cuenta de Cadencia. Aquí no se pide ni se guarda ninguna contraseña de Instagram, TikTok ni de ninguna red — y no se va a pedir nunca."}
       </p>
 
+      {/*
+        Las condiciones de la prueba, dichas ANTES de crear la cuenta y no
+        después. El dueño lo pidió así —«eso toca dejarle claro al usuario, por
+        ejemplo tan pronto cree su cuenta»— y antes es mejor que después: una
+        condición que aparece cuando ya estás dentro se lee como letra pequeña.
+      */}
+      {creando && (
+        <div className="mt-5 rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-3.5 text-sm leading-relaxed dark:border-teal-400 dark:bg-teal-950/30">
+          <strong>La prueba es una pasada completa, gratis:</strong> un
+          diagnóstico, una semana de contenido, una pieza escrita y su montaje.
+          Una vez cada función. Se cierra cuando bajes ese primer video o
+          carrusel — y desde ahí todo lo que te generó se queda en tu cuenta
+          para abrirlo, copiarlo y descargarlo cuando quieras.
+        </div>
+      )}
+
       {pedido ? (
         <div className="mt-8">
           <p className="rounded-lg border-l-[3px] border-teal-700 bg-teal-50 p-3 text-sm dark:border-teal-400 dark:bg-teal-950/30">

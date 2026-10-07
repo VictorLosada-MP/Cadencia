@@ -9,6 +9,14 @@ import { Pagar } from "./pago/pagar";
  * es prometer lo que no se entrega.
  */
 function limite(p: Plan): string {
+  // La prueba no se mide en corridas sueltas sino en pasadas: una de cada
+  // función. Decir «3 corridas» aquí sería cierto en el número y falso en el
+  // fondo, porque las tres no se pueden gastar en lo mismo.
+  if (p.corridas_funcion !== null) {
+    return p.corridas_funcion === 1
+      ? "Una pasada completa: las cuatro funciones, una vez cada una"
+      : `${p.corridas_funcion} pasadas completas por las cuatro funciones`;
+  }
   if (p.corridas_total !== null) {
     return p.corridas_total === 1
       ? "1 corrida, una sola vez"
@@ -37,6 +45,11 @@ const NOTAS = [
   {
     titulo: "Si una corrida falla, no se te cuenta.",
     texto: "El contador solo suma lo que terminó bien.",
+  },
+  {
+    titulo: "La prueba es una pasada,",
+    texto:
+      "no una corrida: un diagnóstico, una semana, una pieza y su montaje. Se cierra cuando bajas ese primer video o carrusel — y desde ahí todo lo que te generó se sigue abriendo y descargando.",
   },
   {
     titulo: "Lo ya entregado se lee siempre,",
@@ -162,7 +175,7 @@ export function Planes({
         })}
       </div>
 
-      <div className="revela mt-14 grid gap-6 border-t border-neutral-200 pt-10 sm:grid-cols-3 dark:border-neutral-800">
+      <div className="revela mt-14 grid gap-6 border-t border-neutral-200 pt-10 sm:grid-cols-2 lg:grid-cols-4 dark:border-neutral-800">
         {NOTAS.map((n) => (
           <p
             key={n.titulo}
