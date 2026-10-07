@@ -55,6 +55,47 @@ las corridas. `plan.negocios` y `plan.historial_meses` existen como columnas y
 todavía no los hace cumplir nadie: hasta que los haga cumplir alguien, no se
 ponen en una página de precios.
 
+### La prueba es una pasada, no una corrida
+
+La prueba traía `corridas_total = 1`: una corrida en toda la vida de la cuenta,
+contada contra la tabla entera sin mirar de qué función venía. Medido: el
+diagnóstico se la gastaba y la cuenta no llegaba nunca a la semana, a la pieza
+ni al montaje. La prueba no probaba el producto; probaba la primera pantalla.
+
+Ahora el límite de la prueba es `plan.corridas_funcion`, **por función**: una
+corrida de cada una. Es por función y no un total de tres porque un total de
+tres se gasta en tres diagnósticos y la cuenta vuelve a quedarse sin ver el
+resto.
+
+La pasada se cierra cuando hay un archivo en la mano: `revisarCuota` recibe
+`{ intermedio: true }` en los pasos que no guardan corrida y son parte de
+terminar lo que ya se generó —transcribir para subtitular, buscar apoyos,
+ordenar un párrafo—, y esos siguen abiertos **hasta que aparece la primera fila
+de `entregado`**. Sin eso la cuenta se quedaba con el guion escrito y el
+montaje bloqueado, que es tener el producto a medias en la mano.
+
+Y se dice antes de crear la cuenta, no después: el aviso está en `/entrar` en
+modo «crear». Una condición que aparece cuando ya estás dentro se lee como
+letra pequeña.
+
+### Empresa o marca personal
+
+`negocio.tipo` es `'empresa'`, `'persona'` o vacío, y `negocio.nombre` es el
+nombre con el que lo encuentran. Los dos son obligatorios —`negocioListo` los
+exige— y no son una etiqueta de catálogo: el primer punto del diagnóstico juzga
+el nombre del perfil, y la corrección correcta no es la misma.
+
+A una **empresa** no se le propone otro nombre: puede ser su razón social, su
+dominio y lo que está en sus facturas, así que lo que se corrige es el
+descriptor que va al lado. A una **marca personal** sí, porque se llama como su
+dueño y el arreglo real es el nombre propio más la palabra por la que lo
+buscarían. Si no lo dijo, el punto sale con `aplica: false`.
+
+Va al prompt como una frase dicha, no como un campo del JSON: lo construye
+`quienEs` en `lib/contexto.ts` y abre el bloque estable. Lo que hay que impedir
+es una corrección concreta, y eso se prohíbe diciéndolo, no dejando un dato
+suelto a ver si lo lee.
+
 ## Qué cuenta como "hecho"
 
 Hecho es **el archivo en la mano**, no la pieza escrita. La fila de `entregado`
@@ -274,9 +315,10 @@ Lo único que se pierde es la vista previa, y la pantalla lo dice.
 
 Es una decisión, no un olvido. Una corrida es el sistema **escribiendo** algo;
 transcribir copia lo que el dueño ya dijo y cuesta dos órdenes de magnitud
-menos. Cobrarlo como corrida se comería de un golpe la única que trae el plan
-de prueba. El tope va aparte, en `uso_voz`: veinte minutos de audio al día por
-negocio, que es lo que se corresponde con el cargo real.
+menos. Cobrarlo como corrida se comería de un golpe la de la pieza, que es
+justo la que hace falta para montar el video. El tope va aparte, en `uso_voz`:
+veinte minutos de audio al día por negocio, que es lo que se corresponde con el
+cargo real.
 
 ## El movimiento
 

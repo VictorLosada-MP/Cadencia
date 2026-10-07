@@ -6,6 +6,14 @@ const RAIZ = process.cwd();
 export type Perfil = {
   id: string;
   nombre: string;
+  /**
+   * De qué clase es el negocio: `"empresa"`, `"persona"` o vacío si no lo dijo.
+   *
+   * Va al prompt porque el primer punto del diagnóstico es el nombre del
+   * perfil, y sin esto se corrige a ciegas: a una empresa con razón social se
+   * le acababa proponiendo que se llamara de otra forma.
+   */
+  tipo: string;
   nucleo: {
     oferta: string;
     cliente: string;
@@ -19,28 +27,6 @@ export type Perfil = {
   integridad?: { sin_prueba_social?: boolean; nota?: string };
 };
 
-/**
- * El id llega del cuerpo de la petición, así que se valida antes de tocar el
- * disco. Un id con "../" no debería llegar nunca a path.join.
- */
-const ID_VALIDO = /^[a-z0-9][a-z0-9-]{0,63}$/;
-
-/** Perfil + la muestra de voz resuelta desde su archivo. */
-export async function cargarPerfil(id: string) {
-  if (!ID_VALIDO.test(id)) throw new Error("Perfil no encontrado.");
-
-  const perfil: Perfil = JSON.parse(
-    await fs.readFile(path.join(RAIZ, "perfiles", `${id}.json`), "utf8"),
-  );
-
-  let voz = "";
-  if (perfil.nucleo.voz?.fuente) {
-    voz = await fs
-      .readFile(path.join(RAIZ, perfil.nucleo.voz.fuente), "utf8")
-      .catch(() => "");
-  }
-  return { perfil, voz };
-}
 
 /**
  * Un Perfil de Negocio armado con lo que el dueño escribió en la app, sin
@@ -48,6 +34,8 @@ export async function cargarPerfil(id: string) {
  * cambia es de dónde salió, no qué es.
  */
 export function perfilDesdeNegocio(n: {
+  tipo?: string;
+  nombre?: string;
   oferta: string;
   cliente: string;
   despues: string;
@@ -56,7 +44,8 @@ export function perfilDesdeNegocio(n: {
 }): Perfil {
   return {
     id: "en-linea",
-    nombre: "",
+    nombre: n.nombre?.trim() ?? "",
+    tipo: n.tipo?.trim() ?? "",
     nucleo: {
       oferta: n.oferta.trim(),
       cliente: n.cliente.trim(),
@@ -75,9 +64,4 @@ export function perfilDesdeNegocio(n: {
 
 export function cargarPrompt(archivo: string) {
   return fs.readFile(path.join(RAIZ, "prompts", archivo), "utf8");
-}
-
-export async function listarPerfiles() {
-  const files = await fs.readdir(path.join(RAIZ, "perfiles"));
-  return files.filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
 }

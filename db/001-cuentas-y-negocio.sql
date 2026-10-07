@@ -27,6 +27,10 @@ create table if not exists "user" (
   name            text not null,
   email           text not null unique,
   "emailVerified" boolean not null default false,
+  -- La trae el esquema de Better Auth. Aquí entra siempre en null —no hay de
+  -- dónde sacar una foto, se entra con correo y contraseña— pero no se puede
+  -- quitar: comprobado, sin ella el alta y la entrada devuelven 500 con
+  -- «missing-column». Es el mismo caso que los tokens de `account`.
   image           text,
   "createdAt"     timestamptz not null default now(),
   "updatedAt"     timestamptz not null default now(),

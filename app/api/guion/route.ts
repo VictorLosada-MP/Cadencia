@@ -20,7 +20,6 @@ type Cuerpo = {
   /** Solo en el paso "guion": lo que devolvió el primero. */
   idea_afilada?: string;
   gancho?: string;
-  perfilId?: string;
   /**
    * La historia que contó él, ya ordenada. Solo viene en los días que la
    * piden. Cuando viene, es la única fuente de hechos: el prompt tiene
@@ -53,7 +52,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const contexto = await cargarContexto(usuario.id, cuerpo.perfilId);
+    const contexto = await cargarContexto(usuario.id);
 
     // Regla 3·4 del reglamento: sin muestras de voz no genera, las pide. Un
     // guion sin voz sale correcto y no suena a nadie — es el techo genérico.
@@ -97,7 +96,7 @@ export async function POST(request: Request) {
             "\nDevuelve solo el JSON.",
           ].join("\n");
 
-    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId, 3);
     if (!permiso.ok) {
       return Response.json(
         { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },

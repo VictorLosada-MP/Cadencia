@@ -53,9 +53,14 @@ export default async function PaginaPlanes() {
           <p className="mt-4 text-neutral-600 dark:text-neutral-400">
             {cuota.limite === null
               ? "Sin límite de corridas."
-              : `Llevas ${cuota.usadas} de ${cuota.limite} corridas${
-                  cuota.plan.corridas_total !== null ? "" : " este mes"
-                }.`}
+              : cuota.porFuncion
+                ? `Llevas ${cuota.usadas} de ${cuota.limite} funciones probadas.` +
+                  (cuota.cerrada
+                    ? " La pasada se cerró al bajar tu primera pieza; lo hecho sigue disponible."
+                    : " La prueba se cierra cuando bajes tu primer video o carrusel.")
+                : `Llevas ${cuota.usadas} de ${cuota.limite} corridas${
+                    cuota.plan.corridas_total !== null ? "" : " este mes"
+                  }.`}
             {cuota.cortesia && " Es un plan de cortesía, no una compra."}
             {cuota.reinicia &&
               ` Se reinician el ${new Date(cuota.reinicia).toLocaleDateString("es", {

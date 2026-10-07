@@ -56,8 +56,13 @@ export async function POST(request: Request) {
     // Leer una captura cuesta dinero, así que no puede quedar abierta. No gasta
     // corrida —transcribir no es diagnosticar— pero una cuenta agotada no
     // transcribe: era el endpoint más barato de abusar del sistema.
+    //
+    // Va como `intermedio` porque subtitular es parte de montar el video que
+    // ya se escribió. En la prueba eso lo deja abierto hasta que baje su
+    // primera pieza; el tope de verdad de este endpoint es `uso_voz` —veinte
+    // minutos de audio al día por negocio—, que es lo que cuesta dinero.
     const negocio = await negocioDe(usuario.id);
-    const permiso = await revisarCuota(usuario.id, negocio?.id ?? null);
+    const permiso = await revisarCuota(usuario.id, negocio?.id ?? null, 3, { intermedio: true });
     if (!permiso.ok) {
       return Response.json({ error: permiso.mensaje, agotada: true }, { status: 402 });
     }

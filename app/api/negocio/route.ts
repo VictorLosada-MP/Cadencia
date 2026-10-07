@@ -40,7 +40,10 @@ export async function PUT(request: Request) {
 
   if (!negocioListo(n)) {
     return Response.json(
-      { error: "Llena qué vendes, a quién le sirve y cómo queda después." },
+      {
+        error:
+          "Falta algo: si es una empresa o eres tú, el nombre, qué vendes, a quién le sirve y cómo queda después.",
+      },
       { status: 400 },
     );
   }

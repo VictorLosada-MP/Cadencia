@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-cliente";
+import { olvidarTodo } from "@/lib/guardado";
 
 /**
  * Las cuatro funciones son estaciones de una misma cadena, no un menú de
@@ -21,6 +22,9 @@ type Cuota = {
   cortesia: boolean;
   usadas: number;
   limite: number | null;
+  /** En la prueba el contador son funciones probadas, no corridas gastadas. */
+  porFuncion: boolean;
+  cerrada: boolean;
 };
 
 const PASTILLA =
@@ -91,9 +95,13 @@ export function Barra() {
             <Link
               href="/planes"
               title={
-                cuota.cortesia
-                  ? `Plan ${cuota.plan.nombre}, de cortesía`
-                  : `Plan ${cuota.plan.nombre}`
+                [
+                  `Plan ${cuota.plan.nombre}`,
+                  cuota.cortesia ? ", de cortesía" : "",
+                  cuota.porFuncion
+                    ? ` · ${cuota.usadas} de ${cuota.limite} funciones probadas`
+                    : "",
+                ].join("")
               }
               className={`rounded-full border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors ${
                 cerca
@@ -117,6 +125,9 @@ export function Barra() {
           <button
             onClick={() =>
               signOut().then(() => {
+                // Lo escrito a medias se va con la sesión. En un computador
+                // compartido, dejarlo ahí es enseñárselo al siguiente.
+                olvidarTodo();
                 router.push("/");
                 router.refresh();
               })

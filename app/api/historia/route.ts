@@ -17,7 +17,6 @@ type Cuerpo = {
   quien?: QuienCuenta;
   idea?: string;
   angulo?: string;
-  perfilId?: string;
 };
 
 /**
@@ -55,9 +54,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const contexto = await cargarContexto(usuario.id, cuerpo.perfilId);
+    const contexto = await cargarContexto(usuario.id);
 
-    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId, 3, { intermedio: true });
     if (!permiso.ok) {
       return Response.json(
         { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },

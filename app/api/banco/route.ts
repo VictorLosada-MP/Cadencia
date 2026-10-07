@@ -14,8 +14,6 @@ type Cuerpo = {
    * escalón está su audiencia: la gente pregunta desde donde está.
    */
   senales?: string;
-  /** Perfil semilla del repositorio, solo para probar el sistema. */
-  perfilId?: string;
 };
 
 export async function POST(request: Request) {
@@ -34,7 +32,7 @@ export async function POST(request: Request) {
   try {
     const [instrucciones, contexto] = await Promise.all([
       cargarPrompt("2-banco.md"),
-      cargarContexto(usuario.id, cuerpo.perfilId),
+      cargarContexto(usuario.id),
     ]);
 
     // Lo que mande la pantalla gana; si no viene, lo guardado en el negocio.
@@ -56,7 +54,7 @@ export async function POST(request: Request) {
       "\nDevuelve solo el JSON.",
     ].join("\n");
 
-    const permiso = await revisarCuota(usuario.id, contexto.negocioId);
+    const permiso = await revisarCuota(usuario.id, contexto.negocioId, 2);
     if (!permiso.ok) {
       return Response.json(
         { error: permiso.mensaje, cuota: permiso.cuota, agotada: true },
