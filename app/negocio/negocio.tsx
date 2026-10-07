@@ -1,5 +1,6 @@
 "use client";
 
+import { borrar, guardar, leer } from "@/lib/guardado";
 import { useEffect, useState } from "react";
 import {
   CAMPOS_EXTRA,
@@ -12,7 +13,7 @@ import {
 /** El negocio en blanco: lo mismo que ve alguien que llega por primera vez. */
 export const NEGOCIO_VACIO: Negocio = { oferta: "", cliente: "", despues: "" };
 
-const BORRADOR = "cadencia:negocio";
+const BORRADOR = "negocio";
 
 /**
  * Lo que está escrito y sin guardar.
@@ -25,30 +26,9 @@ const BORRADOR = "cadencia:negocio";
  * **El borrador gana sobre lo del servidor** mientras exista. Se borra al
  * guardar, que es el único momento en que lo del servidor ya es lo suyo.
  */
-export function leerBorrador(): Negocio | null {
-  try {
-    const crudo = localStorage.getItem(BORRADOR);
-    return crudo ? (JSON.parse(crudo) as Negocio) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function guardarBorrador(n: Negocio) {
-  try {
-    localStorage.setItem(BORRADOR, JSON.stringify(n));
-  } catch {
-    // Sin espacio o en incógnito: se sigue escribiendo, solo no se recuerda.
-  }
-}
-
-export function borrarBorrador() {
-  try {
-    localStorage.removeItem(BORRADOR);
-  } catch {
-    // Si no se puede borrar, el siguiente guardado lo pisa igual.
-  }
-}
+export const leerBorrador = (de: string | undefined) => leer<Negocio>(BORRADOR, de);
+export const guardarBorrador = (de: string | undefined, n: Negocio) => guardar(BORRADOR, de, n);
+export const borrarBorrador = (de: string | undefined) => borrar(BORRADOR, de);
 
 /**
  * Avisa antes de cerrar la pestaña con algo escrito y sin guardar.
@@ -94,19 +74,11 @@ export function BloqueNegocio({
   onCambio,
   guardado,
   onGuardado,
-  semilla,
-  onSemilla,
 }: {
   negocio: Negocio;
   onCambio: (c: Partial<Negocio>) => void;
   guardado: boolean;
   onGuardado: () => void;
-  /**
-   * El perfil semilla del repositorio. Solo lo ofrece el diagnóstico, que es
-   * donde se prueba el sistema: en la pantalla del negocio no pinta nada.
-   */
-  semilla?: boolean;
-  onSemilla?: (v: boolean) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -133,26 +105,7 @@ export function BloqueNegocio({
 
   return (
     <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
-      {onSemilla && (
-        <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-          <input
-            type="checkbox"
-            checked={Boolean(semilla)}
-            onChange={(e) => onSemilla(e.target.checked)}
-            className="accent-teal-700"
-          />
-          Usar el perfil de prueba del repositorio
-        </label>
-      )}
-
-      {semilla ? (
-        <p className="text-xs text-amber-700 dark:text-amber-500">
-          Con esto marcado, el diagnóstico lee el negocio de{" "}
-          <code className="font-mono">perfiles/victor.json</code> — sirve para
-          probar el sistema, no para diagnosticar otro negocio.
-        </p>
-      ) : (
-        <div className={`space-y-3 ${onSemilla ? "mt-3" : ""}`}>
+      <div className="space-y-3">
           {CAMPOS_NUCLEO.map((c) => (
             <div key={c.id}>
               <label
@@ -238,8 +191,7 @@ export function BloqueNegocio({
             )}
           </div>
           {fallo && <p className="text-xs text-red-700 dark:text-red-400">{fallo}</p>}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

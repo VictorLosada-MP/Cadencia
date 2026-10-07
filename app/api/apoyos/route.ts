@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const usuario = await usuarioActual();
   if (!usuario) return Response.json({ error: "Entra a tu cuenta." }, { status: 401 });
 
-  let cuerpo: { bloques?: string[]; perfilId?: string };
+  let cuerpo: { bloques?: string[] };
   try {
     cuerpo = await request.json();
   } catch {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const contexto = await cargarContexto(usuario.id, cuerpo.perfilId);
+    const contexto = await cargarContexto(usuario.id);
 
     const permiso = await revisarCuota(usuario.id, contexto.negocioId);
     if (!permiso.ok) {

@@ -1,0 +1,26 @@
+-- Migración 13 — Marca vuelve a tener tope, y fuera la columna `image`.
+--
+-- ── Marca con tope ──
+--
+-- La 008 le quitó el límite a Marca. Fue un error de criterio y se deshace: si
+-- el plan que se VENDE ya trae corridas sin límite, regalarle Cadencia ilimitada
+-- a un cliente de la marca personal deja de ser un valor agregado — es lo mismo
+-- que puede comprar cualquiera. Lo ilimitado tiene que ser lo que no se vende.
+--
+-- Sesenta al mes era lo que tenía antes de la 008.
+update plan set corridas_mes = 60 where id = 'marca' and corridas_mes is null;
+
+-- ── La foto de perfil se queda, y aquí está el porqué ──
+--
+-- `image` nunca se escribe ni se lee: se entra con correo y contraseña, no hay
+-- de dónde sacar una foto. Parecía la candidata obvia a desaparecer.
+--
+-- Se intentó y NO SE PUEDE. Comprobado contra la aplicación corriendo: con la
+-- columna fuera, el alta, la entrada y cualquier ruta con sesión devuelven 500
+-- y el registro dice «missing-column». Es exactamente lo que pasó con
+-- `ipAddress`, `userAgent` y los seis campos de token de `account`.
+--
+-- La regla, ya con tres pruebas detrás: las cuatro tablas de cuentas son el
+-- contrato de Better Auth. Lo único que se pudo quitar de ahí fue lo que venía
+-- de un complemento que se retiró. El resto se va el día que se cambie de
+-- librería de autenticación, no antes.

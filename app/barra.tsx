@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-cliente";
+import { olvidarTodo } from "@/lib/guardado";
 
 /**
  * Las cuatro funciones son estaciones de una misma cadena, no un menú de
@@ -117,6 +118,9 @@ export function Barra() {
           <button
             onClick={() =>
               signOut().then(() => {
+                // Lo escrito a medias se va con la sesión. En un computador
+                // compartido, dejarlo ahí es enseñárselo al siguiente.
+                olvidarTodo();
                 router.push("/");
                 router.refresh();
               })

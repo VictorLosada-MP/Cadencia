@@ -1,6 +1,6 @@
 import { ultimaCorrida } from "@/lib/historial";
 import { negocioDe } from "@/lib/negocio";
-import { cargarPerfil, perfilDesdeNegocio } from "@/lib/perfil";
+import { perfilDesdeNegocio } from "@/lib/perfil";
 
 /**
  * El contexto que leen todas las funciones: el Perfil de Negocio y las muestras
@@ -26,23 +26,22 @@ export class FaltaNegocio extends Error {
   }
 }
 
-export async function cargarContexto(
-  usuarioId: string,
-  perfilId?: string,
-): Promise<Contexto> {
-  let perfil, voz, senales = "";
-  let negocioId: string | null = null;
-
-  if (perfilId) {
-    ({ perfil, voz } = await cargarPerfil(perfilId));
-  } else {
-    const guardado = await negocioDe(usuarioId);
-    if (!guardado) throw new FaltaNegocio();
-    perfil = perfilDesdeNegocio(guardado);
-    voz = guardado.voz?.trim() ?? "";
-    senales = guardado.senales?.trim() ?? "";
-    negocioId = guardado.id;
-  }
+/**
+ * El contexto de ESTA cuenta. No hay otra fuente.
+ *
+ * Existió un «perfil semilla» que leía un negocio de ejemplo del repositorio,
+ * para probar el sistema sin llenar nada. Se quitó entero: en un producto
+ * desplegado, eso le ofrecía a un desconocido diagnosticarse contra el negocio
+ * de otro. No era una comodidad de desarrollo con un interruptor, era una
+ * puerta — y una puerta que existe se acaba abriendo.
+ */
+export async function cargarContexto(usuarioId: string): Promise<Contexto> {
+  const guardado = await negocioDe(usuarioId);
+  if (!guardado) throw new FaltaNegocio();
+  const perfil = perfilDesdeNegocio(guardado);
+  const voz = guardado.voz?.trim() ?? "";
+  const senales = guardado.senales?.trim() ?? "";
+  const negocioId: string | null = guardado.id;
 
   // La voz va aparte y en crudo; dentro del JSON solo estorbaría su ruta.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -24,12 +24,6 @@ const MAX_CUADRICULAS = 2;
 const MAX_BYTES_IMAGEN = 5_000_000;
 
 type Cuerpo = {
-  /**
-   * Un perfil semilla del repositorio, solo para probar el sistema. El negocio
-   * de verdad sale de la sesión, nunca del cuerpo: si viniera de aquí, escribir
-   * el id de otro devolvería su oferta, su cliente y sus muestras de voz.
-   */
-  perfilId?: string;
   /** Una o dos redes, con las casillas ya confirmadas por el dueño. */
   redes?: EntradaRed[];
   publicado?: Publicado;
@@ -89,7 +83,7 @@ export async function POST(request: Request) {
   try {
     const [instrucciones, contexto] = await Promise.all([
       cargarPrompt("1-diagnostico.md"),
-      cargarContexto(usuario.id, cuerpo.perfilId),
+      cargarContexto(usuario.id),
     ]);
 
     // Lo único que viaja como imagen es la cuadrícula. El perfil ya es texto

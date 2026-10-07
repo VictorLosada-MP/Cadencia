@@ -23,14 +23,30 @@ import {
  */
 export default function PantallaNegocio() {
   const { data: sesion, isPending } = useSession();
-  // Lo escrito y sin guardar vuelve primero. Si hay borrador, ese manda.
-  const [borrador] = useState(leerBorrador);
-  const [negocio, setNegocio] = useState<Negocio>(() => borrador ?? NEGOCIO_VACIO);
+  const quien = sesion?.user.id;
+  // Lo escrito y sin guardar vuelve primero. Si hay borrador, ese manda — pero
+  // solo el SUYO: la clave lleva su id dentro, así que el borrador de otra
+  // cuenta del mismo navegador ni se puede leer.
+  const [borrador, setBorrador] = useState<Negocio | null>(null);
+  const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
   const [enBase, setEnBase] = useState(false);
   const [cargando, setCargando] = useState(true);
   const sinGuardar = tieneAlgo(borrador) && !enBase;
   // Y si intenta cerrar la pestaña con algo a medias, el navegador pregunta.
   useAvisarSinGuardar(!enBase && tieneAlgo(negocio));
+
+  // El borrador se lee cuando ya se sabe de quién es, no antes: su clave lleva
+  // el id de la cuenta y en el primer pintado todavía no hay sesión.
+  useEffect(() => {
+    const mio = leerBorrador(quien);
+    if (!mio) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- el borrador vive en el
+       navegador y su clave lleva el id de la cuenta: no se puede leer antes de
+       saber quién entró. */
+    setBorrador(mio);
+    setNegocio(mio);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [quien]);
 
   useEffect(() => {
     // Sin sesión no se pide nada, y `cargando` no se toca: esta pantalla
@@ -117,13 +133,13 @@ export default function PantallaNegocio() {
               const nuevo = { ...negocio, ...c };
               setNegocio(nuevo);
               setEnBase(false);
-              guardarBorrador(nuevo);
+              guardarBorrador(quien, nuevo);
             }}
             guardado={enBase}
             onGuardado={() => {
               setEnBase(true);
               // Guardado: lo del servidor ya ES lo suyo, el borrador sobra.
-              borrarBorrador();
+              borrarBorrador(quien);
             }}
           />
           {enBase && (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { leer, guardar } from "@/lib/guardado";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
@@ -90,44 +91,51 @@ type Guardado = {
   para?: string;
 };
 
-function leerGuardado(): Guardado | null {
-  try {
-    const crudo = localStorage.getItem("cadencia");
-    return crudo ? (JSON.parse(crudo) as Guardado) : null;
-  } catch {
-    // Un guardado ilegible no puede impedir usar la app.
-    return null;
-  }
-}
+const GUARDADO = "diagnostico";
 
 export default function Diagnostico() {
-  // Se lee una sola vez, al montar. Antes se leía en cada render, así que en
-  // cuanto se guardaba algo dejaba de significar "lo que había al abrir".
-  const [guardado] = useState(leerGuardado);
-  const [redes, setRedes] = useState<EntradaRed[]>(
-    () =>
-      guardado?.redes ?? [{ id: "red-1", plataforma: "Instagram", casillas: { ...CASILLAS_VACIAS } }],
-  );
-  const [publicado, setPublicado] = useState<Publicado>(() => ({
+  const { data: sesion, isPending: cargandoSesion } = useSession();
+  const quien = sesion?.user.id;
+
+  const [redes, setRedes] = useState<EntradaRed[]>([
+    { id: "red-1", plataforma: "Instagram", casillas: { ...CASILLAS_VACIAS } },
+  ]);
+  const [publicado, setPublicado] = useState<Publicado>({
     cuadriculas: [],
-    textos: guardado?.textos ?? "",
-    ventana: guardado?.ventana,
-  }));
-  const [respuestasGuardadas] = useState(() => guardado?.respuestas ?? {});
-  const [borradorNegocio] = useState(leerBorrador);
-  const [negocio, setNegocio] = useState<Negocio>(() => borradorNegocio ?? NEGOCIO_VACIO);
+    textos: "",
+    ventana: undefined,
+  });
+  const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
+  const [creado, setCreado] = useState<string | null>(null);
+  const [respuestas, setRespuestas] = useState<Record<string, string>>({});
+  /** Hasta que no se sabe de quién es la pantalla, no se recupera nada. */
+  const [recuperado, setRecuperado] = useState(false);
+
+  // Lo guardado se lee cuando ya hay sesión, porque su clave lleva el id de la
+  // cuenta dentro. Antes la clave era fija —"cadencia"— y en el mismo navegador
+  // la segunda cuenta se encontraba el perfil y lo publicado de la primera ya
+  // escrito en sus campos. No era el dispositivo: era que nadie preguntaba de
+  // quién era eso.
+  useEffect(() => {
+    if (!quien || recuperado) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- leer el almacenamiento
+       del navegador al montar es justo el caso que el efecto existe para
+       cubrir: es un sistema externo, y hasta que no se sabe de quién es la
+       sesión no se puede ni construir la clave. */
+    const g = leer<Guardado>(GUARDADO, quien);
+    if (g) {
+      if (g.redes?.length) setRedes(g.redes);
+      setPublicado((p) => ({ ...p, textos: g.textos ?? "", ventana: g.ventana }));
+      setRespuestas(g.respuestas ?? {});
+      setCreado(g.para ?? null);
+    }
+    const b = leerBorrador(quien);
+    if (b) setNegocio(b);
+    setRecuperado(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [quien, recuperado]);
   const [negocioEnBase, setNegocioEnBase] = useState(false);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
-  const [creado, setCreado] = useState<string | null>(null);
-  const [semilla, setSemilla] = useState(false);
-  // El perfil semilla lee `perfiles/victor.json`, que es el negocio de quien
-  // construyó esto. Sirve para probar el sistema en la máquina de uno; en el
-  // producto desplegado le ofrecería a un desconocido diagnosticarse contra un
-  // negocio ajeno, y eso no es una opción: es una fuga.
-  const enPruebas = process.env.NODE_ENV !== "production";
-
-  const { data: sesion, isPending: cargandoSesion } = useSession();
-  const [respuestas, setRespuestas] = useState<Record<string, string>>(() => respuestasGuardadas);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [dx, setDx] = useState<Diagnostico | null>(null);
@@ -135,20 +143,17 @@ export default function Diagnostico() {
   useEffect(() => {
     try {
       const sinImagenes = redes.map((r) => ({ ...r, casillas: { ...r.casillas } }));
-      localStorage.setItem(
-        "cadencia",
-        JSON.stringify({
-          redes: sinImagenes,
-          textos: publicado.textos,
-          ventana: publicado.ventana,
-          respuestas,
-          para: creado ?? undefined,
-        } satisfies Guardado),
-      );
+      guardar(GUARDADO, quien, {
+        redes: sinImagenes,
+        textos: publicado.textos,
+        ventana: publicado.ventana,
+        respuestas,
+        para: creado ?? undefined,
+      } satisfies Guardado);
     } catch {
       // Sin espacio o en incógnito: se sigue trabajando, solo no se recuerda.
     }
-  }, [redes, publicado.textos, publicado.ventana, respuestas, creado]);
+  }, [quien, redes, publicado.textos, publicado.ventana, respuestas, creado]);
 
   useEffect(() => {
     if (!sesion) return;
@@ -170,10 +175,10 @@ export default function Diagnostico() {
         // semana y volver para que una bio a medio corregir regresara a la
         // versión vieja.
         const e = u.corrida.entrada;
-        if (Array.isArray(e?.redes) && e.redes.length && !guardado?.redes?.length) {
+        if (Array.isArray(e?.redes) && e.redes.length && !redes.some(tieneContenido)) {
           setRedes(e.redes);
         }
-        if (e?.publicado && !guardado?.textos) {
+        if (e?.publicado && !publicado.textos.trim()) {
           setPublicado((pub) => ({
             ...pub,
             textos: e.publicado.textos ?? "",
@@ -183,7 +188,7 @@ export default function Diagnostico() {
 
         // Y las respuestas a medio escribir solo vuelven si son de ESTE
         // diagnóstico. Si es otro, las preguntas cambiaron.
-        if (guardado?.para && guardado.para !== u.corrida.creado) setRespuestas({});
+        if (creado && creado !== u.corrida.creado) setRespuestas({});
       })
       .catch(() => {});
 
@@ -192,7 +197,7 @@ export default function Diagnostico() {
       .then((d) => {
         if (!vivo || !d?.negocio) return;
         // Igual que en /negocio: lo del servidor no pisa lo que está a medias.
-        if (!tieneAlgo(borradorNegocio)) {
+        if (!tieneAlgo(negocio)) {
           setNegocio(desdeBase(d.negocio));
           setNegocioEnBase(true);
         }
@@ -204,7 +209,7 @@ export default function Diagnostico() {
     return () => {
       vivo = false;
     };
-  }, [sesion, guardado, borradorNegocio]);
+  }, [sesion, recuperado, redes, publicado.textos, creado, negocio]);
 
   const listas = redes.filter(tieneContenido);
   const usadas = redes.map((r) => r.plataforma);
@@ -222,7 +227,6 @@ export default function Diagnostico() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(semilla ? { perfilId: "victor" } : {}),
           redes: listas,
           publicado,
           respuestas: conRespuestas ? preguntadas : undefined,
@@ -300,7 +304,7 @@ export default function Diagnostico() {
         <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-neutral-500">
           Tu negocio
         </h2>
-        {negocioEnBase && !semilla ? (
+        {negocioEnBase ? (
           <div className="mt-1.5 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="min-w-0">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
@@ -332,15 +336,13 @@ export default function Diagnostico() {
                 const nuevo = { ...negocio, ...c };
                 setNegocio(nuevo);
                 setNegocioEnBase(false);
-                guardarBorrador(nuevo);
+                guardarBorrador(quien, nuevo);
               }}
               guardado={negocioEnBase}
               onGuardado={() => {
                 setNegocioEnBase(true);
-                borrarBorrador();
+                borrarBorrador(quien);
               }}
-              semilla={enPruebas ? semilla : undefined}
-              onSemilla={enPruebas ? setSemilla : undefined}
             />
           </>
         )}
@@ -486,7 +488,7 @@ export default function Diagnostico() {
         <button
           onClick={() => diagnosticar(false)}
           disabled={
-            cargando || listas.length === 0 || (!semilla && !negocioEnBase)
+            cargando || listas.length === 0 || !negocioEnBase
           }
           className="empuja rounded-full bg-teal-700 px-5 py-2.5 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-600 dark:hover:bg-teal-500"
         >
