@@ -131,6 +131,36 @@ if (env.RESEND_API_KEY && env.CORREO_DESDE) {
   );
 }
 
+const pagos = [
+  env.WOMPI_PUBLIC_KEY,
+  env.WOMPI_INTEGRITY_SECRET,
+  env.WOMPI_EVENTS_SECRET,
+  env.WOMPI_PRIVATE_KEY,
+];
+if (pagos.every((v) => v?.trim())) {
+  const prueba = env.WOMPI_PUBLIC_KEY.trim().startsWith("pub_test_");
+  bien(`Wompi configurado (${prueba ? "pruebas" : "PRODUCCIÓN — cobra de verdad"})`);
+  if (!prueba && env.WOMPI_PRIVATE_KEY.trim().startsWith("prv_test_")) {
+    mal("la clave privada es de PRUEBAS y la pública de producción", "no van a cuadrar");
+  }
+  const cron = env.CRON_SECRET?.trim();
+  if (!cron || cron.length < 16) {
+    mal(
+      "sin CRON_SECRET: el cobro mensual no corre",
+      "genera uno largo y ponlo también en Vercel",
+    );
+  } else {
+    bien("el cobro mensual tiene su secreto");
+  }
+} else if (pagos.some((v) => v?.trim())) {
+  mal(
+    "Wompi a medias: hacen falta las tres claves",
+    "WOMPI_PUBLIC_KEY, WOMPI_INTEGRITY_SECRET, WOMPI_EVENTS_SECRET y WOMPI_PRIVATE_KEY",
+  );
+} else {
+  ojo("sin Wompi: no sale el botón de pagar", "panel de Wompi → secretos de integración técnica");
+}
+
 const panel = env.PANEL_LLAVE?.trim();
 if (!panel) {
   ojo("PANEL_LLAVE vacía: el panel de administración no existe", "npm run llave");

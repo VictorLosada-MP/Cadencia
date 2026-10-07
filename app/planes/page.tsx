@@ -3,6 +3,8 @@ import { cuotaDe, planesDisponibles, type Plan } from "@/lib/cuota";
 import { negocioDe, usuarioActual } from "@/lib/negocio";
 import { Barra } from "../barra";
 import { Planes } from "../planes";
+import { Renovacion } from "../pago/renovacion";
+import { suscripcionDe } from "@/lib/pagos";
 
 /** Lee la sesión y la base: nunca es la misma página para dos personas. */
 export const dynamic = "force-dynamic";
@@ -34,6 +36,7 @@ export default async function PaginaPlanes() {
 
   const negocio = await negocioDe(usuario.id).catch(() => null);
   const cuota = await cuotaDe(usuario.id, negocio?.id ?? null).catch(() => null);
+  const sus = await suscripcionDe(usuario.id).catch(() => null);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14">
@@ -64,7 +67,19 @@ export default async function PaginaPlanes() {
       </header>
 
       <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
-        <Planes planes={planes} actual={cuota?.plan.id} />
+        {sus?.fuente_pago_id && !cuota?.cortesia && (
+          <Renovacion
+            renovar={sus.renovar}
+            hasta={sus.plan_hasta}
+            tarjeta={
+              sus.fuente_marca || sus.fuente_ultimos4
+                ? `${sus.fuente_marca ?? "tarjeta"} ·· ${sus.fuente_ultimos4 ?? ""}`.trim()
+                : "tarjeta guardada"
+            }
+          />
+        )}
+
+        <Planes planes={planes} actual={cuota?.plan.id} dentro />
       </section>
     </main>
   );

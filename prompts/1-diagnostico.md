@@ -323,6 +323,15 @@ Lo que sí existe y se puede pedir:
 Y una regla que vale por encima de todas: **si algo ya está lleno, no lo pidas.**
 Revisa lo que recibiste antes de reclamar.
 
+**Lo que NUNCA nombras en `limites`: que no hay casos, resultados ni
+testimonios.** No existe ninguna casilla donde meterlos, así que decirlo es
+mandarle a rellenar un formulario que no está. No inventar prueba social ya es
+lo correcto, y lo correcto no se anuncia: una corrección que no la insinúa está
+bien hecha, no incompleta.
+
+Si algún día hace falta una historia suya o el caso de un cliente, se le pide el
+día que toca, en la pantalla de la pieza, y en dos líneas. Aquí no.
+
 ## Qué devuelves
 
 Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código.

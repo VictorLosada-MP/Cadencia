@@ -449,11 +449,14 @@ export default function Diagnostico() {
             className="mt-2 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
           />
           {piezas > 0 && (
-            <p className="mt-1.5 text-xs text-neutral-500">
-              Detecté {piezas} {piezas === 1 ? "pieza" : "piezas"}.
-              {piezas < MIN_PIEZAS_PARA_PATRON &&
-                ` Con menos de ${MIN_PIEZAS_PARA_PATRON} no se puede afirmar un "siempre" ni un "nunca" — se dirá "en las que subiste".`}
-            </p>
+            <>
+              <p className="mt-1.5 text-xs text-neutral-500">
+                Detecté {piezas} {piezas === 1 ? "pieza" : "piezas"}.
+                {piezas < MIN_PIEZAS_PARA_PATRON &&
+                  ` Con menos de ${MIN_PIEZAS_PARA_PATRON} no se puede afirmar un "siempre" ni un "nunca" — se dirá "en las que subiste".`}
+              </p>
+              <ComoHablas textos={publicado.textos} />
+            </>
           )}
 
           <label className="mt-5 block">
@@ -1152,6 +1155,62 @@ function Copiable({ texto }: { texto: string }) {
       >
         {copiado ? "copiado" : "copiar"}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Lo que publicó, guardado como muestras de cómo habla.
+ *
+ * Es lo que le saca partido de verdad al lector de enlaces. Una publicación
+ * suelta no sirve para afirmar un patrón —una pieza no es un patrón— pero es
+ * una muestra buenísima de cómo escribe, que es el campo que casi nadie rellena
+ * y el único sin el que la función 3 se niega a escribir nada. Ya está escrito:
+ * no hay por qué pedírselo otra vez en otro formulario.
+ */
+function ComoHablas({ textos }: { textos: string }) {
+  const [estado, setEstado] = useState<"" | "yendo" | "listo" | "mal">("");
+  const [dicho, setDicho] = useState("");
+
+  async function guardar() {
+    setEstado("yendo");
+    try {
+      const r = await fetch("/api/negocio/voz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ textos }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "No se pudo guardar.");
+      setEstado("listo");
+      setDicho(
+        d.añadidos === 0
+          ? "Ya estaban guardados."
+          : `Guardado${d.añadidos === 1 ? "" : "s"} ${d.añadidos} en «Cómo hablas».`,
+      );
+    } catch (e) {
+      setEstado("mal");
+      setDicho(e instanceof Error ? e.message : "No se pudo guardar.");
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3">
+      <button
+        onClick={() => void guardar()}
+        disabled={estado === "yendo"}
+        className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
+      >
+        {estado === "yendo" ? "guardando…" : "usar esto como «cómo hablas»"}
+      </button>
+      <p
+        className={`text-xs ${
+          estado === "mal" ? "text-red-700 dark:text-red-400" : "text-neutral-500"
+        }`}
+      >
+        {dicho ||
+          "Estas son tus palabras de verdad. Sin ellas, la función 3 no escribe: sale correcto y no suena a ti."}
+      </p>
     </div>
   );
 }
