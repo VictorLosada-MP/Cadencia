@@ -64,7 +64,7 @@ export default async function PaginaPlanes() {
       </header>
 
       <section className="revela mt-9" style={{ ["--tarda" as string]: "0.04s" }}>
-        <Planes planes={planes} actual={cuota?.plan.id} />
+        <Planes planes={planes} actual={cuota?.plan.id} dentro />
       </section>
     </main>
   );

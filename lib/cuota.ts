@@ -10,6 +10,15 @@ export type Plan = {
   historial_meses: number | null;
   /** Falso en el VIP: existe, se regala, y no sale en la página de precios. */
   publico: boolean;
+  /**
+   * Lo que se cobra de verdad, en pesos colombianos enteros.
+   *
+   * Aparte de `precio_mes`, que es lo que se anuncia: Wompi cobra en COP y en
+   * centavos, y mezclar la moneda del escaparate con la del cobro es como se
+   * cobra de más. En null mientras no se le ponga precio, y entonces el plan no
+   * se puede comprar y la pantalla lo dice.
+   */
+  precio_cop: number | null;
 };
 
 export type Cuota = {
@@ -33,18 +42,26 @@ const PRUEBA = "prueba";
 export async function planEnVigor(usuarioId: string): Promise<{ plan: Plan; cortesia: boolean }> {
   const fila = await una<{
     plan_id: string;
+    plan_hasta: string | null;
     cortesia_plan: string | null;
     cortesia_hasta: string | null;
   }>(
-    `select plan_id, cortesia_plan, cortesia_hasta from suscripcion where usuario_id = $1`,
+    `select plan_id, plan_hasta, cortesia_plan, cortesia_hasta
+       from suscripcion where usuario_id = $1`,
     [usuarioId],
   );
 
-  const vigente =
-    fila?.cortesia_plan &&
-    (!fila.cortesia_hasta || new Date(fila.cortesia_hasta).getTime() > Date.now());
+  const sigueValiendo = (hasta: string | null | undefined) =>
+    !hasta || new Date(hasta).getTime() > Date.now();
 
-  const id = vigente ? fila!.cortesia_plan! : (fila?.plan_id ?? PRUEBA);
+  const vigente = fila?.cortesia_plan && sigueValiendo(fila.cortesia_hasta);
+
+  // Un pago del checkout compra UN MES, no suscribe: pasado `plan_hasta` la
+  // cuenta vuelve a prueba sola. En null es sin caducidad, que es lo que tienen
+  // las cuentas de antes y lo que pone a mano el panel.
+  const comprado = fila?.plan_id && sigueValiendo(fila.plan_hasta) ? fila.plan_id : PRUEBA;
+
+  const id = vigente ? fila!.cortesia_plan! : comprado;
   const plan = await una<Plan>(`select * from plan where id = $1`, [id]);
 
   // Si el plan al que apunta desapareció, la cuenta no se queda sin servicio:

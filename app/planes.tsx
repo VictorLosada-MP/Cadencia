@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@/lib/cuota";
+import { Pagar } from "./pago/pagar";
 
 /**
  * Lo que se anuncia es SOLO lo que el código cobra: las corridas. `negocios` e
@@ -42,10 +43,14 @@ const NOTAS = [
 export function Planes({
   planes,
   actual,
+  dentro,
 }: {
   planes: Plan[];
   /** El plan en vigor de quien mira, si entró a su cuenta. */
   actual?: string;
+  /** Si entró a su cuenta. Sin sesión no se paga: el plan se le activa a una
+   *  cuenta, y en la portada todavía no se sabe a cuál. */
+  dentro?: boolean;
 }) {
   if (planes.length === 0) {
     return (
@@ -121,7 +126,9 @@ export function Planes({
                   <span className="block rounded-full border border-neutral-300 px-5 py-3 text-center font-mono text-[11px] uppercase tracking-wider text-neutral-500 dark:border-neutral-700">
                     en vigor
                   </span>
-                ) : (
+                ) : gratis || !dentro ? (
+                  // Sin sesión no se paga: primero la cuenta, porque el plan se
+                  // le activa a una cuenta y aquí todavía no se sabe a cuál.
                   <Link
                     href="/entrar"
                     className={`empuja block rounded-full px-5 py-3 text-center font-semibold ${
@@ -132,6 +139,12 @@ export function Planes({
                   >
                     {gratis ? "Empezar gratis" : "Quiero este plan"}
                   </Link>
+                ) : p.precio_cop ? (
+                  <Pagar plan={p.id} nombre={p.nombre} destaca={destaca} />
+                ) : (
+                  <span className="block rounded-full border border-neutral-300 px-5 py-3 text-center text-sm text-neutral-500 dark:border-neutral-700">
+                    Precio por definir
+                  </span>
                 )}
               </div>
             </div>

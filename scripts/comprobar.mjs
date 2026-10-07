@@ -131,6 +131,19 @@ if (env.RESEND_API_KEY && env.CORREO_DESDE) {
   );
 }
 
+const pagos = [env.WOMPI_PUBLIC_KEY, env.WOMPI_INTEGRITY_SECRET, env.WOMPI_EVENTS_SECRET];
+if (pagos.every((v) => v?.trim())) {
+  const prueba = env.WOMPI_PUBLIC_KEY.trim().startsWith("pub_test_");
+  bien(`Wompi configurado (${prueba ? "pruebas" : "PRODUCCIÓN — cobra de verdad"})`);
+} else if (pagos.some((v) => v?.trim())) {
+  mal(
+    "Wompi a medias: hacen falta las tres claves",
+    "WOMPI_PUBLIC_KEY, WOMPI_INTEGRITY_SECRET y WOMPI_EVENTS_SECRET",
+  );
+} else {
+  ojo("sin Wompi: no sale el botón de pagar", "panel de Wompi → secretos de integración técnica");
+}
+
 const panel = env.PANEL_LLAVE?.trim();
 if (!panel) {
   ojo("PANEL_LLAVE vacía: el panel de administración no existe", "npm run llave");
