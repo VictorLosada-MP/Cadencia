@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { consultar, una } from "@/lib/db";
+import { deHex, paletaGuardada } from "@/lib/marca";
 import type { Negocio, TipoNegocio } from "@/types/negocio";
 
 export type NegocioGuardado = Negocio & {
@@ -23,14 +24,47 @@ export async function usuarioActual() {
  * con doscientos negocios dentro, pedir el id de otro devolvería su oferta, su
  * cliente y sus muestras de voz redactadas como diagnóstico.
  */
-export function negocioDe(usuarioId: string) {
-  return una<NegocioGuardado>(
+export async function negocioDe(usuarioId: string): Promise<NegocioGuardado | null> {
+  const fila = await una<NegocioGuardado & Columnas>(
     `select id, tipo, nombre, oferta, cliente, despues, freno, accion, voz,
-            senales, actualizado
+            senales, paleta_fondo, paleta_tinta, paleta_acento, actualizado
        from negocio
       where usuario_id = $1`,
     [usuarioId],
   );
+  return fila ? conPaleta(fila) : null;
+}
+
+/** Las tres columnas de la paleta, tal como salen de la base. */
+type Columnas = {
+  paleta_fondo?: string | null;
+  paleta_tinta?: string | null;
+  paleta_acento?: string | null;
+};
+
+/**
+ * Tres columnas fuera, un objeto dentro.
+ *
+ * En la base son tres `text` porque un `check` las puede vigilar una por una;
+ * en el resto del sistema es una paleta, que es lo que se dibuja. Las columnas
+ * sueltas se quitan de la respuesta para que nadie acabe leyendo la mitad por
+ * un sitio y la mitad por otro.
+ */
+function conPaleta(fila: NegocioGuardado & Columnas): NegocioGuardado {
+  const paleta = paletaGuardada(fila);
+  const limpio = { ...fila, paleta };
+  delete limpio.paleta_fondo;
+  delete limpio.paleta_tinta;
+  delete limpio.paleta_acento;
+  return limpio;
+}
+
+/** Vacío o los tres colores. Media paleta no se guarda: la vigila el `check`. */
+function paletaValida(p: Negocio["paleta"]): [string, string, string] {
+  if (!p) return ["", "", ""];
+  const tres = [p.fondo, p.tinta, p.acento].map((c) => (c ?? "").trim());
+  if (tres.some((c) => !deHex(c))) return ["", "", ""];
+  return [tres[0].toUpperCase(), tres[1].toUpperCase(), tres[2].toUpperCase()];
 }
 
 /** Solo lo que la columna acepta. Lo de fuera entra como «no lo dijo». */
@@ -42,20 +76,26 @@ export async function guardarNegocio(
   usuarioId: string,
   n: Negocio,
 ): Promise<NegocioGuardado> {
-  const filas = await consultar<NegocioGuardado>(
-    `insert into negocio (usuario_id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  const [fondo, tinta, acento] = paletaValida(n.paleta);
+  const filas = await consultar<NegocioGuardado & Columnas>(
+    `insert into negocio (usuario_id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales,
+                          paleta_fondo, paleta_tinta, paleta_acento)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      on conflict (usuario_id) do update set
-       tipo    = excluded.tipo,
-       nombre  = excluded.nombre,
-       oferta  = excluded.oferta,
-       cliente = excluded.cliente,
-       despues = excluded.despues,
-       freno   = excluded.freno,
-       accion  = excluded.accion,
-       voz     = excluded.voz,
-       senales = excluded.senales
-     returning id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales, actualizado`,
+       tipo          = excluded.tipo,
+       nombre        = excluded.nombre,
+       oferta        = excluded.oferta,
+       cliente       = excluded.cliente,
+       despues       = excluded.despues,
+       freno         = excluded.freno,
+       accion        = excluded.accion,
+       voz           = excluded.voz,
+       senales       = excluded.senales,
+       paleta_fondo  = excluded.paleta_fondo,
+       paleta_tinta  = excluded.paleta_tinta,
+       paleta_acento = excluded.paleta_acento
+     returning id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales,
+               paleta_fondo, paleta_tinta, paleta_acento, actualizado`,
     [
       usuarioId,
       tipoValido(n.tipo),
@@ -67,7 +107,10 @@ export async function guardarNegocio(
       n.accion?.trim() ?? "",
       n.voz?.trim() ?? "",
       n.senales?.trim() ?? "",
+      fondo,
+      tinta,
+      acento,
     ],
   );
-  return filas[0];
+  return conPaleta(filas[0]);
 }

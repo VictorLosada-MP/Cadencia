@@ -320,6 +320,76 @@ justo la que hace falta para montar el video. El tope va aparte, en `uso_voz`:
 veinte minutos de audio al día por negocio, que es lo que se corresponde con el
 cargo real.
 
+## Los colores de su marca
+
+La carátula del video y las láminas del carrusel salían con la misma paleta para
+todo el mundo —blanco con amarillo fijo—, así que la pieza no se parecía a lo que
+esa cuenta ya publica. Y los colores que ya usa están a la vista en su
+cuadrícula.
+
+`lib/marca.ts` los cuenta **en el navegador y de los píxeles**: agrupa a 32
+niveles por canal, y de ahí salen los tres.
+
+- **Fondo**: el más repetido que **no sea un gris**. La interfaz de Instagram es
+  blanca o negra y ocupa la cabecera y la barra de abajo de cualquier captura;
+  con «el más repetido» a secas, el fondo de una cuenta verde oscuro salía
+  blanco. Comprobado con una captura sintética que lleva las dos barras.
+- **Tinta**: el de más contraste contra el fondo. No es gusto, es el único
+  criterio por el que el texto se lee. Si ni el mejor llega a 4,5 —el AA de la
+  WCAG—, cae a blanco o negro.
+- **Acento**: el más saturado que se distinga de los otros dos, empujado hacia
+  el blanco o el negro hasta llegar a 3 contra el fondo. Si la cuadrícula no
+  tiene ningún color —blanco y negro—, **no se inventa uno**: se usa la tinta.
+
+`paletaDePixeles` es pura: recibe el RGBA de un canvas y no toca el DOM, así que
+se prueba con píxeles inventados y se comprueba el contraste con la fórmula en
+vez de mirarlo y decir que se ve bien.
+
+**La captura no se sube ni se guarda.** Lo que viaja y lo que queda en
+`negocio.paleta_*` son tres cadenas de siete caracteres, con un `check` que
+acepta vacío o los tres —nunca medio— porque media paleta pinta una lámina con
+un color y el resto con los de serie.
+
+Y es una propuesta, no un veredicto: en una captura también salen la interfaz y
+su foto de perfil, así que los tres colores se cambian a mano. Donde se usa:
+`PALETAS` gana «La tuya» delante y queda elegida de entrada, y el `realce` de
+los subtítulos —el último renglón de la carátula— pasa a ser su acento. Nada más
+cambia: el tamaño, la posición y el margen están medidos sobre los reels de
+referencia y no son una preferencia de color.
+
+## Las incoherencias del diagnóstico
+
+Tres, y las tres eran del prompt, no del modelo. Quedan escritas porque son el
+tipo de fallo que vuelve:
+
+- **El nombre y la primera línea son campos distintos.** El punto 1 lee
+  `Nombre visible` —los treinta caracteres que entran en el buscador de
+  Instagram—; el punto 2, la primera oración de la bio. Que en la pantalla el
+  nombre salga arriba en negrita no lo convierte en la primera línea.
+- **Los puntos 2 y 3 leen el mismo texto**, así que sus correcciones se suman en
+  vez de pisarse: si la promesa ya está en la primera oración, el punto 3 pasa,
+  y si los dos fallan las dos correcciones tienen que poder pegarse seguidas y
+  leerse como una bio.
+- **Si el CTA pasa, el Link pasa.** Están juntos en el perfil y quien mira los ve
+  de una vez: un CTA que ya dice qué ocurre después de tocar ya dijo qué hay al
+  otro lado. Suspender entonces el Link es suspender la misma línea dos veces, y
+  así lo leyó el dueño. El Link solo falla cuando el par no lo dice —una URL
+  suelta, o un repartidor de enlaces sin decir a cuál va.
+
+Y una cuarta que no era una regla sino un ejemplo: el punto del nombre traía un
+nombre real como ejemplo trabajado, y el modelo devolvía ese ejemplo con tres
+palabras añadidas en vez de escribir con el Perfil de Negocio. Los ejemplos de
+un prompt son forma, no material, y ahora está dicho en «Moldes prohibidos».
+
+### El marcador no es una nota
+
+`pasan` cuenta sobre los puntos que **se pudieron revisar**, no sobre cinco. El
+denominador era un 5 fijo, así que una red con una casilla vacía salía «4/5»:
+cuatro de cuatro pintados como si hubiera fallado uno. Ahora el denominador es
+`evaluados` y el número lleva su rótulo —«puntos que pasan»—, porque un «4/4» al
+lado de un «3/5» sin rótulo se lee como una nota y no lo es: son dos redes que no
+tienen los mismos campos llenos.
+
 ## El movimiento
 
 Está todo en `app/globals.css` y son cinco clases: `entra` / `entra-lado` /

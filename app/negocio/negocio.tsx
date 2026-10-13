@@ -1,6 +1,7 @@
 "use client";
 
 import { borrar, guardar, leer } from "@/lib/guardado";
+import { paletaDeArchivo, paletaGuardada, type Paleta } from "@/lib/marca";
 import { useEffect, useState } from "react";
 import {
   CAMPOS_EXTRA,
@@ -78,6 +79,12 @@ export function desdeBase(n: Record<string, unknown>): Negocio {
     freno: t(n.freno),
     accion: t(n.accion),
     voz: t(n.voz),
+    // Vale tanto la paleta ya armada como las tres columnas sueltas: por la
+    // API llega armada, pero el borrador de una pestaña vieja puede traer lo
+    // otro, y perder los colores al recargar sería el mismo fallo de antes.
+    paleta:
+      (n.paleta as Paleta | null | undefined) ??
+      paletaGuardada(n as Parameters<typeof paletaGuardada>[0]),
     senales: t(n.senales),
   };
 }
@@ -226,6 +233,11 @@ export function BloqueNegocio({
             />
           </div>
 
+          <BloqueMarca
+            paleta={negocio.paleta ?? null}
+            onPaleta={(paleta) => onCambio({ paleta })}
+          />
+
           <button
             onClick={() => setAbierto(!abierto)}
             className="font-mono text-[11px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400"
@@ -280,5 +292,158 @@ export function BloqueNegocio({
           {fallo && <p className="text-xs text-red-700 dark:text-red-400">{fallo}</p>}
       </div>
     </div>
+  );
+}
+
+const CLAVES: { id: keyof Paleta; etiqueta: string; papel: string }[] = [
+  { id: "fondo", etiqueta: "Fondo", papel: "el que manda" },
+  { id: "tinta", etiqueta: "Texto", papel: "lo que se lee" },
+  { id: "acento", etiqueta: "Acento", papel: "lo que remata" },
+];
+
+/**
+ * Los colores de su marca, sacados de su propia cuadrícula.
+ *
+ * Por qué una captura y no un selector de colores en blanco: nadie se sabe de
+ * memoria el hexadecimal de su marca, pero todo el mundo tiene su cuadrícula a
+ * un pantallazo de distancia, y ahí están los colores que ya usa.
+ *
+ * La captura NO se sube ni se guarda: los colores se cuentan aquí, en el
+ * navegador, y lo que viaja son tres cadenas de siete caracteres. Y se pueden
+ * cambiar a mano, porque en una captura también salen la interfaz de Instagram
+ * y su foto de perfil: esto propone, no decide.
+ */
+function BloqueMarca({
+  paleta,
+  onPaleta,
+}: {
+  paleta: Paleta | null;
+  onPaleta: (p: Paleta | null) => void;
+}) {
+  const [leyendo, setLeyendo] = useState(false);
+  const [fallo, setFallo] = useState("");
+
+  async function leerCaptura(archivo: File | null) {
+    if (!archivo) return;
+    setLeyendo(true);
+    setFallo("");
+    const sacada = await paletaDeArchivo(archivo);
+    setLeyendo(false);
+    if (!sacada) {
+      setFallo("No pude leer esa imagen. Prueba con un PNG o un JPG de la cuadrícula.");
+      return;
+    }
+    onPaleta(sacada);
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+        Los colores de tu marca
+      </p>
+      <p className="mb-2 mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
+        Sube un pantallazo de tu cuadrícula y saco de ahí los colores que ya
+        usas. Se aplican a la carátula de tus videos y a las láminas de tus
+        carruseles — hoy salen con los colores de serie, iguales para todos.
+      </p>
+      <p className="mb-3 text-xs text-neutral-500">
+        La captura no se sube ni se guarda: los colores se cuentan en tu
+        navegador y lo único que queda son los tres de abajo.
+      </p>
+
+      {paleta ? (
+        <>
+          <div className="flex flex-wrap items-end gap-3">
+            {CLAVES.map((c) => (
+              <label key={c.id} className="block">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                  {c.etiqueta}
+                </span>
+                <span className="mt-1 flex items-center gap-2">
+                  <input
+                    type="color"
+                    aria-label={c.etiqueta}
+                    value={paleta[c.id]}
+                    onChange={(e) =>
+                      onPaleta({ ...paleta, [c.id]: e.target.value.toUpperCase() })
+                    }
+                    className="h-9 w-9 cursor-pointer rounded border border-neutral-300 bg-transparent p-0.5 dark:border-neutral-700"
+                  />
+                  <span className="font-mono text-[11px] tabular-nums text-neutral-500">
+                    {paleta[c.id]}
+                    <span className="block text-[10px]">{c.papel}</span>
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {/* Una lámina en pequeño. Tres cuadraditos de color no dicen si la
+              combinación se lee; un titular sobre el fondo, sí. */}
+          <div
+            className="mt-3 rounded-lg p-4"
+            style={{ backgroundColor: paleta.fondo }}
+            aria-label="así se verá una lámina"
+          >
+            <div
+              className="mb-2 h-1.5 w-12 rounded-full"
+              style={{ backgroundColor: paleta.acento }}
+            />
+            <p className="text-base font-bold leading-snug" style={{ color: paleta.tinta }}>
+              Así se va a leer tu titular
+            </p>
+            <p className="mt-1 font-mono text-[11px]" style={{ color: paleta.acento }}>
+              01 / 05
+            </p>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <Captura leyendo={leyendo} onArchivo={leerCaptura} etiqueta="Leer otra captura" />
+            <button
+              type="button"
+              onClick={() => onPaleta(null)}
+              className="font-mono text-[11px] uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:no-underline"
+            >
+              volver a los de serie
+            </button>
+          </div>
+        </>
+      ) : (
+        <Captura
+          leyendo={leyendo}
+          onArchivo={leerCaptura}
+          etiqueta="Subir captura de la cuadrícula"
+        />
+      )}
+
+      {fallo && <p className="mt-2 text-xs text-red-700 dark:text-red-400">{fallo}</p>}
+    </div>
+  );
+}
+
+function Captura({
+  leyendo,
+  onArchivo,
+  etiqueta,
+}: {
+  leyendo: boolean;
+  onArchivo: (f: File | null) => void;
+  etiqueta: string;
+}) {
+  return (
+    <label className="inline-block cursor-pointer rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400">
+      {leyendo ? "Leyendo los colores…" : etiqueta}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          onArchivo(e.target.files?.[0] ?? null);
+          // Se limpia para que subir la MISMA captura otra vez vuelva a
+          // disparar el cambio. Sin esto, el segundo intento no hace nada.
+          e.target.value = "";
+        }}
+      />
+    </label>
   );
 }

@@ -338,7 +338,7 @@ function Pieza({ p }: { p: PiezaSemana }) {
           ))}
         </div>
         <p className="mt-1.5 text-xs text-neutral-500">
-          La idea es la misma en los tres. Elige según el día que tengas.
+          La idea es la misma en los dos. Elige según el día que tengas.
         </p>
 
         <br />

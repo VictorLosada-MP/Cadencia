@@ -7,14 +7,12 @@
  * 1080×1350 porque es lo que ocupa más pantalla en el feed sin que recorte.
  */
 
+import type { Paleta } from "@/lib/marca";
+
 export const ANCHO = 1080;
 export const ALTO = 1350;
 
-export type Paleta = {
-  /** 60 — el que manda. */ fondo: string;
-  /** 30 — el texto. */ tinta: string;
-  /** 10 — el que resalta. */ acento: string;
-};
+export type { Paleta } from "@/lib/marca";
 
 /** La regla 60-30-10 de sus apuntes, con los comodines por defecto. */
 export const PALETAS: { id: string; nombre: string; p: Paleta }[] = [

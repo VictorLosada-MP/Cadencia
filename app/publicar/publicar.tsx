@@ -17,10 +17,21 @@ import { apuntarHecho } from "@/lib/hecho";
 import { deLienzo } from "@/lib/portada";
 import { Editor } from "./editor";
 
+/** El id de la paleta propia. No está en PALETAS: se añade si la tiene. */
+const MIA = "mia";
+
 export default function Lista() {
   const { data: sesion, isPending } = useSession();
   const [pieza, setPieza] = useState<Pieza | null>(null);
   const [paleta, setPaleta] = useState(PALETAS[0].id);
+  /**
+   * Los colores de su marca, los que salieron de su cuadrícula.
+   *
+   * Se piden aquí y no en cada hijo porque los usan los dos caminos: las
+   * láminas del carrusel y la carátula del video. Si no los tiene, llega null
+   * y todo sigue como antes con las paletas de serie.
+   */
+  const [marca, setMarca] = useState<Paleta | null>(null);
   const [creado, setCreado] = useState<string | null>(null);
   const [corridaId, setCorridaId] = useState<string | null>(null);
   const [formato, setFormato] = useState<string>("camara");
@@ -54,10 +65,28 @@ export default function Lista() {
       })
       .catch(() => {})
       .finally(() => vivo && setCargando(false));
+
+    fetch("/api/negocio?ligero=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const suya = d?.negocio?.paleta as Paleta | null | undefined;
+        if (!vivo || !suya) return;
+        setMarca(suya);
+        // Y queda elegida de entrada: si se tomó el trabajo de darnos sus
+        // colores, abrir en «Hueso» es ignorarlos. Solo si todavía no ha
+        // tocado nada — lo que ya eligió, manda.
+        setPaleta((actual) => (actual === PALETAS[0].id ? MIA : actual));
+      })
+      .catch(() => {});
     return () => {
       vivo = false;
     };
   }, [sesion]);
+
+  // Las de serie, con la suya delante cuando la hay.
+  const paletas = marca
+    ? [{ id: MIA, nombre: "La tuya", p: marca }, ...PALETAS]
+    : PALETAS;
 
   if (isPending) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
@@ -95,7 +124,7 @@ export default function Lista() {
       {cargando ? (
         <p className="mt-9 text-sm text-neutral-500">Buscando lo último que escribiste…</p>
       ) : grabado ? (
-        <YaGrabado volver={() => setGrabado(false)} />
+        <YaGrabado volver={() => setGrabado(false)} marca={marca} />
       ) : !pieza ? (
         <>
           <div className="revela mt-9 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -115,6 +144,7 @@ export default function Lista() {
       ) : esCarrusel(pieza) ? (
         <DeCarrusel
           c={pieza}
+          paletas={paletas}
           paletaId={paleta}
           onPaleta={setPaleta}
           creado={creado}
@@ -122,7 +152,12 @@ export default function Lista() {
         />
       ) : (
         <>
-          <EsVideo guion={pieza as Guion} corridaId={corridaId} formato={formato} />
+          <EsVideo
+            guion={pieza as Guion}
+            corridaId={corridaId}
+            formato={formato}
+            marca={marca}
+          />
           <Puerta abrir={() => setGrabado(true)} discreta />
         </>
       )}
@@ -179,7 +214,7 @@ function Puerta({ abrir, discreta }: { abrir: () => void; discreta?: boolean }) 
   );
 }
 
-function YaGrabado({ volver }: { volver: () => void }) {
+function YaGrabado({ volver, marca }: { volver: () => void; marca: Paleta | null }) {
   return (
     <section className="revela mt-9">
       <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -199,19 +234,23 @@ function YaGrabado({ volver }: { volver: () => void }) {
         </p>
       </div>
 
-      <Editor deLaVoz />
+      <Editor deLaVoz marca={marca} />
     </section>
   );
 }
 
+type Opcion = { id: string; nombre: string; p: Paleta };
+
 function DeCarrusel({
   c,
+  paletas,
   paletaId,
   onPaleta,
   creado,
   corridaId,
 }: {
   c: Carrusel;
+  paletas: Opcion[];
   paletaId: string;
   onPaleta: (id: string) => void;
   creado: string | null;
@@ -223,7 +262,7 @@ function DeCarrusel({
   // Las fotos viven solo en esta pantalla: no se suben, no se guardan.
   const [fotos, setFotos] = useState<Record<number, ImageBitmap>>({});
   const [buscando, setBuscando] = useState<number | null>(null);
-  const paleta: Paleta = (PALETAS.find((p) => p.id === paletaId) ?? PALETAS[0]).p;
+  const paleta: Paleta = (paletas.find((p) => p.id === paletaId) ?? paletas[0]).p;
   const total = c.laminas?.length ?? 0;
 
   useEffect(() => {
@@ -310,7 +349,7 @@ function DeCarrusel({
           Uno manda, uno para el texto, uno que resalta — la regla 60-30-10.
         </p>
         <div className="flex flex-wrap gap-2">
-          {PALETAS.map((p) => (
+          {paletas.map((p) => (
             <button
               key={p.id}
               onClick={() => onPaleta(p.id)}
@@ -534,10 +573,12 @@ function EsVideo({
   guion,
   corridaId,
   formato,
+  marca,
 }: {
   guion: Guion;
   corridaId: string | null;
   formato: string;
+  marca: Paleta | null;
 }) {
   const graba = grabaDe(formato);
   return (
@@ -590,6 +631,7 @@ function EsVideo({
         guion={guion}
         corridaId={corridaId}
         graba={graba === "audio" ? "audio" : "video"}
+        marca={marca}
       />
     </section>
   );
