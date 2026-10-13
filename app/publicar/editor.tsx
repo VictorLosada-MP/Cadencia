@@ -13,6 +13,8 @@ import {
   type Ajustes,
   type Tramo,
 } from "@/lib/silencios";
+import { ESTILO } from "@/lib/subtitulos";
+import type { Paleta } from "@/lib/marca";
 import {
   ANIMACIONES,
   finDelGancho,
@@ -76,6 +78,7 @@ export function Editor({
   corridaId,
   graba,
   deLaVoz,
+  marca,
 }: {
   guion?: {
     descripcion?: string;
@@ -92,6 +95,15 @@ export function Editor({
    * las transiciones y el ritmo sin llamar a ningún modelo.
    */
   deLaVoz?: boolean;
+  /**
+   * Los colores de su marca, si los tiene. null = los de serie.
+   *
+   * De aquí sale el color del último renglón de la carátula, que antes era un
+   * amarillo fijo igual para todo el mundo. El acento de su cuadrícula es el
+   * que ya usa en su feed, así que la portada del video deja de ser la de
+   * cualquiera.
+   */
+  marca?: Paleta | null;
   /**
    * Qué grabó el dueño. En "voz en off" es SOLO audio, y entonces el video no
    * existe: lo arma el sistema con las imágenes. Pedirle un video en ese
@@ -303,6 +315,20 @@ export function Editor({
         ? { texto: elGuion.gancho.trim(), hasta: finDelGancho(elGuion.gancho, lineas) }
         : null,
     [nivel, elGuion, lineas],
+  );
+
+  /**
+   * El estilo de los subtítulos, con el acento de su marca si lo tiene.
+   *
+   * Solo cambia el `realce` —el color del último renglón de la carátula y de
+   * la palabra que se está diciendo—. El tamaño, la posición y el margen no se
+   * tocan: están medidos sobre los reels de referencia y no son una
+   * preferencia de color.
+   */
+  const acento = marca?.acento;
+  const estilo = useMemo(
+    () => (acento ? { ...ESTILO, realce: acento } : ESTILO),
+    [acento],
   );
 
   const recorte = fuente
@@ -524,7 +550,7 @@ export function Editor({
           // de referencia, y en la base estorba.
           ass:
             lineas.length || caratula
-              ? aASS(lineas, animacion, undefined, caratula)
+              ? aASS(lineas, animacion, estilo, caratula)
               : null,
           conAudio,
           insertos: puestos,

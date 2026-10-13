@@ -320,6 +320,159 @@ justo la que hace falta para montar el video. El tope va aparte, en `uso_voz`:
 veinte minutos de audio al día por negocio, que es lo que se corresponde con el
 cargo real.
 
+## Los colores de su marca
+
+La carátula del video y las láminas del carrusel salían con la misma paleta para
+todo el mundo —blanco con amarillo fijo—, así que la pieza no se parecía a lo que
+esa cuenta ya publica. Y los colores que ya usa están a la vista en su
+cuadrícula.
+
+`lib/marca.ts` los cuenta **en el navegador y de los píxeles**: agrupa a 32
+niveles por canal, y de ahí salen los tres.
+
+- **Fondo**: el más repetido que **no sea un gris**. La interfaz de Instagram es
+  blanca o negra y ocupa la cabecera y la barra de abajo de cualquier captura;
+  con «el más repetido» a secas, el fondo de una cuenta verde oscuro salía
+  blanco. Comprobado con una captura sintética que lleva las dos barras.
+- **Tinta**: el de más contraste contra el fondo. No es gusto, es el único
+  criterio por el que el texto se lee. Si ni el mejor llega a 4,5 —el AA de la
+  WCAG—, cae a blanco o negro.
+- **Acento**: el más saturado que se distinga de los otros dos, empujado hacia
+  el blanco o el negro hasta llegar a 3 contra el fondo. Si la cuadrícula no
+  tiene ningún color —blanco y negro—, **no se inventa uno**: se usa la tinta.
+
+`paletaDePixeles` es pura: recibe el RGBA de un canvas y no toca el DOM, así que
+se prueba con píxeles inventados y se comprueba el contraste con la fórmula en
+vez de mirarlo y decir que se ve bien.
+
+Lo que queda en `negocio.paleta_*` son tres cadenas de siete caracteres, con un
+`check` que acepta vacío o los tres —nunca medio— porque media paleta pinta una
+lámina con un color y el resto con los de serie.
+
+### Qué captura se guarda y cuál no
+
+No es lo mismo, y la diferencia no es el formato: es de quién es lo que sale
+dentro.
+
+- **La foto de perfil y el arroba — sí.** Son su marca, los pone él a propósito
+  y van impresos en lo que publica. Una lámina que lleva su cara no puede
+  depender de que vuelva a subir la foto en cada aparato desde el que entre.
+- **La cuadrícula — sí, reducida a 480 píxeles.** Son sus propias
+  publicaciones, que ya son públicas. La paleta viajaba sola de todas formas,
+  pero sin la captura no hay cómo enseñarle de dónde salieron sus colores ni
+  releerla desde otro teléfono.
+- **La captura del PERFIL del diagnóstico — no, y sigue sin guardarse.** En esa
+  salen mensajes y datos de terceros. De ahí se sacan las casillas, que es
+  texto que él revisa, y la imagen se suelta.
+
+Se reducen en el navegador antes de salir de la máquina y se guardan en base64
+con tope, como `entregado.portada`. Medido con un PNG de 1080×2400 y 1,6 MB: la
+foto queda en 9.000 caracteres y la cuadrícula en 15.000, con topes de 60.000 y
+200.000. El tope no es decoración — sin él esa columna es un disco duro con
+otro nombre.
+
+Y es una propuesta, no un veredicto: en una captura también salen la interfaz y
+su foto de perfil, así que los tres colores se cambian a mano. Donde se usa:
+`PALETAS` gana «La tuya» delante y queda elegida de entrada, y el `realce` de
+los subtítulos —el último renglón de la carátula— pasa a ser su acento. Nada más
+cambia: el tamaño, la posición y el margen están medidos sobre los reels de
+referencia y no son una preferencia de color.
+
+## Las incoherencias del diagnóstico
+
+Quedan escritas porque son el tipo de fallo que vuelve:
+
+- **Los puntos 2 y 3 leen el mismo texto**, así que sus correcciones se suman en
+  vez de pisarse: si la promesa ya está en la primera oración, el punto 3 pasa,
+  y si los dos fallan las dos correcciones tienen que poder pegarse seguidas y
+  leerse como una bio.
+- **Si el CTA pasa, el Link pasa.** Están juntos en el perfil y quien mira los ve
+  de una vez: un CTA que ya dice qué ocurre después de tocar ya dijo qué hay al
+  otro lado. Suspender entonces el Link es suspender la misma línea dos veces, y
+  así lo leyó el dueño. El Link solo falla cuando el par no lo dice —una URL
+  suelta, o un repartidor de enlaces sin decir a cuál va.
+- **El punto del nombre mira primero si la palabra ya está ahí**, para empresas
+  y para marcas personales igual. Mandar a arreglar un nombre que ya estaba
+  bien es el error más caro de ese punto.
+
+Y una que **no** era un fallo, apuntada para no volver a «arreglarla»: que el
+punto 1 no deje pasar un `Nombre visible` sin palabra buscable **es correcto**,
+aunque el perfil sea una marca personal. Declarar marca personal no hace que
+pase: decide *cómo se corrige*. El `Usuario` —el arroba— y el `Nombre visible`
+son dos campos distintos y solo el segundo entra en el buscador de Instagram.
+
+Lo que sí se cambió de ese punto es el ejemplo: traía un nombre real y el modelo
+devolvía ese ejemplo con palabras añadidas en vez de escribir con el Perfil de
+Negocio. Los ejemplos de un prompt son forma, no material, y ahora está dicho en
+«Moldes prohibidos».
+
+### El marcador no es una nota
+
+`pasan` cuenta sobre los puntos que **se pudieron revisar**, no sobre cinco. El
+denominador era un 5 fijo, así que una red con una casilla vacía salía «4/5»:
+cuatro de cuatro pintados como si hubiera fallado uno. Ahora el denominador es
+`evaluados` y el número lleva su rótulo —«puntos que pasan»—, porque un «4/4» al
+lado de un «3/5» sin rótulo se lee como una nota y no lo es: son dos redes que no
+tienen los mismos campos llenos.
+
+## Los carruseles: moldes y estilos
+
+Había UN molde —titular arriba, cuerpo debajo— para las cinco a ocho láminas, y
+por eso todos los carruseles salían iguales. Lo básico no era solo la pintura:
+era la forma del contenido. Una lista de doce cosas no cabe en «titular más
+cuerpo», y pintarla con otra tipografía la deja igual de básica.
+
+Hay dos ejes, y no son lo mismo:
+
+- **El molde** lo decide el contenido de cada lámina y lo reparte el modelo:
+  `portada`, `cita`, `plantilla`, `lista`, `apuntes`, `texto`. Cada uno pide
+  campos distintos —`items`, `puntos` + `remate`, `subtitulo`— y por eso el
+  prompt tiene que escribir PARA el molde.
+- **El estilo** es el aire y lo elige el dueño **antes** de escribir:
+  `limpio` o `cuaderno`. Los dos saben pintar los seis moldes, así que repintar
+  de uno a otro en el paso 4 no gasta corrida. Pero no es una piel: en papel
+  rayado y con letra a mano un renglón aguanta seis palabras, no veinte, y el
+  prompt mide para el que se eligió.
+
+Las reglas de sitio: la 1 es siempre `portada` con el gancho literal, la última
+es siempre `cita`, y las de en medio las elige el modelo por lo que digan.
+
+### Un molde sin su contenido no es un molde
+
+`moldeDe` comprueba que la lámina traiga lo suyo antes de hacerle caso: una
+`lista` sin `items` pintaría una lámina en blanco con un titular arriba, así que
+cae a `texto`, que solo necesita titular y cuerpo. Las corridas de antes de los
+moldes no traen `molde` y caen por el mismo sitio, que es lo que hace que un
+carrusel escrito el mes pasado se siga pintando.
+
+### Lo que no se clona, y por qué
+
+La referencia del cuaderno **fotografiado en una mano** no se genera: el texto
+tendría que seguir la curvatura de la página. Aquí el papel se dibuja —
+renglones cada 56 píxeles, margen, tono de hoja— y el texto se **apoya en el
+renglón** (`sobreRenglon`), que es la mitad de por qué se cree: un texto que
+flota entre dos rayas se ve pegado encima de una foto de papel, no escrito en
+él. Lo mismo con el montaje recortado a mano de la portada agresiva: lo que sí
+se hace es la foto a sangre con velo, el titular en mayúsculas y el último
+renglón en el acento.
+
+### Lo que costó medir
+
+Cuatro cosas que solo se vieron pintando las doce láminas y mirándolas:
+
+- **La lista y los apuntes se repartían mal.** Con tope fijo, seis ítems ocupaban
+  media lámina y la otra media quedaba vacía. Ahora el paso reparte el hueco con
+  suelo y techo, y lo que sobra se parte entre arriba y abajo.
+- **En el cuaderno hay que redondear hacia ARRIBA al renglón entero.** Al más
+  cercano, un paso de 80 caía a 56 y los puntos se amontonaban con medio folio
+  en blanco encima y otro debajo.
+- **`[tu café]` se partía al final de la línea** y la mitad de abajo perdía el
+  color. Dentro de los corchetes el espacio se vuelve duro — y el repartidor de
+  líneas parte por `[ \t]+`, **no por `\s`**, porque el espacio duro es `\s`
+  para la expresión regular y se partía igual.
+- **La firma de la plantilla se montaba sobre la raya del pie.** Dos pies en la
+  misma lámina no se ven hasta que se pintan.
+
 ## El movimiento
 
 Está todo en `app/globals.css` y son cinco clases: `entra` / `entra-lado` /

@@ -4,7 +4,16 @@ import { guardarCorrida } from "@/lib/historial";
 import { extraerJSON, generar } from "@/lib/modelo";
 import { usuarioActual } from "@/lib/negocio";
 import { cargarPrompt } from "@/lib/perfil";
-import { familiaDe, formatoPorId, PROMPT_DE, type Ganchos, type Pieza } from "@/types/guion";
+import {
+  ESTILOS,
+  esEstilo,
+  familiaDe,
+  formatoPorId,
+  PROMPT_DE,
+  type Estilo,
+  type Ganchos,
+  type Pieza,
+} from "@/types/guion";
 
 export const maxDuration = 300;
 
@@ -27,6 +36,13 @@ type Cuerpo = {
    * fabricada o con una nota diciéndole que la dejara escrita en su perfil.
    */
   historia?: string;
+  /**
+   * El aire del carrusel, elegido antes de escribir.
+   *
+   * Va al prompt porque cambia lo que escribe, no solo cómo se pinta: en papel
+   * rayado y con letra a mano un renglón aguanta seis palabras, no veinte.
+   */
+  estilo?: Estilo;
 };
 
 export async function POST(request: Request) {
@@ -76,9 +92,14 @@ export async function POST(request: Request) {
     );
 
     const historia = (cuerpo.historia ?? "").trim().slice(0, MAX_HISTORIA);
+    const estilo = esEstilo(cuerpo.estilo) ? cuerpo.estilo : "limpio";
+    const elEstilo = ESTILOS.find((e) => e.id === estilo)!;
     const comun = [
       `## Formato elegido`,
       `${formato.nombre} — ${formato.que} (${formato.detalle})`,
+      familia === "carrusel"
+        ? `\n## Estilo del carrusel\n${elEstilo.nombre} — ${elEstilo.que}`
+        : "",
       cuerpo.angulo?.trim() ? `\n## Ángulo\n${cuerpo.angulo.trim()}` : "",
       historia
         ? `\n## Su historia, contada por él\n\nEs la ÚNICA fuente de hechos de esta pieza. No añades ninguno.\n\n${historia}`
@@ -107,6 +128,14 @@ export async function POST(request: Request) {
     const r = await generar({ sistema: instrucciones, estable: contexto.estable, texto });
     const salida = extraerJSON<Ganchos | Pieza>(r.texto);
 
+    // El estilo se sella en el resultado, no se le pregunta al modelo: es un
+    // dato que ya teníamos y pedírselo sería darle ocasión de devolver otro.
+    // En el resultado y no solo en la entrada porque la pantalla del paso 4 lee
+    // el resultado, y necesita saber para qué estilo se midió este texto.
+    if (familia === "carrusel" && salida && typeof salida === "object" && "laminas" in salida) {
+      (salida as { estilo?: Estilo }).estilo = estilo;
+    }
+
     // Solo se guarda el guion terminado: los tres ganchos son un paso
     // intermedio y guardarlos llenaría el historial de borradores.
     if (cuerpo.paso === "pieza" && contexto.negocioId) {
@@ -115,6 +144,7 @@ export async function POST(request: Request) {
         familia,
         idea: cuerpo.idea,
         gancho: cuerpo.gancho,
+        estilo: familia === "carrusel" ? estilo : undefined,
         historia: historia || undefined,
       });
     }

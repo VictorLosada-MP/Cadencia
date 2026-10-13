@@ -1,3 +1,5 @@
+import type { Paleta } from "@/lib/marca";
+
 /**
  * El Perfil de Negocio. Es de quien se diagnostica, no de quien construyó el
  * sistema — y esa distinción no es obvia: mientras estuvo cableado a un solo
@@ -31,9 +33,30 @@ export type Negocio = {
   accion?: string;
   /** Lo que le escriben y le preguntan. Dice en qué escalón está su audiencia. */
   senales?: string;
+  /**
+   * Los colores de su marca, leídos de su cuadrícula. null = usa los de serie.
+   *
+   * No es una preferencia de pantalla: es lo que hace que la carátula del video
+   * y las láminas del carrusel se parezcan a lo que esa cuenta ya publica.
+   */
+  paleta?: Paleta | null;
+  /** Su arroba, con o sin «@». Va impreso en las láminas del carrusel. */
+  handle?: string;
+  /** Su foto de perfil, en base64 y ya reducida. Va en las láminas. */
+  avatar?: string;
+  /**
+   * La captura de su cuadrícula, reducida.
+   *
+   * De ella salió la paleta. Se guarda para poder enseñarle de dónde salieron
+   * sus colores y para que esté ahí al entrar desde otro aparato — la paleta
+   * ya viajaba sola, pero sin la captura no había cómo releerla.
+   */
+  cuadricula?: string;
 };
 
 export type TipoNegocio = "" | "empresa" | "persona";
+
+export type { Paleta } from "@/lib/marca";
 
 export const TIPOS: { id: Exclude<TipoNegocio, "">; etiqueta: string; pista: string }[] = [
   {

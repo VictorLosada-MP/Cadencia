@@ -398,6 +398,22 @@ export default function Diagnostico() {
             <span className="font-semibold">La cuadrícula</span> da el ritmo, el
             formato y los temas que se repiten.
           </p>
+          {/* Lo mismo que sube aquí sirve para otra cosa, y si no se dice no se
+              descubre: de esa captura salen también los colores de su marca,
+              que es lo que hace que la carátula del video y las láminas del
+              carrusel se parezcan a lo que ya publica. Ahí se guarda, aquí no:
+              estas capturas se sueltan al terminar la corrida. */}
+          <p className="mt-1 text-xs text-neutral-500">
+            Esa misma captura sirve para sacar los colores de tu marca y
+            aplicarlos a tus portadas —{" "}
+            <Link
+              href="/negocio"
+              className="text-teal-700 underline underline-offset-2 hover:no-underline dark:text-teal-400"
+            >
+              se sube en Tu negocio
+            </Link>
+            .
+          </p>
           <div className="mt-2 flex flex-wrap items-start gap-3">
             {publicado.cuadriculas.map((img, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -1031,11 +1047,27 @@ function BloqueRed({ r }: { r: DiagnosticoRed }) {
     <article className="mt-10 first:mt-0">
       <div className="flex flex-wrap items-baseline gap-5">
         {/* Un 0/5 cuando no se pudo revisar nada dice que falló los cinco, y es
-            falso: no se miró ninguno. Sin dato no hay marcador. */}
+            falso: no se miró ninguno. Sin dato no hay marcador.
+
+            Y el de abajo es `evaluados`, no un 5 fijo. `pasan` cuenta sobre lo
+            que SE PUDO revisar, así que un sitio web —que no tiene punto Link,
+            porque el sitio es el destino— salía como «4/5»: cuatro de cuatro
+            pintados como si hubiera fallado uno. Dos redes con distinto
+            denominador no es una incoherencia, es que no tienen los mismos
+            campos; el renglón de debajo lo dice con palabras. */}
         {evaluados > 0 ? (
-          <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
-            {r.pasan}
-            <span className="text-2xl text-neutral-400">/5</span>
+          <span className="shrink-0">
+            <span className="font-mono text-4xl font-bold tabular-nums text-teal-700 dark:text-teal-400">
+              {r.pasan}
+              <span className="text-2xl text-neutral-400">/{evaluados}</span>
+            </span>
+            {/* El número no decía qué contaba. Un «4/4» suelto al lado de un
+                «3/5» de otra red se lee como una nota, y no es una nota: es
+                cuántos de los puntos QUE SE PUDIERON REVISAR en esa red
+                pasan. Dos redes no tienen los mismos campos llenos. */}
+            <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+              puntos que pasan
+            </span>
           </span>
         ) : (
           <span className="font-mono text-2xl font-bold text-neutral-400">sin revisar</span>

@@ -33,7 +33,13 @@ En este orden — de impacto en conversión. No lo cambies.
 **1 · Nombre**
 Pasa si el campo contiene, además del nombre del negocio, al menos una palabra
 que alguien escribiría en un buscador para encontrar este servicio.
-`"Víctor Losada"` no pasa. `"Víctor Losada · Sistemas con IA"` pasa.
+`"Ana Restrepo"` no pasa. `"Ana Restrepo · Contabilidad para restaurantes"` pasa.
+
+**Primero mira si ya la trae.** Antes de marcarlo como que no pasa, lee el campo
+entero: si al nombre ya le sigue un oficio, un sector o un «para quién», el
+punto **pasa** y `corregido` va en cadena vacía. Esto vale igual para una
+empresa que para una marca personal, y es el error más caro de este punto:
+mandar a arreglar un nombre que ya estaba bien.
 
 El bloque **Quién es** del contexto dice si el negocio es una empresa o una
 marca personal, y eso manda sobre este punto:
@@ -42,8 +48,6 @@ marca personal, y eso manda sobre este punto:
   que está en sus facturas, así que proponerle otro no es una corrección: es
   pedirle que cambie su negocio por un punto de un diagnóstico. Lo que se
   corrige es el descriptor que va al lado, con el nombre copiado tal cual.
-  `"Bellavista Coffee Farm"` ya trae "coffee": antes de marcarlo como que no
-  pasa, mira si el nombre ya contiene la palabra buscable.
 - **Marca personal.** El nombre propio tampoco se quita ni se reescribe, pero
   aquí la corrección sí es el nombre: el nombre propio más la palabra por la
   que lo buscarían.
@@ -57,9 +61,20 @@ resuelve**. Si el sujeto de esa oración es quien escribe (*"Te construyo…"*,
 *"Soy…"*, *"Hago…"*), no pasa: abre hablando de él, no de quien lee.
 
 **3 · Promesa**
-Pasa si dice el **estado final** del cliente. No pasa si describe la actividad
-del proveedor. `"hago sistemas"` es actividad; `"que dejes de depender de
-otros para vender"` es estado final.
+Lee la bio entera. Pasa si dice el **estado final** del cliente. No pasa si
+describe la actividad del proveedor: *"hago sistemas"* es actividad, *"que dejes
+de depender de otros para vender"* es estado final.
+
+**Los puntos 2 y 3 leen el mismo texto, así que sus correcciones se suman, no
+se pisan.** Comprueba las dos antes de devolver:
+
+- Si la promesa **ya está** en la primera oración y es un estado final, el punto
+  3 **pasa**. No se le pide dos veces lo mismo al mismo renglón.
+- Si los dos no pasan, las dos correcciones tienen que poder pegarse seguidas en
+  la bio y leerse como una bio, no como dos intentos de la misma frase. La del
+  punto 3 **continúa** la del punto 2; no la sustituye ni la repite.
+- **Prohibido** devolver dos correcciones que digan lo mismo con otras palabras,
+  o que se contradigan sobre a quién le sirve el negocio.
 
 **4 · CTA**
 Pasa si el texto dice **qué ocurre después de tocar**. `"Aplicar ahora"` no
@@ -67,23 +82,37 @@ pasa: no dice a qué. `"Aplicar al diagnóstico"` pasa. Una flecha o un emoji no
 es un CTA.
 
 **5 · Link**
-Pasa si quien lo ve sabe **qué se encuentra al otro lado**. No pasa si el link
-aparece suelto, sin nada que diga a dónde lleva.
+Pasa si quien lo ve sabe **qué se encuentra al otro lado**.
 
-**El CTA y el Link son dos cosas distintas, y sus correcciones no pueden ser la
-misma frase.**
+**Y se lee junto con el CTA, porque en el perfil están juntos.** El CTA es la
+línea que va encima del link; quien mira los ve de una vez, no uno sin el otro.
+De ahí sale la regla que manda sobre este punto:
+
+**Si el CTA pasa, el Link pasa.** Un CTA que ya dice qué ocurre después de
+tocar —*"Aplicar al diagnóstico"*— ya le dijo a quien mira qué va a encontrar.
+Marcar entonces el Link como que no pasa es suspender la misma línea dos veces,
+y el dueño lo lee como lo que es: una incoherencia. Cuando ocurra, el punto Link
+va con `pasa: true` y `corregido` en cadena vacía.
+
+El Link solo **no pasa** cuando, leyendo el par completo, sigue sin saberse qué
+hay al otro lado. Los dos casos reales:
+
+- El **CTA no pasa o llegó vacío** y el link va suelto: una URL y nada más.
+- El link es un **repartidor de enlaces** —`linktr.ee`, `beacons`, `bio.link`,
+  `stan.store`— y ni el CTA ni el texto del link dicen a cuál de los destinos
+  va. Ahí el problema no es la frase, es que el par manda a una sala de espera.
+
+Y cuando no pasa, la corrección es **lo que falta**, nunca una segunda versión
+de lo que ya arreglaste en el CTA:
 
 - El **CTA** dice *qué hace* quien toca: `Aplicar al diagnóstico`.
 - El **Link** dice *qué hay* al otro lado: `diagnóstico gratis de tu perfil,
   con las correcciones escritas`.
 
 **Prohibido, y lo compruebas antes de devolver:** que la corrección del Link
-contenga la del CTA, o al revés. Si las dos dicen lo mismo, el dueño las pega
-las dos y su bio repite la misma frase seguida.
-
-Si de verdad el CTA y el texto del link son una sola línea en ese perfil, el
-punto Link se corrige **añadiendo lo que falta**, nunca repitiendo lo que ya
-arreglaste arriba.
+contenga la del CTA, o al revés; y que el Link no pase teniendo el CTA pasado.
+Si las dos dicen lo mismo, el dueño las pega las dos y su bio repite la misma
+frase seguida.
 
 Cada punto pasa o no pasa. Sin parciales: un resultado a medias no se puede
 corregir.
@@ -178,6 +207,13 @@ es el camino de menor resistencia, y hay que salirse de él a propósito.
 - `Sin [X], con [Y]` como estructura de promesa
 - Cualquier frase que empiece con un verbo en primera persona describiendo el
   servicio: `Construyo`, `Diseño`, `Creo`, `Entrego`
+
+**Y los ejemplos de este prompt son ejemplos, no material.** Todo lo que aquí
+va entre comillas o en `código` está para enseñarte la forma, y jamás sale en
+una corrección: ni un nombre, ni un sector, ni una frase, ni un fragmento de
+ellos. Si una corrección tuya se parece a un ejemplo de aquí, la has copiado en
+vez de escribirla: vuelve al Perfil de Negocio y escríbela con lo que vende
+y a quién le sirve.
 
 **La prueba definitiva, y la aplicas a cada corrección antes de devolverla:**
 cambia el rubro del negocio por otro cualquiera — una panadería, un consultorio
