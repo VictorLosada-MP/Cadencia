@@ -415,6 +415,64 @@ cuatro de cuatro pintados como si hubiera fallado uno. Ahora el denominador es
 lado de un «3/5» sin rótulo se lee como una nota y no lo es: son dos redes que no
 tienen los mismos campos llenos.
 
+## Los carruseles: moldes y estilos
+
+Había UN molde —titular arriba, cuerpo debajo— para las cinco a ocho láminas, y
+por eso todos los carruseles salían iguales. Lo básico no era solo la pintura:
+era la forma del contenido. Una lista de doce cosas no cabe en «titular más
+cuerpo», y pintarla con otra tipografía la deja igual de básica.
+
+Hay dos ejes, y no son lo mismo:
+
+- **El molde** lo decide el contenido de cada lámina y lo reparte el modelo:
+  `portada`, `cita`, `plantilla`, `lista`, `apuntes`, `texto`. Cada uno pide
+  campos distintos —`items`, `puntos` + `remate`, `subtitulo`— y por eso el
+  prompt tiene que escribir PARA el molde.
+- **El estilo** es el aire y lo elige el dueño **antes** de escribir:
+  `limpio` o `cuaderno`. Los dos saben pintar los seis moldes, así que repintar
+  de uno a otro en el paso 4 no gasta corrida. Pero no es una piel: en papel
+  rayado y con letra a mano un renglón aguanta seis palabras, no veinte, y el
+  prompt mide para el que se eligió.
+
+Las reglas de sitio: la 1 es siempre `portada` con el gancho literal, la última
+es siempre `cita`, y las de en medio las elige el modelo por lo que digan.
+
+### Un molde sin su contenido no es un molde
+
+`moldeDe` comprueba que la lámina traiga lo suyo antes de hacerle caso: una
+`lista` sin `items` pintaría una lámina en blanco con un titular arriba, así que
+cae a `texto`, que solo necesita titular y cuerpo. Las corridas de antes de los
+moldes no traen `molde` y caen por el mismo sitio, que es lo que hace que un
+carrusel escrito el mes pasado se siga pintando.
+
+### Lo que no se clona, y por qué
+
+La referencia del cuaderno **fotografiado en una mano** no se genera: el texto
+tendría que seguir la curvatura de la página. Aquí el papel se dibuja —
+renglones cada 56 píxeles, margen, tono de hoja— y el texto se **apoya en el
+renglón** (`sobreRenglon`), que es la mitad de por qué se cree: un texto que
+flota entre dos rayas se ve pegado encima de una foto de papel, no escrito en
+él. Lo mismo con el montaje recortado a mano de la portada agresiva: lo que sí
+se hace es la foto a sangre con velo, el titular en mayúsculas y el último
+renglón en el acento.
+
+### Lo que costó medir
+
+Cuatro cosas que solo se vieron pintando las doce láminas y mirándolas:
+
+- **La lista y los apuntes se repartían mal.** Con tope fijo, seis ítems ocupaban
+  media lámina y la otra media quedaba vacía. Ahora el paso reparte el hueco con
+  suelo y techo, y lo que sobra se parte entre arriba y abajo.
+- **En el cuaderno hay que redondear hacia ARRIBA al renglón entero.** Al más
+  cercano, un paso de 80 caía a 56 y los puntos se amontonaban con medio folio
+  en blanco encima y otro debajo.
+- **`[tu café]` se partía al final de la línea** y la mitad de abajo perdía el
+  color. Dentro de los corchetes el espacio se vuelve duro — y el repartidor de
+  líneas parte por `[ \t]+`, **no por `\s`**, porque el espacio duro es `\s`
+  para la expresión regular y se partía igual.
+- **La firma de la plantilla se montaba sobre la raya del pie.** Dos pies en la
+  misma lámina no se ven hasta que se pintan.
+
 ## El movimiento
 
 Está todo en `app/globals.css` y son cinco clases: `entra` / `entra-lado` /

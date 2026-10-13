@@ -4,12 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
-import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Paleta } from "@/lib/lamina";
+import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Marca, type Paleta } from "@/lib/lamina";
+import { esperarFuente, manuscrita } from "../fuentes";
 import {
+  ESTILOS,
   esCarrusel,
+  esEstilo,
   grabaDe,
   mismaFrase,
   type Carrusel,
+  type Estilo,
   type Guion,
   type Pieza,
 } from "@/types/guion";
@@ -32,6 +36,8 @@ export default function Lista() {
    * y todo sigue como antes con las paletas de serie.
    */
   const [marca, setMarca] = useState<Paleta | null>(null);
+  /** Su cara y su arroba, lo que va impreso en las láminas. */
+  const [firma, setFirma] = useState<Marca | null>(null);
   const [creado, setCreado] = useState<string | null>(null);
   const [corridaId, setCorridaId] = useState<string | null>(null);
   const [formato, setFormato] = useState<string>("camara");
@@ -68,14 +74,23 @@ export default function Lista() {
 
     fetch("/api/negocio?ligero=1")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const suya = d?.negocio?.paleta as Paleta | null | undefined;
-        if (!vivo || !suya) return;
-        setMarca(suya);
-        // Y queda elegida de entrada: si se tomó el trabajo de darnos sus
-        // colores, abrir en «Hueso» es ignorarlos. Solo si todavía no ha
-        // tocado nada — lo que ya eligió, manda.
-        setPaleta((actual) => (actual === PALETAS[0].id ? MIA : actual));
+      .then(async (d) => {
+        const n = d?.negocio as
+          | { paleta?: Paleta | null; avatar?: string; handle?: string; nombre?: string }
+          | undefined;
+        if (!vivo || !n) return;
+        if (n.paleta) {
+          setMarca(n.paleta);
+          // Y queda elegida de entrada: si se tomó el trabajo de darnos sus
+          // colores, abrir en «Hueso» es ignorarlos. Solo si todavía no ha
+          // tocado nada — lo que ya eligió, manda.
+          setPaleta((actual) => (actual === PALETAS[0].id ? MIA : actual));
+        }
+        const avatar = n.avatar ? await aBitmap(n.avatar) : null;
+        if (!vivo) return;
+        if (avatar || n.handle?.trim() || n.nombre?.trim()) {
+          setFirma({ avatar, handle: n.handle ?? "", nombre: n.nombre ?? "" });
+        }
       })
       .catch(() => {});
     return () => {
@@ -147,6 +162,7 @@ export default function Lista() {
           paletas={paletas}
           paletaId={paleta}
           onPaleta={setPaleta}
+          firma={firma}
           creado={creado}
           corridaId={corridaId}
         />
@@ -241,11 +257,28 @@ function YaGrabado({ volver, marca }: { volver: () => void; marca: Paleta | null
 
 type Opcion = { id: string; nombre: string; p: Paleta };
 
+/**
+ * Su foto, de base64 a algo que el canvas sepa pintar.
+ *
+ * Un `<img>` suelto también valdría, pero su `width` no es el del archivo hasta
+ * que el navegador lo coloca, y aquí nunca se coloca: se pinta. El bitmap trae
+ * sus medidas de verdad.
+ */
+async function aBitmap(base64: string): Promise<ImageBitmap | null> {
+  try {
+    const r = await fetch(`data:image/jpeg;base64,${base64}`);
+    return await createImageBitmap(await r.blob());
+  } catch {
+    return null;
+  }
+}
+
 function DeCarrusel({
   c,
   paletas,
   paletaId,
   onPaleta,
+  firma,
   creado,
   corridaId,
 }: {
@@ -253,6 +286,7 @@ function DeCarrusel({
   paletas: Opcion[];
   paletaId: string;
   onPaleta: (id: string) => void;
+  firma: Marca | null;
   creado: string | null;
   corridaId: string | null;
 }) {
@@ -264,13 +298,42 @@ function DeCarrusel({
   const [buscando, setBuscando] = useState<number | null>(null);
   const paleta: Paleta = (paletas.find((p) => p.id === paletaId) ?? paletas[0]).p;
   const total = c.laminas?.length ?? 0;
+  /**
+   * El estilo con el que se escribió, y que se puede repintar.
+   *
+   * Arranca en el que eligió en el paso 3 porque el texto se midió para ese;
+   * cambiarlo aquí no gasta corrida —los dos estilos saben pintar los seis
+   * moldes— pero en el cuaderno el renglón es más corto, así que la pantalla
+   * lo dice en vez de dejar que lo descubra viendo un titular apretado.
+   */
+  const [estilo, setEstilo] = useState<Estilo>(esEstilo(c.estilo) ? c.estilo : "limpio");
+  const mano = manuscrita.style.fontFamily;
 
   useEffect(() => {
-    c.laminas?.forEach((l, i) => {
-      const lienzo = lienzos.current[i];
-      if (lienzo) dibujar(lienzo, { ...l, total }, paleta, fotos[l.numero]);
-    });
-  }, [c.laminas, paleta, total, fotos]);
+    let vivo = true;
+    // Se espera a la letra a mano antes de pintar: el canvas no espera a nada y
+    // pintaría la primera pasada con la de palo, sin avisar.
+    void (async () => {
+      if (estilo === "cuaderno") await esperarFuente(mano);
+      if (!vivo) return;
+      c.laminas?.forEach((l, i) => {
+        const lienzo = lienzos.current[i];
+        if (lienzo) {
+          dibujar(lienzo, l, {
+            paleta,
+            estilo,
+            total,
+            foto: fotos[l.numero],
+            marca: firma,
+            mano,
+          });
+        }
+      });
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [c.laminas, paleta, estilo, total, fotos, firma, mano]);
 
   async function ponerFoto(numero: number, archivo: File | undefined | null) {
     if (!archivo) return;
@@ -340,6 +403,38 @@ function DeCarrusel({
       </div>
 
       {bajado && <Siguiente que="El carrusel ya está en tu carpeta de descargas." />}
+
+      <fieldset className="mt-5">
+        <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+          Estilo
+        </legend>
+        <p className="mb-2 mt-0.5 text-xs text-neutral-500">
+          Repintar no gasta corrida. Ojo con una cosa: el texto se escribió
+          midiendo para el que elegiste en el paso 3 —en cuaderno el renglón es
+          más corto—, así que al cambiar revisa que todo siga cabiendo.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ESTILOS.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => setEstilo(e.id)}
+              title={e.que}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                estilo === e.id
+                  ? "border-teal-700 font-semibold dark:border-teal-400"
+                  : "border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
+              }`}
+            >
+              {e.nombre}
+              {c.estilo === e.id && (
+                <span className="ml-1.5 font-mono text-[10px] uppercase text-neutral-500">
+                  escrito para este
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className="mt-5">
         <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">

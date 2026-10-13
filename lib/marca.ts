@@ -121,6 +121,28 @@ function legible(c: Color, fondo: Color, minimo: number): Color {
   return hacia;
 }
 
+/** Mezcla dos colores. `parte` 0 es todo el primero, 1 todo el segundo. */
+export function mezclarHex(a: string, b: string, parte: number): string {
+  const ca = deHex(a);
+  const cb = deHex(b);
+  if (!ca || !cb) return a;
+  return aHex(mover(ca, cb, Math.max(0, Math.min(1, parte))));
+}
+
+/** El mismo color, empujado hasta que se lee sobre el fondo. */
+export function legibleHex(color: string, fondo: string, minimo: number): string {
+  const c = deHex(color);
+  const f = deHex(fondo);
+  if (!c || !f) return color;
+  return aHex(legible(c, f, minimo));
+}
+
+/** ¿Es un color claro? Decide si encima va tinta oscura o clara. */
+export function esClaro(hex: string): boolean {
+  const c = deHex(hex);
+  return c ? luminancia(c) > 0.45 : true;
+}
+
 type Cubo = Color & { peso: number };
 
 /**

@@ -108,20 +108,120 @@ export type Guion = {
   limites: string[];
 };
 
+/**
+ * El aire del carrusel. Se elige ANTES de escribir, y por eso no es una piel.
+ *
+ * Cambia lo que el prompt escribe, no solo cómo se pinta: en papel rayado y con
+ * letra a mano un renglón aguanta seis palabras, no veinte, así que el estilo
+ * decide el largo de cada cosa y qué moldes tienen sentido. Repintar de uno a
+ * otro después sigue siendo gratis —los dos saben pintar los seis moldes— pero
+ * el texto se escribió midiendo para el que eligió.
+ */
+export const ESTILOS = [
+  {
+    id: "limpio" as const,
+    nombre: "Limpio",
+    que: "Tipografía y color, mucho aire. Como una cita en fondo liso o una plantilla en oscuro.",
+  },
+  {
+    id: "cuaderno" as const,
+    nombre: "Cuaderno",
+    que: "Papel rayado y letra a mano. Texto corto y escaneable, como unos apuntes.",
+  },
+];
+
+export type Estilo = (typeof ESTILOS)[number]["id"];
+
+export const esEstilo = (v: unknown): v is Estilo =>
+  ESTILOS.some((e) => e.id === v);
+
+/**
+ * El molde de cada lámina. Lo reparte el modelo por lo que hace la lámina, no
+ * el dueño lámina por lámina: en las referencias un mismo carrusel abre con un
+ * gancho visual, desarrolla en lista o apuntes y cierra con una cita.
+ *
+ * Y no son skins: cada uno pide una forma de contenido distinta. Una lista son
+ * pares cortos, una plantilla es un bloque con huecos, una cita es una frase
+ * con peso. Pintar los seis sobre `titular + cuerpo` era justo lo que hacía que
+ * todos salieran iguales.
+ */
+export const MOLDES = ["portada", "cita", "plantilla", "lista", "apuntes", "texto"] as const;
+
+export type Molde = (typeof MOLDES)[number];
+
+/** Un ítem de una lámina `lista`: lo que se busca y qué hace. */
+export type ItemLista = { clave: string; que: string };
+
 export type Lamina = {
   numero: number;
+  /** Ausente en las corridas de antes de los moldes: esas se pintan "texto". */
+  molde?: Molde;
   titular: string;
   cuerpo: string;
   /** Qué se ve en la lámina. Nada de "imagen inspiradora". */
   imagen: string;
+  /** Solo en `plantilla`: la línea pequeña bajo el titular. */
+  subtitulo?: string;
+  /** Solo en `lista`: los ítems escaneables. */
+  items?: ItemLista[];
+  /** Solo en `apuntes`: los puntos sueltos. */
+  puntos?: string[];
+  /** Solo en `apuntes`: la caja de conclusión del final. */
+  remate?: string;
 };
 
 export type Carrusel = {
   laminas: Lamina[];
+  /** El que eligió antes de escribir. Ausente en las corridas de antes. */
+  estilo?: Estilo;
   descripcion: string;
   valor: string;
   limites: string[];
 };
+
+const vacio = (s?: string) => !s?.trim();
+
+/**
+ * El molde con el que SE PINTA una lámina, que no siempre es el que pidió.
+ *
+ * Un molde sin su contenido no es un molde: una `lista` sin ítems pintaría una
+ * lámina en blanco con un titular arriba. Antes de hacerle caso se comprueba
+ * que traiga lo suyo, y si no, se cae a `texto`, que solo necesita titular y
+ * cuerpo. Las corridas viejas no traen `molde` y caen aquí también.
+ */
+export function moldeDe(l: Lamina, total: number): Molde {
+  const pedido = l.molde;
+
+  if (pedido === "portada" || (!pedido && l.numero === 1)) return "portada";
+  if (pedido === "lista") return l.items?.length ? "lista" : "texto";
+  if (pedido === "apuntes") return l.puntos?.length ? "apuntes" : "texto";
+  if (pedido === "plantilla") return vacio(l.cuerpo) ? "texto" : "plantilla";
+  if (pedido === "cita") return "cita";
+
+  // Sin molde y sin cuerpo, en la última: es el cierre, y el cierre es cita.
+  if (!pedido && l.numero === total && vacio(l.cuerpo)) return "cita";
+  return "texto";
+}
+
+/**
+ * Los trozos entre corchetes de una plantilla — `[idioma]`, `[minutos]`.
+ *
+ * Es lo que en la referencia va en rojo: los huecos que el lector cambia por lo
+ * suyo. Se devuelve partido para poder pintarlos en otro color sin medir dos
+ * veces la misma línea.
+ */
+export function partirHuecos(texto: string): { texto: string; hueco: boolean }[] {
+  const partes: { texto: string; hueco: boolean }[] = [];
+  const re = /\[[^\]\n]{1,80}\]/g;
+  let desde = 0;
+  for (let m = re.exec(texto); m; m = re.exec(texto)) {
+    if (m.index > desde) partes.push({ texto: texto.slice(desde, m.index), hueco: false });
+    partes.push({ texto: m[0], hueco: true });
+    desde = m.index + m[0].length;
+  }
+  if (desde < texto.length) partes.push({ texto: texto.slice(desde), hueco: false });
+  return partes;
+}
 
 /**
  * Compara dos frases sin que una coma decida que son distintas.
