@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { consultar, una } from "@/lib/db";
-import { deHex, paletaGuardada } from "@/lib/marca";
+import { GUARDADAS, deHex, imagenValida, paletaGuardada } from "@/lib/marca";
 import type { Negocio, TipoNegocio } from "@/types/negocio";
 
 export type NegocioGuardado = Negocio & {
@@ -27,7 +27,8 @@ export async function usuarioActual() {
 export async function negocioDe(usuarioId: string): Promise<NegocioGuardado | null> {
   const fila = await una<NegocioGuardado & Columnas>(
     `select id, tipo, nombre, oferta, cliente, despues, freno, accion, voz,
-            senales, paleta_fondo, paleta_tinta, paleta_acento, actualizado
+            senales, paleta_fondo, paleta_tinta, paleta_acento,
+            handle, avatar, cuadricula, actualizado
        from negocio
       where usuario_id = $1`,
     [usuarioId],
@@ -79,8 +80,9 @@ export async function guardarNegocio(
   const [fondo, tinta, acento] = paletaValida(n.paleta);
   const filas = await consultar<NegocioGuardado & Columnas>(
     `insert into negocio (usuario_id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales,
-                          paleta_fondo, paleta_tinta, paleta_acento)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                          paleta_fondo, paleta_tinta, paleta_acento,
+                          handle, avatar, cuadricula)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      on conflict (usuario_id) do update set
        tipo          = excluded.tipo,
        nombre        = excluded.nombre,
@@ -93,9 +95,13 @@ export async function guardarNegocio(
        senales       = excluded.senales,
        paleta_fondo  = excluded.paleta_fondo,
        paleta_tinta  = excluded.paleta_tinta,
-       paleta_acento = excluded.paleta_acento
+       paleta_acento = excluded.paleta_acento,
+       handle        = excluded.handle,
+       avatar        = excluded.avatar,
+       cuadricula    = excluded.cuadricula
      returning id, tipo, nombre, oferta, cliente, despues, freno, accion, voz, senales,
-               paleta_fondo, paleta_tinta, paleta_acento, actualizado`,
+               paleta_fondo, paleta_tinta, paleta_acento,
+               handle, avatar, cuadricula, actualizado`,
     [
       usuarioId,
       tipoValido(n.tipo),
@@ -110,6 +116,11 @@ export async function guardarNegocio(
       fondo,
       tinta,
       acento,
+      // El arroba se guarda sin «@»: lo pone quien lo pinta, y así no acaban
+      // existiendo dos arrobas en las cuentas que lo escriben y las que no.
+      (n.handle ?? "").trim().replace(/^@+/, "").slice(0, 99),
+      imagenValida(n.avatar, GUARDADAS.avatar.tope),
+      imagenValida(n.cuadricula, GUARDADAS.cuadricula.tope),
     ],
   );
   return conPaleta(filas[0]);

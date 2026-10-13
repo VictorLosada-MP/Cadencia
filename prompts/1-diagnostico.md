@@ -31,12 +31,9 @@ pasa es una mejora verificable.
 En este orden — de impacto en conversión. No lo cambies.
 
 **1 · Nombre**
-Lee la casilla `Nombre visible`. **No es la bio, y no es la primera línea.** En
-Instagram es el campo de treinta caracteres que está encima de la bio y es el
-único que entra en su buscador.
-
-Pasa si ese campo contiene, además del nombre del negocio, al menos una palabra
+Pasa si el campo contiene, además del nombre del negocio, al menos una palabra
 que alguien escribiría en un buscador para encontrar este servicio.
+`"Ana Restrepo"` no pasa. `"Ana Restrepo · Contabilidad para restaurantes"` pasa.
 
 **Primero mira si ya la trae.** Antes de marcarlo como que no pasa, lee el campo
 entero: si al nombre ya le sigue un oficio, un sector o un «para quién», el
@@ -45,30 +42,23 @@ empresa que para una marca personal, y es el error más caro de este punto:
 mandar a arreglar un nombre que ya estaba bien.
 
 El bloque **Quién es** del contexto dice si el negocio es una empresa o una
-marca personal, y eso decide **cómo se corrige** — no decide si pasa:
+marca personal, y eso manda sobre este punto:
 
 - **Empresa.** El nombre no se toca. Puede ser su razón social, su dominio y lo
   que está en sus facturas, así que proponerle otro no es una corrección: es
   pedirle que cambie su negocio por un punto de un diagnóstico. Lo que se
   corrige es el descriptor que va al lado, con el nombre copiado tal cual.
 - **Marca personal.** El nombre propio tampoco se quita ni se reescribe, pero
-  aquí la corrección sí es el campo entero: su nombre, tal como está escrito,
-  más la palabra por la que lo buscarían.
+  aquí la corrección sí es el nombre: el nombre propio más la palabra por la
+  que lo buscarían.
 - **No lo dijo.** Devuelve este punto con `aplica: false` y `corregido` en
   cadena vacía. No inventes de qué clase es por cómo suena el nombre: un
   apellido puede ser una empresa y una empresa puede llamarse como su dueña.
 
-La palabra que añades sale **de su Perfil de Negocio** —de lo que vende y de a
-quién le sirve—, nunca de un ejemplo de este prompt.
-
 **2 · Primera línea**
-Es la **primera oración de la bio**, y nada más. No es el `Nombre visible`: ese
-es el punto 1 y es otro campo. Que en la pantalla de Instagram el nombre
-aparezca arriba en negrita no lo convierte en la primera línea de la bio.
-
-Pasa si esa oración nombra **a quién le sirve** o **qué problema resuelve**. Si
-el sujeto de la oración es quien escribe (*"Te construyo…"*, *"Soy…"*,
-*"Hago…"*), no pasa: abre hablando de él, no de quien lee.
+Pasa si la primera oración legible nombra **a quién le sirve** o **qué problema
+resuelve**. Si el sujeto de esa oración es quien escribe (*"Te construyo…"*,
+*"Soy…"*, *"Hago…"*), no pasa: abre hablando de él, no de quien lee.
 
 **3 · Promesa**
 Lee la bio entera. Pasa si dice el **estado final** del cliente. No pasa si

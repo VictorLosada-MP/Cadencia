@@ -206,43 +206,112 @@ export function paletaDePixeles(datos: Uint8ClampedArray | number[]): Paleta | n
   };
 }
 
-/** Cuánto se reduce la captura antes de contar. */
+/** Cuánto se reduce la captura antes de CONTAR los colores. */
 const LADO = 320;
 
 /**
- * La paleta de un archivo de imagen, en el navegador.
+ * Lo que mide y pesa cada imagen que SE GUARDA.
  *
- * Se reduce a 320 píxeles de lado antes de contar: una captura de teléfono son
- * tres millones de píxeles y contar el 1% da el mismo resultado en una
- * centésima del tiempo. La imagen no sale de la máquina.
+ * Tiene que casar con los topes de la migración 16: si aquí se sube el lado o
+ * la calidad, la base rechaza la fila y el guardado falla con un error que no
+ * dice nada. Medido sobre JPEG reales: la foto ronda los 30.000 caracteres y la
+ * cuadrícula los 100.000, con topes de 60.000 y 200.000.
  */
-export async function paletaDeArchivo(archivo: File): Promise<Paleta | null> {
+export const GUARDADAS = {
+  avatar: { lado: 320, calidad: 0.72, tope: 60_000 },
+  cuadricula: { lado: 480, calidad: 0.7, tope: 200_000 },
+} as const;
+
+/** base64 y nada más: lo que entra aquí se va a servir como una imagen. */
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/** Una imagen guardable, o cadena vacía. Vale para el navegador y el servidor. */
+export function imagenValida(valor: unknown, tope: number): string {
+  if (typeof valor !== "string") return "";
+  const bruto = valor.includes(",") ? valor.slice(valor.indexOf(",") + 1) : valor;
+  const texto = bruto.trim();
+  if (!texto || texto.length > tope || !BASE64.test(texto)) return "";
+  return texto;
+}
+
+/** Carga un archivo de imagen como <img>. Solo navegador. */
+async function cargar(archivo: File): Promise<HTMLImageElement | null> {
   const url = URL.createObjectURL(archivo);
   try {
-    const img = await new Promise<HTMLImageElement>((ok, mal) => {
+    return await new Promise<HTMLImageElement>((ok, mal) => {
       const i = new Image();
       i.onload = () => ok(i);
       i.onerror = () => mal(new Error("no se pudo leer la imagen"));
       i.src = url;
     });
-    if (!img.naturalWidth || !img.naturalHeight) return null;
-
-    const escala = Math.min(1, LADO / Math.max(img.naturalWidth, img.naturalHeight));
-    const ancho = Math.max(1, Math.round(img.naturalWidth * escala));
-    const alto = Math.max(1, Math.round(img.naturalHeight * escala));
-
-    const lienzo = document.createElement("canvas");
-    lienzo.width = ancho;
-    lienzo.height = alto;
-    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, ancho, alto);
-    return paletaDePixeles(ctx.getImageData(0, 0, ancho, alto).data);
   } catch {
     return null;
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** Pinta una imagen reducida en un lienzo nuevo. */
+function reducir(img: HTMLImageElement, lado: number): HTMLCanvasElement | null {
+  if (!img.naturalWidth || !img.naturalHeight) return null;
+  const escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+  const lienzo = document.createElement("canvas");
+  lienzo.width = Math.max(1, Math.round(img.naturalWidth * escala));
+  lienzo.height = Math.max(1, Math.round(img.naturalHeight * escala));
+  const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+  return lienzo;
+}
+
+/** El base64 de un lienzo, sin el prefijo `data:` — que lo pone quien pinta. */
+function aBase64(lienzo: HTMLCanvasElement, calidad: number): string | null {
+  const datos = lienzo.toDataURL("image/jpeg", calidad);
+  const coma = datos.indexOf(",");
+  return coma < 0 ? null : datos.slice(coma + 1);
+}
+
+/**
+ * Reduce una imagen y la devuelve en base64.
+ *
+ * Reducir aquí y no en el servidor es lo que hace que una captura de teléfono
+ * de cuatro megas se convierta en treinta kilobytes antes de salir de la
+ * máquina: lo que viaja ya es lo que se guarda.
+ */
+export async function reducirImagen(
+  archivo: File,
+  lado: number,
+  calidad: number,
+): Promise<string | null> {
+  const img = await cargar(archivo);
+  if (!img) return null;
+  const lienzo = reducir(img, lado);
+  return lienzo ? aBase64(lienzo, calidad) : null;
+}
+
+/**
+ * De la cuadrícula salen dos cosas, y de una sola lectura: los colores y la
+ * copia que se guarda. Decodificar el mismo archivo dos veces para sacar cada
+ * una sería pagar dos veces lo mismo.
+ */
+export async function leerCuadricula(
+  archivo: File,
+): Promise<{ paleta: Paleta; guardable: string } | null> {
+  const img = await cargar(archivo);
+  if (!img) return null;
+
+  const grande = reducir(img, GUARDADAS.cuadricula.lado);
+  if (!grande) return null;
+  const guardable = aBase64(grande, GUARDADAS.cuadricula.calidad);
+  if (!guardable || guardable.length > GUARDADAS.cuadricula.tope) return null;
+
+  // Los colores se cuentan sobre una copia más pequeña todavía: con 320 de
+  // lado sale el mismo resultado y se cuenta una décima parte de los píxeles.
+  const chico = reducir(img, LADO);
+  const ctx = chico?.getContext("2d", { willReadFrequently: true });
+  if (!chico || !ctx) return null;
+  const paleta = paletaDePixeles(ctx.getImageData(0, 0, chico.width, chico.height).data);
+  return paleta ? { paleta, guardable } : null;
 }
 
 /** Los tres colores guardados, ya validados. null si no tiene paleta propia. */

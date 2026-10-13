@@ -345,10 +345,31 @@ niveles por canal, y de ahí salen los tres.
 se prueba con píxeles inventados y se comprueba el contraste con la fórmula en
 vez de mirarlo y decir que se ve bien.
 
-**La captura no se sube ni se guarda.** Lo que viaja y lo que queda en
-`negocio.paleta_*` son tres cadenas de siete caracteres, con un `check` que
-acepta vacío o los tres —nunca medio— porque media paleta pinta una lámina con
-un color y el resto con los de serie.
+Lo que queda en `negocio.paleta_*` son tres cadenas de siete caracteres, con un
+`check` que acepta vacío o los tres —nunca medio— porque media paleta pinta una
+lámina con un color y el resto con los de serie.
+
+### Qué captura se guarda y cuál no
+
+No es lo mismo, y la diferencia no es el formato: es de quién es lo que sale
+dentro.
+
+- **La foto de perfil y el arroba — sí.** Son su marca, los pone él a propósito
+  y van impresos en lo que publica. Una lámina que lleva su cara no puede
+  depender de que vuelva a subir la foto en cada aparato desde el que entre.
+- **La cuadrícula — sí, reducida a 480 píxeles.** Son sus propias
+  publicaciones, que ya son públicas. La paleta viajaba sola de todas formas,
+  pero sin la captura no hay cómo enseñarle de dónde salieron sus colores ni
+  releerla desde otro teléfono.
+- **La captura del PERFIL del diagnóstico — no, y sigue sin guardarse.** En esa
+  salen mensajes y datos de terceros. De ahí se sacan las casillas, que es
+  texto que él revisa, y la imagen se suelta.
+
+Se reducen en el navegador antes de salir de la máquina y se guardan en base64
+con tope, como `entregado.portada`. Medido con un PNG de 1080×2400 y 1,6 MB: la
+foto queda en 9.000 caracteres y la cuadrícula en 15.000, con topes de 60.000 y
+200.000. El tope no es decoración — sin él esa columna es un disco duro con
+otro nombre.
 
 Y es una propuesta, no un veredicto: en una captura también salen la interfaz y
 su foto de perfil, así que los tres colores se cambian a mano. Donde se usa:
@@ -359,13 +380,8 @@ referencia y no son una preferencia de color.
 
 ## Las incoherencias del diagnóstico
 
-Tres, y las tres eran del prompt, no del modelo. Quedan escritas porque son el
-tipo de fallo que vuelve:
+Quedan escritas porque son el tipo de fallo que vuelve:
 
-- **El nombre y la primera línea son campos distintos.** El punto 1 lee
-  `Nombre visible` —los treinta caracteres que entran en el buscador de
-  Instagram—; el punto 2, la primera oración de la bio. Que en la pantalla el
-  nombre salga arriba en negrita no lo convierte en la primera línea.
 - **Los puntos 2 y 3 leen el mismo texto**, así que sus correcciones se suman en
   vez de pisarse: si la promesa ya está en la primera oración, el punto 3 pasa,
   y si los dos fallan las dos correcciones tienen que poder pegarse seguidas y
@@ -375,11 +391,20 @@ tipo de fallo que vuelve:
   otro lado. Suspender entonces el Link es suspender la misma línea dos veces, y
   así lo leyó el dueño. El Link solo falla cuando el par no lo dice —una URL
   suelta, o un repartidor de enlaces sin decir a cuál va.
+- **El punto del nombre mira primero si la palabra ya está ahí**, para empresas
+  y para marcas personales igual. Mandar a arreglar un nombre que ya estaba
+  bien es el error más caro de ese punto.
 
-Y una cuarta que no era una regla sino un ejemplo: el punto del nombre traía un
-nombre real como ejemplo trabajado, y el modelo devolvía ese ejemplo con tres
-palabras añadidas en vez de escribir con el Perfil de Negocio. Los ejemplos de
-un prompt son forma, no material, y ahora está dicho en «Moldes prohibidos».
+Y una que **no** era un fallo, apuntada para no volver a «arreglarla»: que el
+punto 1 no deje pasar un `Nombre visible` sin palabra buscable **es correcto**,
+aunque el perfil sea una marca personal. Declarar marca personal no hace que
+pase: decide *cómo se corrige*. El `Usuario` —el arroba— y el `Nombre visible`
+son dos campos distintos y solo el segundo entra en el buscador de Instagram.
+
+Lo que sí se cambió de ese punto es el ejemplo: traía un nombre real y el modelo
+devolvía ese ejemplo con palabras añadidas en vez de escribir con el Perfil de
+Negocio. Los ejemplos de un prompt son forma, no material, y ahora está dicho en
+«Moldes prohibidos».
 
 ### El marcador no es una nota
 

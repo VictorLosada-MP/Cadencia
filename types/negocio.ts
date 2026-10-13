@@ -40,6 +40,18 @@ export type Negocio = {
    * y las láminas del carrusel se parezcan a lo que esa cuenta ya publica.
    */
   paleta?: Paleta | null;
+  /** Su arroba, con o sin «@». Va impreso en las láminas del carrusel. */
+  handle?: string;
+  /** Su foto de perfil, en base64 y ya reducida. Va en las láminas. */
+  avatar?: string;
+  /**
+   * La captura de su cuadrícula, reducida.
+   *
+   * De ella salió la paleta. Se guarda para poder enseñarle de dónde salieron
+   * sus colores y para que esté ahí al entrar desde otro aparato — la paleta
+   * ya viajaba sola, pero sin la captura no había cómo releerla.
+   */
+  cuadricula?: string;
 };
 
 export type TipoNegocio = "" | "empresa" | "persona";
