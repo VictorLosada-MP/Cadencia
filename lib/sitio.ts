@@ -142,39 +142,6 @@ function botonPrincipal(html: string): string {
   return candidatos.find((t) => pide.test(t)) ?? candidatos[0] ?? "";
 }
 
-/**
- * Lee una publicación desde su enlace.
- *
- * Funciona porque una página pública publica sus propias etiquetas `og:` para
- * que cualquier enlace se previsualice — es lo mismo que hace WhatsApp cuando
- * pegas un link. No es entrar a una cuenta ni automatizar nada.
- *
- * Comprobado el 25 de septiembre de 2026: el enlace de una publicación de
- * Instagram devuelve su texto; el de un perfil devuelve 429. Puede dejar de
- * funcionar el día que ellos quieran, y por eso pegar el texto a mano sigue
- * estando.
- */
-export async function leerPublicacion(entrada: string): Promise<{ texto: string; de: string }> {
-  const { html, final } = await traer(normalizar(entrada));
-  const limpio = quitar(html);
-
-  const crudo =
-    meta(limpio, "og:description") || meta(limpio, "description") || primero(limpio, "title");
-
-  if (!crudo) throw new Error("Esa página no publica su texto; pégalo a mano.");
-
-  return { texto: sinContadores(crudo), de: new URL(final).hostname.replace(/^www\./, "") };
-}
-
-/**
- * Fuera los contadores antes de que el modelo los vea.
- *
- * Instagram mete "280 likes, 149 comments - fulano on 23 September:" delante
- * del texto. Si eso entra al prompt, el sistema empieza a comparar piezas entre
- * sí — y comparar piezas es calificarlas, que es justo lo que prohíbe la regla
- * de línea base. La defensa tiene que estar aquí, no en pedirle al modelo que
- * se contenga.
- */
 export function sinContadores(texto: string): string {
   let t = texto
     .replace(

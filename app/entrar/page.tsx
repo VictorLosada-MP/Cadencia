@@ -13,6 +13,34 @@ import { requestPasswordReset, signIn, signUp } from "@/lib/auth-cliente";
  * poner su contraseña. Por eso tiene que empezar por una sola barra —`//otro.com`
  * es una dirección de fuera disfrazada de ruta.
  */
+/**
+ * El fallo, dicho en español y diciendo qué hacer.
+ *
+ * El tope de intentos existe para que nadie pruebe contraseñas en cadena, pero
+ * a quien se equivoca tres veces porque no se acuerda de cuál era le salía un
+ * «Too many requests. Please try again later.» en inglés y sin decir cuánto
+ * esperar. Eso no es una medida de seguridad: es la misma medida, contada mal.
+ */
+function enCristiano(
+  error: { status?: number; message?: string },
+  creando: boolean,
+): string {
+  if (error.status === 429) {
+    return (
+      "Demasiados intentos seguidos. Es una protección de la cuenta, no es que " +
+      "esté caída: espera un minuto y vuelve a probar. Si no te acuerdas de la " +
+      "contraseña, usa «olvidé mi contraseña» — ese enlace no tiene que esperar."
+    );
+  }
+  if (error.status === 403) {
+    return "Esta cuenta todavía no está verificada. Revisa tu correo.";
+  }
+  return (
+    error.message ??
+    (creando ? "No se pudo crear la cuenta." : "Correo o contraseña que no cuadran.")
+  );
+}
+
 function aDonde(volver: string | null): string {
   if (!volver || !volver.startsWith("/") || volver.startsWith("//")) return "/diagnostico";
   return volver;
@@ -37,8 +65,12 @@ function Formulario() {
     setCargando(true);
     setError("");
     if (olvidado) {
-      await requestPasswordReset({ email: correo, redirectTo: "/restablecer" });
+      const p = await requestPasswordReset({ email: correo, redirectTo: "/restablecer" });
       setCargando(false);
+      if (p.error?.status === 429) {
+        setError(enCristiano(p.error, false));
+        return;
+      }
       // Siempre el mismo mensaje, exista o no la cuenta: si cambiara, esta
       // pantalla se convertiría en una forma de averiguar quién está dentro.
       setPedido(true);
@@ -51,10 +83,7 @@ function Formulario() {
     setCargando(false);
 
     if (r.error) {
-      setError(
-        r.error.message ??
-          (creando ? "No se pudo crear la cuenta." : "Correo o contraseña que no cuadran."),
-      );
+      setError(enCristiano(r.error, creando));
       return;
     }
     router.push(volver);

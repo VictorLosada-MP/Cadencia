@@ -128,6 +128,11 @@ export const ESTILOS = [
     nombre: "Cuaderno",
     que: "Papel rayado y letra a mano. Texto corto y escaneable, como unos apuntes.",
   },
+  {
+    id: "oscuro" as const,
+    nombre: "Oscuro",
+    que: "El oscuro de tu paleta, con el acento encima. Para plantillas y cosas que se copian.",
+  },
 ];
 
 export type Estilo = (typeof ESTILOS)[number]["id"];
@@ -148,6 +153,29 @@ export const esEstilo = (v: unknown): v is Estilo =>
 export const MOLDES = ["portada", "cita", "plantilla", "lista", "apuntes", "texto"] as const;
 
 export type Molde = (typeof MOLDES)[number];
+
+export const NOMBRE_MOLDE: Record<Molde, string> = {
+  portada: "Portada",
+  cita: "Cita",
+  plantilla: "Plantilla",
+  lista: "Lista",
+  apuntes: "Apuntes",
+  texto: "Texto",
+};
+
+/**
+ * Los moldes con los que ESTA lámina se puede pintar de verdad.
+ *
+ * Se calcula preguntándole a `moldeDe`: si pidiendo un molde devuelve otro, es
+ * que a la lámina le falta su contenido y ofrecerlo sería ofrecer un botón que
+ * no hace nada. La primera lámina no entra: es la portada y punto.
+ */
+export function moldesPosibles(l: Lamina, total: number): Molde[] {
+  if (l.numero === 1) return ["portada"];
+  return MOLDES.filter(
+    (m) => m !== "portada" && moldeDe({ ...l, molde: m }, total) === m,
+  );
+}
 
 /** Un ítem de una lámina `lista`: lo que se busca y qué hace. */
 export type ItemLista = { clave: string; que: string };

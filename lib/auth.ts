@@ -90,6 +90,33 @@ function crear() {
       expiresIn: 60 * 60 * 24 * 60,
       updateAge: 60 * 60 * 24,
     },
+    /**
+     * Cuántos intentos se aceptan, y en cuánto tiempo.
+     *
+     * Se declara aquí y no se deja el de la librería por dos razones. La
+     * primera es que el suyo solo se enciende en producción, así que esto no
+     * se podía probar antes de desplegarlo. La segunda es que era demasiado
+     * corto para una persona: tres contraseñas mal escritas —que es lo normal
+     * cuando no te acuerdas de cuál era— y la puerta se cerraba con un
+     * «Too many requests» en inglés, sin decir cuánto había que esperar.
+     *
+     * Los números: entrar admite diez intentos por minuto, que es más de lo
+     * que teclea una persona y mucho menos de lo que prueba un programa. Crear
+     * cuenta y pedir contraseña nueva van por hora, porque ahí lo que se
+     * frena no es adivinar una clave: es dar de alta cuentas en cadena y
+     * mandarle correos a direcciones ajenas.
+     */
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 10 },
+        "/sign-up/email": { window: 3600, max: 5 },
+        "/request-password-reset": { window: 3600, max: 5 },
+        "/reset-password": { window: 3600, max: 10 },
+      },
+    },
   });
 }
 

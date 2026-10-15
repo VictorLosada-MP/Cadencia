@@ -8,9 +8,7 @@ import { usuarioActual } from "@/lib/negocio";
 import {
   CASILLAS,
   MAX_REDES,
-  MIN_PIEZAS_PARA_PATRON,
   casillasDe,
-  contarPiezas,
   puntosQueNoAplican,
   nombreRed,
   tieneContenido,
@@ -63,7 +61,6 @@ export async function POST(request: Request) {
 
   const publicado: Publicado = {
     cuadriculas: cuerpo.publicado?.cuadriculas ?? [],
-    textos: cuerpo.publicado?.textos ?? "",
     ventana: cuerpo.publicado?.ventana,
   };
 
@@ -125,24 +122,16 @@ export async function POST(request: Request) {
       })
       .join("\n\n");
 
-    const piezas = contarPiezas(publicado.textos);
     const bloquePublicado = [
       publicado.ventana
         ? `Ventana temporal declarada: ${publicado.ventana}.`
         : "Ventana temporal: no la declaró — no afirmes ningún ritmo.",
       publicado.cuadriculas.length
-        ? `Cuadrículas adjuntas: ${publicado.cuadriculas.length}. Dan ritmo, formato y temas repetidos. No dan las palabras.`
+        ? `Cuadrículas adjuntas: ${publicado.cuadriculas.length}. Dan ritmo, formato y temas repetidos. NO dan las palabras: en una cuadrícula hay miniaturas, no texto.`
         : "Cuadrículas: ninguna.",
-      piezas
-        ? `Textos completos pegados: ${piezas}. De aquí y solo de aquí salen las palabras.${
-            piezas < MIN_PIEZAS_PARA_PATRON
-              ? ` Son menos de ${MIN_PIEZAS_PARA_PATRON}: no escribas «siempre» ni «nunca».`
-              : ""
-          }\n\n${publicado.textos.trim()}`
-        : "Textos completos pegados: ninguno.",
     ].join("\n");
 
-    const hayPublicado = publicado.cuadriculas.length > 0 || piezas > 0;
+    const hayPublicado = publicado.cuadriculas.length > 0;
 
     // Para no volver a proponer una corrección que ya aplicó. No para
     // re-evaluar el pasado: eso convertiría el historial en examen.
@@ -191,7 +180,7 @@ export async function POST(request: Request) {
     if (contexto.negocioId) {
       await guardarCorrida(contexto.negocioId, 1, salida, r.modelo, {
         redes,
-        publicado: { textos: publicado.textos, ventana: publicado.ventana },
+        publicado: { ventana: publicado.ventana },
       });
     }
 

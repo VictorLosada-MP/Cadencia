@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
@@ -8,6 +8,9 @@ import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Marca, type Paleta } from "@/
 import { esperarFuente, manuscrita } from "../fuentes";
 import {
   ESTILOS,
+  NOMBRE_MOLDE,
+  moldeDe,
+  moldesPosibles,
   esCarrusel,
   esEstilo,
   grabaDe,
@@ -15,6 +18,8 @@ import {
   type Carrusel,
   type Estilo,
   type Guion,
+  type Lamina,
+  type Molde,
   type Pieza,
 } from "@/types/guion";
 import { apuntarHecho } from "@/lib/hecho";
@@ -307,6 +312,18 @@ function DeCarrusel({
    * lo dice en vez de dejar que lo descubra viendo un titular apretado.
    */
   const [estilo, setEstilo] = useState<Estilo>(esEstilo(c.estilo) ? c.estilo : "limpio");
+  /**
+   * El molde que el dueño eligió a mano para una lámina, si lo cambió.
+   *
+   * El reparto automático acierta casi siempre, pero «casi» no es «siempre», y
+   * dejar la pantalla sin forma de corregirlo convertía un acierto del 90% en
+   * una lámina que no se puede arreglar. Vacío = el que escribió el modelo.
+   */
+  const [moldes, setMoldes] = useState<Record<number, Molde>>({});
+  const conMolde = useCallback(
+    (l: Lamina): Lamina => (moldes[l.numero] ? { ...l, molde: moldes[l.numero] } : l),
+    [moldes],
+  );
   const mano = manuscrita.style.fontFamily;
 
   useEffect(() => {
@@ -333,7 +350,7 @@ function DeCarrusel({
     return () => {
       vivo = false;
     };
-  }, [c.laminas, paleta, estilo, total, fotos, firma, mano]);
+  }, [c.laminas, paleta, estilo, total, fotos, firma, mano, conMolde]);
 
   async function ponerFoto(numero: number, archivo: File | undefined | null) {
     if (!archivo) return;
@@ -479,6 +496,25 @@ function DeCarrusel({
             <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                 lámina {l.numero}
+                {l.numero > 1 && (
+                  <>
+                    {" · "}
+                    <select
+                      aria-label={`molde de la lámina ${l.numero}`}
+                      value={moldeDe(conMolde(l), total)}
+                      onChange={(e) =>
+                        setMoldes((m) => ({ ...m, [l.numero]: e.target.value as Molde }))
+                      }
+                      className="cursor-pointer rounded border border-neutral-300 bg-transparent px-1 py-0.5 font-mono text-[10px] uppercase tracking-wider text-teal-700 outline-none dark:border-neutral-700 dark:text-teal-400"
+                    >
+                      {moldesPosibles(l, total).map((m) => (
+                        <option key={m} value={m}>
+                          {NOMBRE_MOLDE[m]}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </p>
               <span className="flex gap-3">
                 <label className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400">

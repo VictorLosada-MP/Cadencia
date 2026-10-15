@@ -16,6 +16,8 @@ export type Perfil = {
   tipo: string;
   nucleo: {
     oferta: string;
+    /** Variedades, formatos, cantidades. Lo que una frase de oferta no cabe. */
+    detalle: string;
     cliente: string;
     freno: string;
     despues: string;
@@ -37,6 +39,7 @@ export function perfilDesdeNegocio(n: {
   tipo?: string;
   nombre?: string;
   oferta: string;
+  detalle?: string;
   cliente: string;
   despues: string;
   freno?: string;
@@ -48,6 +51,7 @@ export function perfilDesdeNegocio(n: {
     tipo: n.tipo?.trim() ?? "",
     nucleo: {
       oferta: n.oferta.trim(),
+      detalle: n.detalle?.trim() ?? "",
       cliente: n.cliente.trim(),
       freno: n.freno?.trim() ?? "",
       despues: n.despues.trim(),
