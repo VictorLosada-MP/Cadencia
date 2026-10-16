@@ -54,11 +54,60 @@ npm run dev
 `npm run comprobar` es el atajo cuando algo no arranca: comprueba la forma de
 cada valor, se conecta a la base y te dice si faltan tablas.
 
-`npm run migrar` aplica lo que haya en `db/` y lleva la cuenta de lo aplicado,
-así que se puede correr las veces que haga falta. No necesita `psql` instalado.
+`npm run migrar` aplica **todos** los archivos de `db/`, en orden, cada vez que
+se corre. No lleva ninguna cuenta de cuáles ya pasaron — no hace falta, porque
+cada archivo está escrito para poder repetirse sin cambiar nada (`if not
+exists`, `or replace`, `on conflict do nothing`). Por eso se puede correr las
+veces que haga falta. No necesita `psql` instalado.
 
 Abre http://localhost:3000, crea tu cuenta, llena tu negocio una vez, sube una
 captura de tu perfil o escribe las casillas, y dale a Diagnosticar.
+
+### Desplegar, y la base de producción
+
+**Las migraciones no se corren solas al desplegar.** No están en `build`, ni en
+`postinstall`, ni en `vercel.json`: un `git push` sube el código y deja la base
+como estaba. Es a propósito —una migración que falla a mitad de un despliegue
+deja el sitio caído y a nadie mirando— pero hay que saberlo, porque el código
+nuevo contra el esquema viejo falla en la primera consulta.
+
+El orden correcto es **migrar primero, desplegar después**: el esquema aguanta
+el código viejo (todo lo que entra son columnas y tablas nuevas), y el código
+viejo no se entera de que están ahí. Al revés, no.
+
+`npm run migrar` corre contra lo que diga `DATABASE_URL`, que sale de tu
+`.env.local`. **Si esa variable apunta a la base de producción, correrlo en tu
+máquina YA migró producción.** Si tienes una base aparte para desarrollo, no:
+hay que correrlo otra vez apuntando a la de producción.
+
+Para saber cuál es, sin imprimir ninguna contraseña:
+
+```bash
+npm run comprobar     # entre otras cosas imprime el servidor de DATABASE_URL
+```
+
+Y para migrar producción desde tu máquina, sin tocar tu `.env.local`:
+
+```bash
+DATABASE_URL="postgresql://…la de producción…" npm run migrar
+```
+
+En Supabase, si eso falla por el *pooler*, usa la cadena de conexión **directa**
+(puerto 5432) en vez de la del *Transaction pooler*: el pooler está pensado para
+las consultas de la aplicación, no para cambiar el esquema.
+
+Para comprobar que una migración de verdad entró, en el editor SQL del
+proveedor:
+
+```sql
+select table_name, column_name
+  from information_schema.columns
+ where (table_name = 'negocio' and column_name in ('detalle', 'handle', 'paleta_fondo'))
+    or (table_name = 'plan'    and column_name = 'corridas_funcion')
+ order by table_name, column_name;
+```
+
+Si salen las cuatro filas, el esquema está al día con este repositorio.
 
 ### La base de datos
 
