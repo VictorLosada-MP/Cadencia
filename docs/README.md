@@ -320,6 +320,77 @@ justo la que hace falta para montar el video. El tope va aparte, en `uso_voz`:
 veinte minutos de audio al día por negocio, que es lo que se corresponde con el
 cargo real.
 
+## El tope de intentos, dicho en español
+
+Tres contraseñas mal escritas —que es lo normal cuando no te acuerdas de cuál
+era— y la puerta se cerraba con un `Too many requests. Please try again later.`
+en inglés y sin decir cuánto esperar. La medida estaba bien; contarla así, no.
+
+Ahora el tope se declara en `lib/auth.ts` en vez de dejar el de la librería, por
+dos razones: el suyo solo se enciende en producción —así que esto no se podía
+probar antes de desplegarlo— y era demasiado corto para una persona. Entrar
+admite diez por minuto; crear cuenta y pedir contraseña nueva van por hora,
+porque ahí lo que se frena no es adivinar una clave sino dar de alta cuentas en
+cadena y mandarle correos a direcciones ajenas.
+
+Y `enCristiano` traduce el 429 a lo que hay que hacer, incluido el atajo: si no
+te acuerdas de la contraseña, «olvidé mi contraseña» no tiene que esperar.
+
+## Lo que vende, en detalle
+
+`oferta` es una frase. Con una frase se diagnostica un perfil y no se escribe
+una pieza. Medido con un caso real, al elegir un gancho el sistema devolvía:
+
+> El perfil no especifica las características de cada variedad tostada.
+> No se conoce qué formatos o cantidades de compra ofrece la empresa.
+
+Las dos ciertas, las dos inútiles: **no había dónde ponerlo.** `negocio.detalle`
+es esa casilla, texto libre a propósito — las variedades de un café, los tamaños
+de un taller y los planes de un servicio no caben en el mismo formulario, y uno
+que los fuerce acaba sin llenarse.
+
+Y los tres prompts de la pieza llevan ya la regla que el diagnóstico tenía
+desde antes: **`limites` solo nombra lo que el sistema puede recibir, y dice
+dónde se llena**, con el nombre exacto del campo en pantalla.
+
+Del mismo tirón, `detalle` y `accion` salieron de detrás de «+ afinar más
+(opcional)». La semana escribía *«se puede completar en tu negocio, en "Tu CTA
+de hoy"»* y el dueño abría esa pantalla y no veía ningún campo así. Pedir un
+dato y esconder su casilla es peor que no pedirlo.
+
+## Las tres preguntas se escriben, no se copian
+
+En el banco de la semana eran un guion fijo:
+
+> ¿Qué estás haciendo actualmente para resolver tu problema?
+> ¿Qué es lo que no está funcionando con tu estrategia?
+> ¿Cuánto te costaría seguir así otros seis meses?
+
+Sirven para cualquiera, y por eso no sirven para nadie: una finca de café que le
+vende a tiendas no pregunta por «tu estrategia». Lo que se fija ahora es **el
+trabajo de cada una** —qué hace hoy, qué no le funciona, qué le cuesta seguir
+igual— y las tres se escriben para ese negocio y ese cliente, con sus palabras.
+
+La prueba es la de siempre: cambia el negocio por una panadería; si la pregunta
+sigue sirviendo igual, es una plantilla. Y van prohibidas por su nombre las
+palabras a las que se va solo —«tu problema», «tu estrategia», «tu situación
+actual»—, que son las de un consultor hablándole a otro consultor.
+
+## «Lo que ya publicaste» es solo la cuadrícula
+
+La otra mitad —los textos completos pegados, el lector de enlaces y el botón de
+«usar esto como Cómo hablas»— se quitó entera. Duplicaba el campo del perfil que
+de verdad da su voz y que el sistema exige para escribir, y el botón pisaba lo
+que él ya había escrito a mano. Ni el dueño sabía para qué servía esa mitad.
+
+Y la captura que se sube ahí **sí se aplica ahora en Tu negocio**: de la misma
+lectura salen el ritmo para el diagnóstico y los colores de la marca, que se
+guardan por `PATCH /api/negocio`. Es un PATCH y no el PUT de siempre porque esa
+pantalla no tiene el negocio entero en la mano — mandar un PUT desde ahí
+borraría la voz y las señales. Por lo mismo, la ficha del negocio que va dentro
+del diagnóstico se pinta con `conMarca={false}`: dos botones iguales en la misma
+página hacen dudar de cuál es el bueno.
+
 ## Los colores de su marca
 
 La carátula del video y las láminas del carrusel salían con la misma paleta para
@@ -455,6 +526,31 @@ flota entre dos rayas se ve pegado encima de una foto de papel, no escrito en
 él. Lo mismo con el montaje recortado a mano de la portada agresiva: lo que sí
 se hace es la foto a sangre con velo, el titular en mayúsculas y el último
 renglón en el acento.
+
+### La foto se perdió al partir el molde en seis
+
+Había un solo molde y siempre pintaba la foto del dueño. Al partirlo en seis,
+cuatro se quedaron sin usarla: subía su imagen, no pasaba nada, y no había forma
+de saber por qué. `fondoConFoto` la pone a sangre con un velo opaco en los
+moldes que no tienen hueco propio —una lista de doce ítems sobre una foto no se
+lee con un degradado suave— y portada y texto conservan el suyo.
+
+Y el **arroba va de la segunda lámina en adelante, siempre**, en el pie junto al
+contador. Una lámina se comparte suelta, y suelta sin el arroba de quien la hizo
+trabaja para cualquiera. En `cita` y `plantilla` el pie va sin él porque esos
+dos ya lo imprimen arriba: dos veces en la misma lámina es ruido.
+
+### Tres estilos, y el molde se puede cambiar a mano
+
+«Limpio y cuaderno queda muy poco», y era cierto por dos motivos. Uno: faltaba
+el oscuro de las referencias, que ahora sale del oscuro de SU paleta —si su
+fondo ya es oscuro se usa ese, y si es claro manda su tinta— para que cambie de
+peso sin dejar de ser suyo. Dos: los moldes los reparte el modelo y no se veían,
+así que desde la pantalla parecía que solo había dos opciones.
+
+Ahora cada lámina enseña su molde y se puede cambiar. Las opciones que ofrece
+salen de preguntarle a `moldeDe`: si pidiendo un molde devuelve otro, es que a
+esa lámina le falta su contenido, y ofrecerlo sería un botón que no hace nada.
 
 ### Lo que costó medir
 

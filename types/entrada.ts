@@ -101,9 +101,6 @@ export function rotuloCasilla(p: Plataforma, c: Casilla): string {
  */
 export const MAX_REDES = 2;
 
-/** Lo publicado da el patrón. Para afirmar un "siempre" hacen falta cinco. */
-export const MIN_PIEZAS_PARA_PATRON = 5;
-
 export type EntradaRed = {
   id: string;
   plataforma: Plataforma;
@@ -130,11 +127,19 @@ export const VENTANAS = [
 
 export type Ventana = (typeof VENTANAS)[number];
 
+/**
+ * Lo que ya publicó. Solo la cuadrícula.
+ *
+ * Aquí vivían también los textos completos de sus publicaciones, y se quitaron
+ * enteros: duplicaban «Cómo hablas» del perfil —que es el campo que de verdad
+ * da su voz y que el sistema exige para escribir— y traían un botón de «usar
+ * esto como cómo hablas» que pisaba lo que él ya había escrito a mano. Ni el
+ * dueño sabía para qué servía esa mitad, y tenía razón: para nada que el
+ * perfil no hiciera mejor.
+ */
 export type Publicado = {
   /** Capturas de la cuadrícula: dan ritmo, formato y temas repetidos. */
   cuadriculas: Imagen[];
-  /** Los textos completos. Son la única fuente de las palabras. */
-  textos: string;
   ventana?: Ventana;
 };
 
@@ -172,10 +177,6 @@ export function tieneContenido(r: EntradaRed): boolean {
 }
 
 export function hayPublicado(p: Publicado): boolean {
-  return p.cuadriculas.length > 0 || Boolean(p.textos.trim());
+  return p.cuadriculas.length > 0;
 }
 
-/** Cuántas piezas se distinguen en lo pegado. Separadas por una línea en blanco. */
-export function contarPiezas(textos: string): number {
-  return textos.split(/\n\s*\n/).filter((t) => t.trim()).length;
-}

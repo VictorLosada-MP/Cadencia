@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import {
   CAMPOS_EXTRA,
   CAMPOS_NUCLEO,
+  CAMPOS_PEDIDOS,
   CAMPO_VOZ,
   TIPOS,
   etiquetaNombre,
@@ -85,6 +86,7 @@ export function desdeBase(n: Record<string, unknown>): Negocio {
     freno: t(n.freno),
     accion: t(n.accion),
     voz: t(n.voz),
+    detalle: t(n.detalle),
     // Vale tanto la paleta ya armada como las tres columnas sueltas: por la
     // API llega armada, pero el borrador de una pestaña vieja puede traer lo
     // otro, y perder los colores al recargar sería el mismo fallo de antes.
@@ -103,11 +105,21 @@ export function BloqueNegocio({
   onCambio,
   guardado,
   onGuardado,
+  conMarca = true,
 }: {
   negocio: Negocio;
   onCambio: (c: Partial<Negocio>) => void;
   guardado: boolean;
   onGuardado: () => void;
+  /**
+   * Si se pinta el bloque de la marca.
+   *
+   * En falso cuando esta ficha va dentro del diagnóstico: esa pantalla ya
+   * tiene su propio sitio para subir la cuadrícula —el de «Lo que ya
+   * publicaste», que desde ahí guarda los colores— y dos botones iguales en la
+   * misma página es la clase de duplicado que hace dudar de cuál es el bueno.
+   */
+  conMarca?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -242,7 +254,26 @@ export function BloqueNegocio({
             />
           </div>
 
-          <BloqueMarca negocio={negocio} onCambio={onCambio} />
+          {CAMPOS_PEDIDOS.map((c) => (
+            <div key={c.id}>
+              <label
+                htmlFor={c.id}
+                className="font-mono text-[10px] uppercase tracking-wider text-neutral-500"
+              >
+                {c.etiqueta}
+              </label>
+              <textarea
+                id={c.id}
+                value={negocio[c.id] ?? ""}
+                onChange={(e) => onCambio({ [c.id]: e.target.value })}
+                rows={c.filas}
+                placeholder={c.pista}
+                className="mt-1 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-2 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
+              />
+            </div>
+          ))}
+
+          {conMarca && <BloqueMarca negocio={negocio} onCambio={onCambio} />}
 
           <button
             onClick={() => setAbierto(!abierto)}

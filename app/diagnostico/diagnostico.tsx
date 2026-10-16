@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { leer, guardar } from "@/lib/guardado";
+import { leerCuadricula } from "@/lib/marca";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
@@ -22,11 +23,9 @@ import {
   CASILLAS,
   CASILLAS_VACIAS,
   MAX_REDES,
-  MIN_PIEZAS_PARA_PATRON,
   PLATAFORMAS,
   VENTANAS,
   casillasVisibles,
-  contarPiezas,
   hayPublicado,
   redVacia,
   rotuloCasilla,
@@ -73,7 +72,6 @@ const fuente = (i: Imagen) => `data:${i.media_type};base64,${i.data}`;
  */
 type Guardado = {
   redes?: EntradaRed[];
-  textos?: string;
   ventana?: Ventana;
   /**
    * Las respuestas a medio escribir.
@@ -102,7 +100,6 @@ export default function Diagnostico() {
   ]);
   const [publicado, setPublicado] = useState<Publicado>({
     cuadriculas: [],
-    textos: "",
     ventana: undefined,
   });
   const [negocio, setNegocio] = useState<Negocio>(NEGOCIO_VACIO);
@@ -125,7 +122,7 @@ export default function Diagnostico() {
     const g = leer<Guardado>(GUARDADO, quien);
     if (g) {
       if (g.redes?.length) setRedes(g.redes);
-      setPublicado((p) => ({ ...p, textos: g.textos ?? "", ventana: g.ventana }));
+      setPublicado((p) => ({ ...p, ventana: g.ventana }));
       setRespuestas(g.respuestas ?? {});
       setCreado(g.para ?? null);
     }
@@ -145,7 +142,6 @@ export default function Diagnostico() {
       const sinImagenes = redes.map((r) => ({ ...r, casillas: { ...r.casillas } }));
       guardar(GUARDADO, quien, {
         redes: sinImagenes,
-        textos: publicado.textos,
         ventana: publicado.ventana,
         respuestas,
         para: creado ?? undefined,
@@ -153,7 +149,7 @@ export default function Diagnostico() {
     } catch {
       // Sin espacio o en incógnito: se sigue trabajando, solo no se recuerda.
     }
-  }, [quien, redes, publicado.textos, publicado.ventana, respuestas, creado]);
+  }, [quien, redes, publicado.ventana, respuestas, creado]);
 
   useEffect(() => {
     if (!sesion) return;
@@ -178,12 +174,8 @@ export default function Diagnostico() {
         if (Array.isArray(e?.redes) && e.redes.length && !redes.some(tieneContenido)) {
           setRedes(e.redes);
         }
-        if (e?.publicado && !publicado.textos.trim()) {
-          setPublicado((pub) => ({
-            ...pub,
-            textos: e.publicado.textos ?? "",
-            ventana: e.publicado.ventana,
-          }));
+        if (e?.publicado?.ventana) {
+          setPublicado((pub) => ({ ...pub, ventana: e.publicado.ventana }));
         }
 
         // Y las respuestas a medio escribir solo vuelven si son de ESTE
@@ -209,7 +201,30 @@ export default function Diagnostico() {
     return () => {
       vivo = false;
     };
-  }, [sesion, recuperado, redes, publicado.textos, creado, negocio]);
+  }, [sesion, recuperado, redes, creado, negocio]);
+
+  /**
+   * Los colores que salieron de la cuadrícula, ya guardados en su negocio.
+   *
+   * Se manda por PATCH y no por PUT: esta pantalla no tiene el negocio entero
+   * —la voz y las señales se llenan en otra— y un PUT desde aquí las borraría.
+   */
+  const [marca, setMarca] = useState<"" | "guardada" | "sinNegocio">("");
+
+  async function guardarLaMarca(archivo: File) {
+    const leida = await leerCuadricula(archivo);
+    if (!leida) return;
+    try {
+      const r = await fetch("/api/negocio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paleta: leida.paleta, cuadricula: leida.guardable }),
+      });
+      setMarca(r.ok ? "guardada" : r.status === 409 ? "sinNegocio" : "");
+    } catch {
+      // Que no se guarde la marca no puede estorbar el diagnóstico.
+    }
+  }
 
   const listas = redes.filter(tieneContenido);
   const usadas = redes.map((r) => r.plataforma);
@@ -252,7 +267,6 @@ export default function Diagnostico() {
     pregunta: q.pregunta,
     respuesta: respuestas[q.pregunta] ?? "",
   }));
-  const piezas = contarPiezas(publicado.textos);
 
   if (cargandoSesion) return <main className="mx-auto max-w-5xl px-6 py-14" />;
 
@@ -331,6 +345,7 @@ export default function Diagnostico() {
               correcciones se escriben sobre un negocio que no es el tuyo.
             </p>
             <BloqueNegocio
+              conMarca={false}
               negocio={negocio}
               onCambio={(c) => {
                 const nuevo = { ...negocio, ...c };
@@ -398,21 +413,16 @@ export default function Diagnostico() {
             <span className="font-semibold">La cuadrícula</span> da el ritmo, el
             formato y los temas que se repiten.
           </p>
-          {/* Lo mismo que sube aquí sirve para otra cosa, y si no se dice no se
-              descubre: de esa captura salen también los colores de su marca,
-              que es lo que hace que la carátula del video y las láminas del
-              carrusel se parezcan a lo que ya publica. Ahí se guarda, aquí no:
-              estas capturas se sueltan al terminar la corrida. */}
+          {/* De la misma captura salen dos cosas, y se hacen las dos aquí: el
+              ritmo para el diagnóstico, y los colores de su marca para las
+              portadas. Antes esto solo apuntaba a «Tu negocio» y había que
+              subir la misma imagen dos veces. */}
           <p className="mt-1 text-xs text-neutral-500">
-            Esa misma captura sirve para sacar los colores de tu marca y
-            aplicarlos a tus portadas —{" "}
-            <Link
-              href="/negocio"
-              className="text-teal-700 underline underline-offset-2 hover:no-underline dark:text-teal-400"
-            >
-              se sube en Tu negocio
-            </Link>
-            .
+            {marca === "guardada"
+              ? "Listo: de esta captura saqué los colores de tu marca y los guardé en Tu negocio. Se usan en tus carruseles y en la carátula de tus videos."
+              : marca === "sinNegocio"
+                ? "Guarda primero tu negocio y vuelve a subirla: de aquí salen también los colores de tu marca."
+                : "De esta captura saco además los colores de tu marca, para tus carruseles y la carátula de tus videos."}
           </p>
           <div className="mt-2 flex flex-wrap items-start gap-3">
             {publicado.cuadriculas.map((img, i) => (
@@ -439,43 +449,13 @@ export default function Diagnostico() {
             {publicado.cuadriculas.length < 2 && (
               <SubirImagen
                 etiqueta="Subir captura de la cuadrícula"
-                onImagen={(img) =>
-                  setPublicado({ ...publicado, cuadriculas: [...publicado.cuadriculas, img] })
-                }
+                onImagen={(img, archivo) => {
+                  setPublicado({ ...publicado, cuadriculas: [...publicado.cuadriculas, img] });
+                  void guardarLaMarca(archivo);
+                }}
               />
             )}
           </div>
-
-          <p className="mt-5 text-sm text-neutral-600 dark:text-neutral-400">
-            <span className="font-semibold">Los textos completos</span> son lo
-            único que da tus palabras. Pega los que quieras, separados por una
-            línea en blanco — o pega el enlace y los leo por ti.
-          </p>
-          <PorEnlace
-            onTexto={(t) =>
-              setPublicado((p) => ({
-                ...p,
-                textos: p.textos.trim() ? `${p.textos.trim()}\n\n${t}` : t,
-              }))
-            }
-          />
-          <textarea
-            value={publicado.textos}
-            onChange={(e) => setPublicado({ ...publicado, textos: e.target.value })}
-            rows={6}
-            placeholder={"El texto de una publicación…\n\nEl de otra…"}
-            className="mt-2 w-full rounded-lg border border-neutral-300 bg-neutral-50 p-3 text-sm leading-relaxed outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-          />
-          {piezas > 0 && (
-            <>
-              <p className="mt-1.5 text-xs text-neutral-500">
-                Detecté {piezas} {piezas === 1 ? "pieza" : "piezas"}.
-                {piezas < MIN_PIEZAS_PARA_PATRON &&
-                  ` Con menos de ${MIN_PIEZAS_PARA_PATRON} no se puede afirmar un "siempre" ni un "nunca" — se dirá "en las que subiste".`}
-              </p>
-              <ComoHablas textos={publicado.textos} />
-            </>
-          )}
 
           <label className="mt-5 block">
             <span className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -822,64 +802,14 @@ function Ficha({
   );
 }
 
-/**
- * Leer una publicación desde su enlace. Funciona porque la página publica sus
- * propias etiquetas para que cualquier enlace se previsualice — lo mismo que
- * hace WhatsApp. No siempre lo permiten, y por eso pegar el texto sigue ahí.
- */
-function PorEnlace({ onTexto }: { onTexto: (t: string) => void }) {
-  const [url, setUrl] = useState("");
-  const [leyendo, setLeyendo] = useState(false);
-  const [aviso, setAviso] = useState("");
-
-  async function leer() {
-    setLeyendo(true);
-    setAviso("");
-    try {
-      const r = await fetch("/api/publicacion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "No pude leer ese enlace.");
-      onTexto(d.texto);
-      setUrl("");
-    } catch (e) {
-      setAviso(e instanceof Error ? e.message : "No pude leer ese enlace.");
-    } finally {
-      setLeyendo(false);
-    }
-  }
-
-  return (
-    <div className="mt-2">
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Pega el enlace de una publicación"
-          className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-teal-400"
-        />
-        <button
-          onClick={leer}
-          disabled={leyendo || !url.trim()}
-          className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
-        >
-          {leyendo ? "leyendo…" : "leer el enlace"}
-        </button>
-      </div>
-      {aviso && <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-500">{aviso}</p>}
-    </div>
-  );
-}
-
 function SubirImagen({
   etiqueta,
   onImagen,
 }: {
   etiqueta: string;
-  onImagen: (i: Imagen) => void;
+  /** El archivo va además de la imagen comprimida: la cuadrícula se usa
+   *  también para sacar los colores de su marca, y eso se lee del archivo. */
+  onImagen: (i: Imagen, archivo: File) => void;
 }) {
   const [ocupado, setOcupado] = useState(false);
   const [fallo, setFallo] = useState("");
@@ -889,7 +819,7 @@ function SubirImagen({
     setOcupado(true);
     setFallo("");
     try {
-      onImagen(await comprimir(file));
+      onImagen(await comprimir(file), file);
     } catch {
       setFallo("No se pudo leer esa imagen. Prueba con un PNG o un JPG.");
     } finally {
@@ -1189,62 +1119,6 @@ function Copiable({ texto }: { texto: string }) {
       >
         {copiado ? "copiado" : "copiar"}
       </button>
-    </div>
-  );
-}
-
-/**
- * Lo que publicó, guardado como muestras de cómo habla.
- *
- * Es lo que le saca partido de verdad al lector de enlaces. Una publicación
- * suelta no sirve para afirmar un patrón —una pieza no es un patrón— pero es
- * una muestra buenísima de cómo escribe, que es el campo que casi nadie rellena
- * y el único sin el que la función 3 se niega a escribir nada. Ya está escrito:
- * no hay por qué pedírselo otra vez en otro formulario.
- */
-function ComoHablas({ textos }: { textos: string }) {
-  const [estado, setEstado] = useState<"" | "yendo" | "listo" | "mal">("");
-  const [dicho, setDicho] = useState("");
-
-  async function guardar() {
-    setEstado("yendo");
-    try {
-      const r = await fetch("/api/negocio/voz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ textos }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "No se pudo guardar.");
-      setEstado("listo");
-      setDicho(
-        d.añadidos === 0
-          ? "Ya estaban guardados."
-          : `Guardado${d.añadidos === 1 ? "" : "s"} ${d.añadidos} en «Cómo hablas».`,
-      );
-    } catch (e) {
-      setEstado("mal");
-      setDicho(e instanceof Error ? e.message : "No se pudo guardar.");
-    }
-  }
-
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-3">
-      <button
-        onClick={() => void guardar()}
-        disabled={estado === "yendo"}
-        className="rounded-lg border border-teal-700 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-teal-700 transition hover:bg-teal-50 disabled:opacity-40 dark:border-teal-400 dark:text-teal-400 dark:hover:bg-teal-950/40"
-      >
-        {estado === "yendo" ? "guardando…" : "usar esto como «cómo hablas»"}
-      </button>
-      <p
-        className={`text-xs ${
-          estado === "mal" ? "text-red-700 dark:text-red-400" : "text-neutral-500"
-        }`}
-      >
-        {dicho ||
-          "Estas son tus palabras de verdad. Sin ellas, la función 3 no escribe: sale correcto y no suena a ti."}
-      </p>
     </div>
   );
 }

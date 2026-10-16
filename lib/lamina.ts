@@ -75,6 +75,9 @@ export type Opciones = {
   mano?: string;
 };
 
+/** Contraste que se le exige al texto largo. Por encima del AA de la WCAG. */
+const CLARO = 7;
+
 /** Los colores ya resueltos para un estilo. El papel no es el fondo liso. */
 type Tinta = {
   fondo: string;
@@ -85,6 +88,20 @@ type Tinta = {
 };
 
 function tintas(p: Paleta, estilo: Estilo): Tinta {
+  if (estilo === "oscuro") {
+    // El oscuro de SU paleta, no un negro cualquiera: si su fondo ya es
+    // oscuro se usa ese, y si es claro se le da la vuelta y manda su tinta.
+    // Así el estilo cambia de peso sin dejar de ser suyo.
+    const base = esClaro(p.fondo) ? p.tinta : p.fondo;
+    const fondo = mezclarHex(base, "#000000", 0.3);
+    const letra = esClaro(p.fondo) ? p.fondo : p.tinta;
+    return {
+      fondo,
+      tinta: legibleHex(letra, fondo, CLARO),
+      acento: legibleHex(p.acento, fondo, 4),
+      velo: mezclarHex(fondo, "#FFFFFF", 0.09),
+    };
+  }
   if (estilo !== "cuaderno") {
     return { fondo: p.fondo, tinta: p.tinta, acento: p.acento, velo: mezclarHex(p.fondo, p.tinta, 0.1) };
   }
@@ -94,7 +111,7 @@ function tintas(p: Paleta, estilo: Estilo): Tinta {
   const papel = mezclarHex(p.fondo, "#FFFFFF", esClaro(p.fondo) ? 0.65 : 0.93);
   return {
     fondo: papel,
-    tinta: legibleHex(p.tinta, papel, 7),
+    tinta: legibleHex(p.tinta, papel, CLARO),
     acento: legibleHex(p.acento, papel, 4),
     velo: mezclarHex(papel, p.tinta, 0.1),
   };
@@ -165,6 +182,28 @@ function caja(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/**
+ * La foto a sangre con un velo encima, para los moldes que no tienen un hueco
+ * propio donde ponerla.
+ *
+ * Esto faltaba y era una regresión de los moldes nuevos: antes había un solo
+ * molde y siempre pintaba la foto, y al partirlo en seis, cuatro de ellos se
+ * quedaron sin usarla. El dueño subía su foto, no pasaba nada, y no había
+ * forma de saber por qué.
+ *
+ * El velo es opaco a propósito —una lista de doce ítems encima de una foto no
+ * se lee con un degradado suave— y deja ver lo justo para que se note que hay
+ * una foto debajo.
+ */
+function fondoConFoto(ctx: CanvasRenderingContext2D, foto: Imagen, t: Tinta, fuerza = 0.88) {
+  ctx.save();
+  llenar(ctx, foto, 0, 0, ANCHO, ALTO);
+  ctx.globalAlpha = fuerza;
+  ctx.fillStyle = t.fondo;
+  ctx.fillRect(0, 0, ANCHO, ALTO);
+  ctx.restore();
 }
 
 /** Dibuja la foto recortando para llenar la caja, sin deformarla. */
@@ -258,7 +297,15 @@ function pintarFirma(ctx: CanvasRenderingContext2D, t: Tinta, marca: Marca | nul
 
 // ── El pie ──────────────────────────────────────────────────────────────────
 
-function pintarPie(ctx: CanvasRenderingContext2D, t: Tinta, l: Lamina, total: number, fuente: string) {
+function pintarPie(
+  ctx: CanvasRenderingContext2D,
+  t: Tinta,
+  l: Lamina,
+  total: number,
+  fuente: string,
+  /** Vacío cuando el molde ya lo imprimió arriba: dos veces es ruido. */
+  handle = "",
+) {
   const pie = ALTO - MARGEN - 34;
   ctx.fillStyle = t.tinta;
   ctx.globalAlpha = 0.12;
@@ -267,7 +314,20 @@ function pintarPie(ctx: CanvasRenderingContext2D, t: Tinta, l: Lamina, total: nu
 
   ctx.font = `700 30px ${fuente}`;
   ctx.fillStyle = t.acento;
-  ctx.fillText(`${String(l.numero).padStart(2, "0")} / ${String(total).padStart(2, "0")}`, MARGEN, pie);
+  const cuenta = `${String(l.numero).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
+  ctx.fillText(cuenta, MARGEN, pie);
+
+  // El arroba va de la segunda lámina en adelante, siempre. Una lámina que se
+  // comparte suelta —y se comparten sueltas— sin el arroba de quien la hizo es
+  // una lámina que trabaja para cualquiera.
+  if (handle.trim()) {
+    const ancho = ctx.measureText(cuenta).width;
+    ctx.font = `400 28px ${fuente}`;
+    ctx.fillStyle = t.tinta;
+    ctx.globalAlpha = 0.6;
+    ctx.fillText(`@${handle.trim()}`, MARGEN + ancho + 22, pie + 1);
+    ctx.globalAlpha = 1;
+  }
 
   if (l.numero < total) {
     ctx.font = `600 30px ${fuente}`;
@@ -332,6 +392,7 @@ function pintarPortada(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
  * protagonista y meterle una barra de color le quita lo que lo hace funcionar.
  */
 function pintarCita(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, fuente: string) {
+  if (o.foto) fondoConFoto(ctx, o.foto, t, 0.82);
   const techo = pintarFirma(ctx, t, o.marca, MARGEN, fuente);
   const hayCuerpo = Boolean(l.cuerpo?.trim());
 
@@ -361,6 +422,7 @@ function pintarCita(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Ti
  * referencia funciona.
  */
 function pintarPlantilla(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, fuente: string) {
+  if (o.foto) fondoConFoto(ctx, o.foto, t, 0.9);
   let y = MARGEN;
 
   ctx.font = `800 36px ${fuente}`;
@@ -432,6 +494,7 @@ function pintarPlantilla(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, 
  * clave y lo que hace estén en la misma línea y se lean de un vistazo.
  */
 function pintarLista(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, fuente: string) {
+  if (o.foto) fondoConFoto(ctx, o.foto, t, 0.9);
   const items = l.items ?? [];
   let y = MARGEN;
 
@@ -529,6 +592,7 @@ function pintarLista(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: T
  * palabra se nota.
  */
 function pintarApuntes(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, fuente: string) {
+  if (o.foto) fondoConFoto(ctx, o.foto, t, 0.9);
   const puntos = l.puntos ?? [];
   let y = MARGEN;
 
@@ -669,8 +733,14 @@ export function dibujar(lienzo: HTMLCanvasElement, l: Lamina, o: Opciones): void
 
   // La portada lleva su propio remate: un pie de página debajo del gancho le
   // quita la fuerza, y la referencia tampoco lo tiene.
-  if (molde !== "portada") pintarPie(ctx, t, l, o.total, fuente);
-  else pintarDesliza(ctx, t, l, o.total, fuente);
+  if (molde !== "portada") {
+    // La cita lo lleva arriba con la foto y la plantilla lo firma abajo: en
+    // esos dos el pie va sin arroba para no repetirlo en la misma lámina.
+    const yaFirmado = molde === "cita" || molde === "plantilla";
+    pintarPie(ctx, t, l, o.total, fuente, yaFirmado ? "" : (o.marca?.handle ?? ""));
+  } else {
+    pintarDesliza(ctx, t, l, o.total, fuente);
+  }
 }
 
 /** El «1/9 · DESLIZA» de la portada, que es otra cosa que el pie de dentro. */

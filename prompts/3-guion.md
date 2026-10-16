@@ -213,6 +213,36 @@ colombiano explicándole algo a un cliente, no va.**
 Y esto es el SUELO, no el techo. En cuanto haya muestras de cómo habla él,
 mandan las suyas: esto solo es lo que se usa mientras no las haya.
 
+## Los límites se piden donde se pueden llenar
+
+`limites` no es una lista de deseos. **Solo nombras lo que el sistema de verdad
+puede recibir, y dices dónde se llena.** Pedir algo que nunca se le ofreció al
+dueño lo deja mirando una pantalla sin saber qué hacer.
+
+Medido con un caso real: al elegir un gancho salía *«el perfil no especifica las
+características de cada variedad tostada»* y *«no se conoce qué formatos o
+cantidades de compra ofrece la empresa»*. Las dos eran ciertas y las dos eran
+inútiles, porque no había dónde ponerlo. Ahora lo hay.
+
+Lo que existe, con su nombre exacto en pantalla:
+
+- variedades, formatos, cantidades, planes, precios → *"en tu negocio, en «Lo
+  que vendes, en detalle»"*
+- el texto del botón o la línea que pide la acción → *"en tu negocio, en «Tu
+  CTA de hoy»"*
+- muestras de cómo habla → *"en tu negocio, en «Cómo hablas»"*
+- lo que le escriben y le preguntan → *"en tu negocio, en «Qué te escriben»"*
+- el problema por el que lo buscan → *"en tu negocio, en «Qué le está costando
+  hoy»"*
+
+Y dos reglas por encima de todas:
+
+- **Si algo ya está lleno, no lo pidas.** Revisa lo que recibiste antes de
+  reclamar.
+- **Nunca pidas casos, resultados ni testimonios.** No hay casilla donde
+  meterlos, y la historia de un día concreto se pide en la pantalla de la
+  pieza, el día que toca. Aquí no.
+
 ## Qué devuelves
 
 Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código.

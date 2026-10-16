@@ -19,8 +19,17 @@ export type Negocio = {
   tipo?: TipoNegocio;
   /** El nombre con el que lo encuentran: el de la empresa, o el suyo. */
   nombre?: string;
-  /** Qué vende. */
+  /** Qué vende, en una frase. */
   oferta: string;
+  /**
+   * Lo que vende, en detalle: variedades, formatos, cantidades, planes.
+   *
+   * Existe porque `oferta` es una frase y con una frase no se escribe una
+   * pieza concreta. Medido: al elegir un gancho el sistema devolvía «el perfil
+   * no especifica las características de cada variedad» — y tenía razón, no
+   * había dónde ponerlo.
+   */
+  detalle?: string;
   /** A quién le sirve. */
   cliente: string;
   /** Cómo queda ese cliente después. */
@@ -118,18 +127,36 @@ export const CAMPO_VOZ = {
   filas: 5,
 };
 
-export const CAMPOS_EXTRA = [
+/**
+ * El detalle de la oferta y el CTA. Visibles, no escondidos.
+ *
+ * Estaban los dos detrás de «+ afinar más (opcional)», y el sistema los pide
+ * por su nombre: la semana escribe «se puede completar en tu negocio, en "Tu
+ * CTA de hoy"» y el dueño abría esta pantalla y no veía ningún campo así.
+ * Pedir un dato y esconder su casilla es peor que no pedirlo.
+ */
+export const CAMPOS_PEDIDOS = [
   {
-    id: "freno" as const,
-    etiqueta: "Qué le está costando hoy",
-    pista: "El problema por el que te busca",
-    filas: 2,
+    id: "detalle" as const,
+    etiqueta: "Lo que vendes, en detalle",
+    pista:
+      "Variedades, formatos, cantidades, planes, precios si los dices. Tal cual se lo explicarías a alguien que ya te va a comprar",
+    filas: 4,
   },
   {
     id: "accion" as const,
     etiqueta: "Tu CTA de hoy",
     pista: "El texto del botón o la línea que pide la acción",
     filas: 1,
+  },
+];
+
+export const CAMPOS_EXTRA = [
+  {
+    id: "freno" as const,
+    etiqueta: "Qué le está costando hoy",
+    pista: "El problema por el que te busca",
+    filas: 2,
   },
   {
     id: "senales" as const,
