@@ -111,14 +111,28 @@ export async function cargarContexto(usuarioId: string): Promise<Contexto> {
   // otra vez es hacerle escribir dos veces lo mismo.
   let accion = perfil.nucleo.accion?.texto?.trim() ?? "";
   let accionLeida = false;
-  if (!accion && negocioId) {
+  /**
+   * Si su perfil tiene enlace, y cuál.
+   *
+   * Hace falta para elegir el cierre. Hay tres maneras de cerrar una pieza
+   * —pedir un comentario, mandar al privado o mandar al enlace— y la tercera
+   * solo existe si hay enlace. Sin este dato, el sistema le escribía «link en
+   * mi perfil» a cuentas que no tienen ninguno.
+   */
+  let enlace = "";
+  if (negocioId) {
     const ultima = await ultimaCorrida(negocioId, 1);
-    const redes = (ultima?.entrada as { redes?: { casillas?: { cta?: string } }[] })?.redes ?? [];
-    const visto = redes.map((r) => r.casillas?.cta?.trim()).find(Boolean);
-    if (visto) {
-      accion = visto;
-      accionLeida = true;
+    const redes =
+      (ultima?.entrada as { redes?: { casillas?: { cta?: string; link?: string } }[] })?.redes ??
+      [];
+    if (!accion) {
+      const visto = redes.map((r) => r.casillas?.cta?.trim()).find(Boolean);
+      if (visto) {
+        accion = visto;
+        accionLeida = true;
+      }
     }
+    enlace = redes.map((r) => r.casillas?.link?.trim()).find(Boolean) ?? "";
   }
 
   return {
@@ -132,6 +146,11 @@ export async function cargarContexto(usuarioId: string): Promise<Contexto> {
             accionLeida ? " — leída de su propio perfil, no declarada por él" : ""
           }`
         : "",
+      `\n## Su enlace\n\n${
+        enlace
+          ? `«${enlace}» — leído de su propio perfil. Mandar ahí es una salida real.`
+          : "No tiene enlace en el perfil. NO le escribas «link en mi perfil» ni «el enlace de la bio»: no hay ninguno."
+      }`,
     ].join("\n"),
     voz,
     senales,
