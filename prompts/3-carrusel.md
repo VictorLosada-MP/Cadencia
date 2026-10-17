@@ -23,8 +23,8 @@ relleno. Más de ocho y se abandona a la mitad.
 
 - **La 1 es la portada**, y lleva el gancho elegido **literal**. No lo
   reescribes.
-- **La última pide algo**, apoyándose en su llamada a la acción tal como viene
-  en el Perfil. Si no viene ninguna, invita a escribir y lo dices en `limites`.
+- **La última pide algo**, y qué pide lo eliges tú entre tres — comentar una
+  palabra, escribir al privado o ir al enlace. Está más abajo, en «El cierre».
 - **Las de en medio entregan.** Una idea por lámina: si necesita dos ideas para
   explicarse, son dos láminas o es una idea mal cortada.
 
@@ -79,6 +79,52 @@ la tarjeta, así que no aguanta párrafos largos.
   o dos palabras que va resaltado (*«PROMPT»*, *«EL ERROR»*); `bloque` es el
   contenido; `remate` es la conclusión en tres o cuatro palabras, que se pinta
   resaltada.
+
+## El cierre: hay tres, y eliges tú
+
+La última lámina pide algo, y **qué pide no es siempre lo mismo**. Son tres, y
+cada una sirve para una cosa distinta. Elegir mal no es un detalle: un «escríbeme
+al privado» detrás de una pieza que no ofrece nada que conversar no lo escribe
+nadie, y un «comenta la palabra» cuando no hay nada que mandar deja a cien
+personas esperando algo que no existe.
+
+**1 · Comentar una palabra.** *«Comenta FERMENTA y te mando la plantilla.»*
+
+- Cuando la pieza **promete algo entregable** que el dueño ya tiene: una
+  plantilla, una lista, una guía, un archivo, los precios.
+- Es el que más alcance da —los comentarios empujan la pieza— y además abre la
+  conversación por privado sin pedirla.
+- **Solo si de verdad hay algo que mandar.** Si lo que prometes no existe en el
+  Perfil, no lo uses: lo dirás y no lo podrá cumplir.
+- La palabra va **en mayúsculas, corta y de la pieza** — del tema, no «INFO».
+
+**2 · Escribir al privado.** *«Escríbeme y te digo qué le falta a tu etiqueta.»*
+
+- Cuando lo que sigue **necesita una conversación**: un servicio, un
+  presupuesto, un diagnóstico, algo que depende del caso de cada uno.
+- Menos volumen que el comentario, y mucha más intención.
+- Di **qué va a pasar** cuando escriba, no «escríbeme». Quien escribe quiere
+  saber a qué.
+
+**3 · Ir al enlace.** *«Está todo en el enlace de mi perfil.»*
+
+- Cuando hay **un destino de verdad**: una página, una tienda, una agenda.
+- Mira el bloque **Su enlace** del contexto: si dice que no tiene, **este cierre
+  no existe** y eliges uno de los otros dos.
+- Nunca mandes al enlace algo que cabía en una lámina: el que se va de la app
+  no vuelve.
+
+**Cómo eliges, en orden:**
+
+1. ¿La pieza prometió algo entregable y concreto que el Perfil tiene? → **la
+   palabra en comentarios**.
+2. ¿Lo que sigue depende del caso de cada uno? → **el privado**.
+3. ¿Hay enlace y hay un destino que cumple lo prometido? → **el enlace**.
+4. Si no se cumple ninguna, cierra con el privado y dilo en `limites`.
+
+Y manda su llamada a la acción si la trae: el cierre que elijas se escribe con
+sus palabras, no con una fórmula. Si el Perfil no trae ninguna, lo dices en
+`limites` señalando dónde se llena.
 
 ## Dos marcas, y las mismas en los cuatro
 

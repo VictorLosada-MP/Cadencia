@@ -19,7 +19,7 @@
  * entera, no su color de fondo.
  */
 
-import { esClaro, girarTono, legibleHex, mezclarHex, type Paleta } from "@/lib/marca";
+import { girarTono, legibleHex, mezclarHex, type Paleta } from "@/lib/marca";
 import {
   partirMarcas,
   rolDe,
@@ -78,6 +78,67 @@ export type Opciones = {
 const CLARO = 7;
 
 type Tinta = { fondo: string; tinta: string; acento: string; suave: string };
+
+/**
+ * El fondo es del MODELO, no de su paleta.
+ *
+ * Esto estaba al revés y se notaba: mezclando el hueso de la captura con un
+ * verde oscuro salía un gris frío, y el crema de las manchas salía embarrado.
+ * Y es que el fondo ES parte del modelo — el de Spencer es hueso para todo el
+ * mundo, el de Giowever es blanco, el de alpacka es casi negro. Lo que hace
+ * que una captura sea SUYA no es el tono del papel: es su cara, su arroba y su
+ * color de acento.
+ *
+ * Así que la base va escrita, la marca entra por el acento —y por las manchas,
+ * que sí son de su color— y del fondo solo se tiñe un punto, lo justo para que
+ * no se sienta ajeno.
+ */
+const BASES: Record<Modelo, { fondo: string; tinta: string; tinte: number }> = {
+  captura: { fondo: "#F7F5F1", tinta: "#12100D", tinte: 0.08 },
+  // Casi nada: este modelo ES el blanco. Con un 8% de un verde oscuro el papel
+  // salía gris, y un blanco que deja de ser blanco deja de ser este modelo.
+  minimo: { fondo: "#FFFFFF", tinta: "#000000", tinte: 0.03 },
+  terminal: { fondo: "#241E1A", tinta: "#F2EFEA", tinte: 0.1 },
+  // Aquí el fondo sí es suyo: las manchas van con su color, girado de tono.
+  manchas: { fondo: "#EFE6D8", tinta: "#17120E", tinte: 0.12 },
+};
+
+function tintasDe(modelo: Modelo, p: Paleta): Tinta {
+  const base = BASES[modelo];
+  const fondo = mezclarHex(base.fondo, p.fondo, base.tinte);
+  return {
+    fondo,
+    tinta: legibleHex(base.tinta, fondo, CLARO),
+    acento: legibleHex(p.acento, fondo, 4),
+    // El 62% y no menos: más claro no se lee en una pantalla al sol, que es
+    // donde se mira un carrusel.
+    suave: mezclarHex(fondo, base.tinta, 0.62),
+  };
+}
+
+/**
+ * La foto, recortada dentro de una caja redondeada.
+ *
+ * Cada modelo tiene su sitio para ella y es distinto —debajo del texto en la
+ * captura, dentro de la tarjeta en las manchas— porque un hueco genérico «la
+ * foto de fondo con un velo» es justo lo que hacía que los seis moldes de
+ * antes se parecieran entre sí.
+ */
+function fotoEnCaja(
+  ctx: CanvasRenderingContext2D,
+  foto: Imagen,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r = 32,
+) {
+  ctx.save();
+  caja(ctx, x, y, w, h, r);
+  ctx.clip();
+  llenar(ctx, foto, x, y, w, h);
+  ctx.restore();
+}
 
 // ── Herramientas comunes ────────────────────────────────────────────────────
 
@@ -309,20 +370,6 @@ function marcador(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
 // pie, ni número de página, ni «desliza». Comprobado lámina por lámina en la
 // referencia: las ocho son la misma lámina con otro texto.
 
-function tintasCaptura(p: Paleta): Tinta {
-  // Hacia un blanco CÁLIDO, no al blanco puro: mezclando con #FFFFFF, un fondo
-  // verde oscuro salía gris frío y la lámina parecía apagada. El de la
-  // referencia es un hueso con algo de amarillo.
-  const fondo = esClaro(p.fondo) ? p.fondo : mezclarHex(p.fondo, "#FAF8F3", 0.93);
-  return {
-    fondo,
-    tinta: legibleHex(esClaro(p.tinta) ? p.fondo : p.tinta, fondo, CLARO),
-    acento: legibleHex(p.acento, fondo, 4),
-    // El arroba va al 62% de la tinta, no al 45%: más claro no se leía en una
-    // pantalla al sol, que es donde se mira un carrusel.
-    suave: mezclarHex(fondo, p.tinta, 0.62),
-  };
-}
 
 function pintarCaptura(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta) {
   const f = o.fuentes.interfaz;
@@ -379,19 +426,32 @@ function pintarCaptura(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
   ctx.fillRect(0, 540, ANCHO, 2);
   ctx.globalAlpha = 1;
 
+  // ── La foto, adjunta debajo ──
+  // En una publicación de red social la imagen va DEBAJO del texto, no detrás:
+  // ponerla de fondo con un velo rompe lo único que hace que esta lámina se
+  // lea como una captura. Si la hay, el texto se aprieta para dejarle sitio.
+  const altoFoto = o.foto ? 420 : 0;
+  const suelo = ALTO - 88 - altoFoto - (o.foto ? 44 : 0);
+  if (o.foto) fotoEnCaja(ctx, o.foto, margen, ALTO - 88 - altoFoto, util, altoFoto, 28);
+
   // ── El texto, centrado ──
+  const hueco = suelo - 600;
   let y = 600;
-  const h = encajar(ctx, l.titular, util, 320, 62, 38, { fuente: f, peso: "700", aire: 1.3 });
+  const h = encajar(ctx, l.titular, util, Math.min(320, hueco * 0.5), 62, 34, {
+    fuente: f, peso: "700", aire: 1.3,
+  });
   ctx.font = `700 ${h.tam}px ${f}`;
   ctx.fillStyle = t.tinta;
   y = escribir(ctx, h.lineas, margen, y, h.interlinea, "centro", util);
 
   if (!l.cuerpo?.trim()) return;
-  y += 78;
-  const tam = Math.min(54, h.tam);
-  const lineas = repartirMarcado(ctx, l.cuerpo, util, tam, f, "400", "700");
+  y += o.foto ? 44 : 78;
+  const base = encajar(ctx, l.cuerpo.replace(/[*]/g, ""), util, suelo - y, 54, 28, {
+    fuente: f, peso: "400", aire: 1.34,
+  });
+  const lineas = repartirMarcado(ctx, l.cuerpo, util, base.tam, f, "400", "700");
   pintarMarcado(
-    ctx, lineas, margen, y, Math.round(tam * 1.34), tam, f, "400", "700",
+    ctx, lineas, margen, y, base.interlinea, base.tam, f, "400", "700",
     { normal: t.tinta, marcado: t.tinta }, "centro", util,
   );
 }
@@ -403,15 +463,6 @@ function pintarCaptura(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
 // son un número enorme, una etiqueta en versalitas espaciadas y una frase con
 // palabras en negrita. No hay pie ni contador: el número ES el contador.
 
-function tintasMinimo(p: Paleta): Tinta {
-  const fondo = esClaro(p.fondo) ? mezclarHex(p.fondo, "#FFFFFF", 0.7) : "#FFFFFF";
-  return {
-    fondo,
-    tinta: legibleHex(esClaro(p.tinta) ? "#000000" : p.tinta, fondo, 12),
-    acento: legibleHex(p.acento, fondo, 4),
-    suave: mezclarHex(fondo, p.tinta, 0.55),
-  };
-}
 
 function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, rol: Rol) {
   const f = o.fuentes.geometrica;
@@ -420,6 +471,14 @@ function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: 
 
   ctx.fillStyle = t.fondo;
   ctx.fillRect(0, 0, ANCHO, ALTO);
+
+  // La foto va abajo, centrada y redondeada. Este modelo vive del vacío, así
+  // que la imagen ocupa el hueco de abajo y nunca el fondo: un blanco que deja
+  // de ser blanco deja de ser este modelo.
+  const anchoFoto = 560;
+  const altoFoto = o.foto ? 380 : 0;
+  const techoFoto = 1150 - altoFoto;
+  if (o.foto) fotoEnCaja(ctx, o.foto, (ANCHO - anchoFoto) / 2, techoFoto, anchoFoto, altoFoto, 26);
 
   const firma = () => {
     if (!o.marca?.handle?.trim()) return;
@@ -433,7 +492,7 @@ function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: 
     // Apilada y centrada, con el remate mucho mayor. Sin remate, el titular
     // entero crece: una portada a media altura no para el dedo.
     const remate = l.remate?.trim();
-    const altoTitular = remate ? 520 : 700;
+    const altoTitular = (remate ? 520 : 700) - (o.foto ? 300 : 0);
     const h = encajar(ctx, l.titular.toLocaleUpperCase("es"), util, altoTitular, 86, 44, {
       fuente: f, peso: "700", aire: 1.16,
     });
@@ -444,7 +503,7 @@ function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: 
       : null;
 
     const alto = h.lineas.length * h.interlinea + (r ? r.lineas.length * r.interlinea : 0);
-    let y = Math.max(200, (ALTO - alto) / 2 - 60);
+    let y = Math.max(160, ((o.foto ? techoFoto : ALTO) - alto) / 2 - 40);
 
     ctx.font = `700 ${h.tam}px ${f}`;
     ctx.fillStyle = t.tinta;
@@ -477,7 +536,7 @@ function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: 
   // PORTADA, y pegarlo aquí detrás le añadía una frase suelta sin sitio.
   const cuerpo = l.cuerpo?.trim() ?? "";
   if (cuerpo) {
-    const base = encajar(ctx, cuerpo.replace(/[*]/g, ""), util, 420, 52, 32, {
+    const base = encajar(ctx, cuerpo.replace(/[*]/g, ""), util, techoFoto - y - 40, 52, 30, {
       fuente: f, peso: "400", aire: 1.42,
     });
     const lineas = repartirMarcado(ctx, cuerpo, util, base.tam, f, "400", "700");
@@ -497,16 +556,6 @@ function pintarMinimo(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: 
 // INCLUIDO, que es la mitad del carácter— con los huecos en rojo, viñetas de
 // flecha y un pie con «Guarda esto» y el arroba.
 
-function tintasTerminal(p: Paleta): Tinta {
-  const base = esClaro(p.fondo) ? p.tinta : p.fondo;
-  const fondo = mezclarHex(base, "#1A1512", 0.72);
-  return {
-    fondo,
-    tinta: legibleHex("#F2EFEA", fondo, CLARO),
-    acento: legibleHex(p.acento, fondo, 4.5),
-    suave: mezclarHex(fondo, "#FFFFFF", 0.45),
-  };
-}
 
 function sobreFoto(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t: Tinta, rol: Rol) {
   const f = o.fuentes.condensada;
@@ -580,6 +629,16 @@ function pintarTerminal(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t
 
   ctx.fillStyle = t.fondo;
   ctx.fillRect(0, 0, ANCHO, ALTO);
+  // Aquí sí va al fondo, y muy velada: es una pantalla de consola, y una foto
+  // nítida detrás de veinte líneas de monoespacio no deja leer ninguna.
+  if (o.foto) {
+    ctx.save();
+    llenar(ctx, o.foto, 0, 0, ANCHO, ALTO);
+    ctx.globalAlpha = 0.88;
+    ctx.fillStyle = t.fondo;
+    ctx.fillRect(0, 0, ANCHO, ALTO);
+    ctx.restore();
+  }
 
   const suelo = ALTO - 150;
   let y = 96;
@@ -675,17 +734,6 @@ function pintarTerminal(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t
 // modelo no depende de nada externo. La portada va sin tarjeta, con el título
 // en una serif de display, una pastilla y un pie en versalitas.
 
-function tintasManchas(p: Paleta): Tinta {
-  const fondo = esClaro(p.fondo)
-    ? mezclarHex(p.fondo, "#F2E7D8", 0.55)
-    : mezclarHex(p.fondo, "#F2E7D8", 0.86);
-  return {
-    fondo,
-    tinta: legibleHex(esClaro(p.tinta) ? "#17120E" : p.tinta, fondo, CLARO),
-    acento: legibleHex(p.acento, fondo, 4),
-    suave: mezclarHex(fondo, p.tinta, 0.4),
-  };
-}
 
 /**
  * Una mancha: un círculo al que se le mueven los radios.
@@ -788,6 +836,18 @@ function pintarManchas(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
     destellos(ctx, ANCHO - 140, 430, t.acento, -0.5);
     destellos(ctx, 150, 700, t.tinta, Math.PI - 0.4);
 
+    // En la portada la foto va en un círculo grande a un lado, que es como la
+    // mete este tipo de diseño cuando la mete.
+    if (o.foto) {
+      const lado = 300;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ANCHO - 230, 1080, lado / 2, 0, Math.PI * 2);
+      ctx.clip();
+      llenar(ctx, o.foto, ANCHO - 230 - lado / 2, 1080 - lado / 2, lado, lado);
+      ctx.restore();
+    }
+
     if (l.etiqueta?.trim()) {
       // La pastilla: una cápsula de color con el texto en mayúsculas dentro.
       y += 40;
@@ -830,8 +890,26 @@ function pintarManchas(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
   caja(ctx, cx, cy, cw, ch, 44);
   ctx.fill();
 
-  let y = cy + dentro;
-  const h = encajar(ctx, l.titular, util, 240, 76, 42, { fuente: sans, peso: "800", aire: 1.14 });
+  // La foto va DENTRO de la tarjeta, arriba y con sus esquinas: detrás de las
+  // manchas no se vería, y a sangre taparía el fondo que es la marca.
+  //
+  // Y se lleva lo que SOBRE, no una altura fija. Con 330 fijos y una lámina
+  // con etiqueta, bloque y remate no cabía todo: el remate se salía por debajo
+  // de la tarjeta. Primero se reserva lo que el texto necesita de verdad, y la
+  // foto entra solo si lo que queda da para verla.
+  const paraTexto =
+    120 +
+    (l.etiqueta?.trim() ? 108 : 0) +
+    (l.remate?.trim() ? 128 : 0) +
+    ((l.bloque?.trim() || l.cuerpo?.trim() || "").length > 10 ? 170 : 0);
+  const sobra = ch - dentro * 2 - paraTexto - 44;
+  const altoFoto = o.foto && sobra >= 180 ? Math.min(330, sobra) : 0;
+  if (altoFoto) fotoEnCaja(ctx, o.foto!, margen, cy + dentro, util, altoFoto, 28);
+
+  let y = cy + dentro + (altoFoto ? altoFoto + 44 : 0);
+  const h = encajar(ctx, l.titular, util, altoFoto ? 150 : 240, 76, 36, {
+    fuente: sans, peso: "800", aire: 1.14,
+  });
   ctx.font = `800 ${h.tam}px ${sans}`;
   ctx.fillStyle = t.tinta;
   y = escribir(ctx, h.lineas, margen, y, h.interlinea);
@@ -867,7 +945,9 @@ function pintarManchas(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
   }
 
   if (l.remate?.trim()) {
-    y += 48;
+    // Clavado dentro de la tarjeta: si el texto de arriba creció, el remate se
+    // queda en su sitio en vez de salirse por el borde de abajo.
+    y = Math.min(y + 48, cy + ch - 124);
     ctx.font = `800 48px ${sans}`;
     const texto = l.remate.trim();
     const w = Math.min(ctx.measureText(texto).width, util - 40);
@@ -878,13 +958,6 @@ function pintarManchas(ctx: CanvasRenderingContext2D, l: Lamina, o: Opciones, t:
 }
 
 // ── El despacho ─────────────────────────────────────────────────────────────
-
-const TINTAS: Record<Modelo, (p: Paleta) => Tinta> = {
-  captura: tintasCaptura,
-  minimo: tintasMinimo,
-  terminal: tintasTerminal,
-  manchas: tintasManchas,
-};
 
 const PINTORES: Record<
   Modelo,
@@ -911,8 +984,8 @@ export function dibujar(lienzo: HTMLCanvasElement, l: Lamina, o: Opciones): void
   if (!ctx) return;
 
   ctx.textBaseline = "top";
-  const modelo = TINTAS[o.modelo] ? o.modelo : "captura";
-  PINTORES[modelo](ctx, l, o, TINTAS[modelo](o.paleta), rolDe(l.numero, o.total));
+  const modelo = BASES[o.modelo] ? o.modelo : "captura";
+  PINTORES[modelo](ctx, l, o, tintasDe(modelo, o.paleta), rolDe(l.numero, o.total));
 }
 
 export function aPng(lienzo: HTMLCanvasElement): Promise<Blob> {
