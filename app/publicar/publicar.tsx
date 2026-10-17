@@ -1,25 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-cliente";
 import { Barra } from "../barra";
-import { ALTO, ANCHO, PALETAS, aPng, dibujar, type Marca, type Paleta } from "@/lib/lamina";
-import { esperarFuente, manuscrita } from "../fuentes";
 import {
-  ESTILOS,
-  NOMBRE_MOLDE,
-  moldeDe,
-  moldesPosibles,
+  ALTO,
+  ANCHO,
+  PALETAS,
+  aPng,
+  dibujar,
+  fuentesDe,
+  type Marca,
+  type Paleta,
+} from "@/lib/lamina";
+import { FUENTES, esperarFuentes } from "../fuentes";
+import {
+  MODELOS,
   esCarrusel,
-  esEstilo,
+  esModelo,
   grabaDe,
   mismaFrase,
   type Carrusel,
-  type Estilo,
   type Guion,
-  type Lamina,
-  type Molde,
+  type Modelo,
   type Pieza,
 } from "@/types/guion";
 import { apuntarHecho } from "@/lib/hecho";
@@ -304,45 +308,33 @@ function DeCarrusel({
   const paleta: Paleta = (paletas.find((p) => p.id === paletaId) ?? paletas[0]).p;
   const total = c.laminas?.length ?? 0;
   /**
-   * El estilo con el que se escribió, y que se puede repintar.
+   * El modelo con el que se escribió, y que se puede repintar.
    *
-   * Arranca en el que eligió en el paso 3 porque el texto se midió para ese;
-   * cambiarlo aquí no gasta corrida —los dos estilos saben pintar los seis
-   * moldes— pero en el cuaderno el renglón es más corto, así que la pantalla
-   * lo dice en vez de dejar que lo descubra viendo un titular apretado.
+   * Arranca en el que eligió en el paso 3 porque el texto se midió para ese:
+   * un modelo pide una etiqueta corta y otro un bloque de diez líneas.
+   * Repintar a otro no gasta corrida, pero lo que ese modelo no pidió se queda
+   * vacío, y la pantalla lo dice en vez de dejar que lo descubra con una
+   * lámina coja.
    */
-  const [estilo, setEstilo] = useState<Estilo>(esEstilo(c.estilo) ? c.estilo : "limpio");
-  /**
-   * El molde que el dueño eligió a mano para una lámina, si lo cambió.
-   *
-   * El reparto automático acierta casi siempre, pero «casi» no es «siempre», y
-   * dejar la pantalla sin forma de corregirlo convertía un acierto del 90% en
-   * una lámina que no se puede arreglar. Vacío = el que escribió el modelo.
-   */
-  const [moldes, setMoldes] = useState<Record<number, Molde>>({});
-  const conMolde = useCallback(
-    (l: Lamina): Lamina => (moldes[l.numero] ? { ...l, molde: moldes[l.numero] } : l),
-    [moldes],
-  );
-  const mano = manuscrita.style.fontFamily;
+  const [modelo, setModelo] = useState<Modelo>(esModelo(c.modelo) ? c.modelo : "captura");
 
   useEffect(() => {
     let vivo = true;
-    // Se espera a la letra a mano antes de pintar: el canvas no espera a nada y
+    // Se espera a las letras antes de pintar: el canvas no espera a nada y
     // pintaría la primera pasada con la de palo, sin avisar.
     void (async () => {
-      if (estilo === "cuaderno") await esperarFuente(mano);
+      await esperarFuentes(fuentesDe(modelo, FUENTES));
       if (!vivo) return;
       c.laminas?.forEach((l, i) => {
         const lienzo = lienzos.current[i];
         if (lienzo) {
           dibujar(lienzo, l, {
             paleta,
-            estilo,
+            modelo,
             total,
             foto: fotos[l.numero],
             marca: firma,
-            mano,
+            fuentes: FUENTES,
           });
         }
       });
@@ -350,7 +342,7 @@ function DeCarrusel({
     return () => {
       vivo = false;
     };
-  }, [c.laminas, paleta, estilo, total, fotos, firma, mano, conMolde]);
+  }, [c.laminas, paleta, modelo, total, fotos, firma]);
 
   async function ponerFoto(numero: number, archivo: File | undefined | null) {
     if (!archivo) return;
@@ -423,31 +415,33 @@ function DeCarrusel({
 
       <fieldset className="mt-5">
         <legend className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-          Estilo
+          Modelo
         </legend>
         <p className="mb-2 mt-0.5 text-xs text-neutral-500">
-          Repintar no gasta corrida. Ojo con una cosa: el texto se escribió
-          midiendo para el que elegiste en el paso 3 —en cuaderno el renglón es
-          más corto—, así que al cambiar revisa que todo siga cabiendo.
+          Repintar no gasta corrida. Ojo con una cosa: el texto se escribió para
+          el que elegiste en el paso 3, y cada modelo pide campos distintos —
+          al cambiar, lo que ese modelo no pidió se queda vacío.
         </p>
-        <div className="flex flex-wrap gap-2">
-          {ESTILOS.map((e) => (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {MODELOS.map((m) => (
             <button
-              key={e.id}
-              onClick={() => setEstilo(e.id)}
-              title={e.que}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
-                estilo === e.id
-                  ? "border-teal-700 font-semibold dark:border-teal-400"
+              key={m.id}
+              onClick={() => setModelo(m.id)}
+              className={`rounded-lg border p-3 text-left transition ${
+                modelo === m.id
+                  ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
                   : "border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
               }`}
             >
-              {e.nombre}
-              {c.estilo === e.id && (
-                <span className="ml-1.5 font-mono text-[10px] uppercase text-neutral-500">
-                  escrito para este
-                </span>
-              )}
+              <p className="font-semibold leading-snug">
+                {m.nombre}
+                {c.modelo === m.id && (
+                  <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                    escrito para este
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">{m.que}</p>
             </button>
           ))}
         </div>
@@ -496,25 +490,6 @@ function DeCarrusel({
             <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
                 lámina {l.numero}
-                {l.numero > 1 && (
-                  <>
-                    {" · "}
-                    <select
-                      aria-label={`molde de la lámina ${l.numero}`}
-                      value={moldeDe(conMolde(l), total)}
-                      onChange={(e) =>
-                        setMoldes((m) => ({ ...m, [l.numero]: e.target.value as Molde }))
-                      }
-                      className="cursor-pointer rounded border border-neutral-300 bg-transparent px-1 py-0.5 font-mono text-[10px] uppercase tracking-wider text-teal-700 outline-none dark:border-neutral-700 dark:text-teal-400"
-                    >
-                      {moldesPosibles(l, total).map((m) => (
-                        <option key={m} value={m}>
-                          {NOMBRE_MOLDE[m]}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
               </p>
               <span className="flex gap-3">
                 <label className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-teal-700 underline underline-offset-4 hover:no-underline dark:text-teal-400">

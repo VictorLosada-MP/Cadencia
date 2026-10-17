@@ -109,147 +109,118 @@ export type Guion = {
 };
 
 /**
- * El aire del carrusel. Se elige ANTES de escribir, y por eso no es una piel.
+ * Los modelos de carrusel. Se elige ANTES de escribir, y cada uno es un sistema
+ * entero: su portada, sus láminas de dentro y su cierre.
  *
- * Cambia lo que el prompt escribe, no solo cómo se pinta: en papel rayado y con
- * letra a mano un renglón aguanta seis palabras, no veinte, así que el estilo
- * decide el largo de cada cosa y qué moldes tienen sentido. Repintar de uno a
- * otro después sigue siendo gratis —los dos saben pintar los seis moldes— pero
- * el texto se escribió midiendo para el que eligió.
+ * Aquí hubo antes «estilos» y «moldes» —dos ejes que se combinaban— y era un
+ * autoengaño: los seis moldes compartían el mismo esqueleto (un solo margen de
+ * 88 px, todo alineado a la izquierda, el mismo pie) y lo único que de verdad
+ * cambiaba era el adorno. Se veían como la misma plantilla repintada porque lo
+ * eran. Estos cuatro salen de carruseles completos, no de portadas, y cada uno
+ * trae su propia estructura: dónde se alinea, si lleva pie o no, qué
+ * tipografía, y qué campos hacen falta para llenarlo.
  */
-export const ESTILOS = [
+export const MODELOS = [
   {
-    id: "limpio" as const,
-    nombre: "Limpio",
-    que: "Tipografía y color, mucho aire. Como una cita en fondo liso o una plantilla en oscuro.",
+    id: "captura" as const,
+    nombre: "Captura",
+    que: "Como una publicación de red social: tu foto y tu arroba arriba, el texto centrado y mucho aire.",
+    /** Lo que el prompt tiene que llenar, además de titular y cuerpo. */
+    campos: [] as const,
   },
   {
-    id: "cuaderno" as const,
-    nombre: "Cuaderno",
-    que: "Papel rayado y letra a mano. Texto corto y escaneable, como unos apuntes.",
+    id: "minimo" as const,
+    nombre: "Mínimo",
+    que: "Blanco y letras negras. Un número enorme, una etiqueta y una frase. Tu firma abajo.",
+    campos: ["etiqueta", "remate"] as const,
   },
   {
-    id: "oscuro" as const,
-    nombre: "Oscuro",
-    que: "El oscuro de tu paleta, con el acento encima. Para plantillas y cosas que se copian.",
+    id: "terminal" as const,
+    nombre: "Terminal",
+    que: "Monoespacio sobre oscuro, con huecos para rellenar. La portada y el cierre van sobre foto.",
+    campos: ["etiqueta", "bloque", "puntos"] as const,
+  },
+  {
+    id: "manchas" as const,
+    nombre: "Manchas",
+    que: "Manchas de color, tarjeta encima y subrayados de marcador. Sin una sola foto.",
+    campos: ["etiqueta", "bloque", "remate"] as const,
   },
 ];
 
-export type Estilo = (typeof ESTILOS)[number]["id"];
+export type Modelo = (typeof MODELOS)[number]["id"];
 
-export const esEstilo = (v: unknown): v is Estilo =>
-  ESTILOS.some((e) => e.id === v);
+export const esModelo = (v: unknown): v is Modelo => MODELOS.some((m) => m.id === v);
 
-/**
- * El molde de cada lámina. Lo reparte el modelo por lo que hace la lámina, no
- * el dueño lámina por lámina: en las referencias un mismo carrusel abre con un
- * gancho visual, desarrolla en lista o apuntes y cierra con una cita.
- *
- * Y no son skins: cada uno pide una forma de contenido distinta. Una lista son
- * pares cortos, una plantilla es un bloque con huecos, una cita es una frase
- * con peso. Pintar los seis sobre `titular + cuerpo` era justo lo que hacía que
- * todos salieran iguales.
- */
-export const MOLDES = ["portada", "cita", "plantilla", "lista", "apuntes", "texto"] as const;
-
-export type Molde = (typeof MOLDES)[number];
-
-export const NOMBRE_MOLDE: Record<Molde, string> = {
-  portada: "Portada",
-  cita: "Cita",
-  plantilla: "Plantilla",
-  lista: "Lista",
-  apuntes: "Apuntes",
-  texto: "Texto",
-};
+export const modeloPorId = (id: string) => MODELOS.find((m) => m.id === id);
 
 /**
- * Los moldes con los que ESTA lámina se puede pintar de verdad.
- *
- * Se calcula preguntándole a `moldeDe`: si pidiendo un molde devuelve otro, es
- * que a la lámina le falta su contenido y ofrecerlo sería ofrecer un botón que
- * no hace nada. La primera lámina no entra: es la portada y punto.
+ * Qué hace cada lámina según dónde está. No lo elige el modelo del lenguaje:
+ * la primera para el dedo, las de en medio entregan, la última pide algo. Eso
+ * es la posición, no una decisión, y pedírsela era darle ocasión de fallar.
  */
-export function moldesPosibles(l: Lamina, total: number): Molde[] {
-  if (l.numero === 1) return ["portada"];
-  return MOLDES.filter(
-    (m) => m !== "portada" && moldeDe({ ...l, molde: m }, total) === m,
-  );
+export type Rol = "portada" | "desarrollo" | "cierre";
+
+export function rolDe(numero: number, total: number): Rol {
+  if (numero <= 1) return "portada";
+  if (numero >= total && total > 2) return "cierre";
+  return "desarrollo";
 }
-
-/** Un ítem de una lámina `lista`: lo que se busca y qué hace. */
-export type ItemLista = { clave: string; que: string };
 
 export type Lamina = {
   numero: number;
-  /** Ausente en las corridas de antes de los moldes: esas se pintan "texto". */
-  molde?: Molde;
   titular: string;
   cuerpo: string;
   /** Qué se ve en la lámina. Nada de "imagen inspiradora". */
   imagen: string;
-  /** Solo en `plantilla`: la línea pequeña bajo el titular. */
-  subtitulo?: string;
-  /** Solo en `lista`: los ítems escaneables. */
-  items?: ItemLista[];
-  /** Solo en `apuntes`: los puntos sueltos. */
+  /** La etiqueta pequeña: «PROMPT», «LEY DEL INTERCAMBIO», el pie de portada. */
+  etiqueta?: string;
+  /** El bloque que se copia, con los huecos entre corchetes. */
+  bloque?: string;
+  /** Viñetas cortas. */
   puntos?: string[];
-  /** Solo en `apuntes`: la caja de conclusión del final. */
+  /** La línea grande que remata la portada, o el resultado del final. */
   remate?: string;
 };
+
+/**
+ * Parte un texto en trozos con y sin marca.
+ *
+ * Dos marcas, y las dos existen porque los modelos de referencia las usan:
+ * `[entre corchetes]` es un hueco que el lector cambia por lo suyo, y
+ * `*entre asteriscos*` es una palabra con peso. Según el modelo se pintan en
+ * el color de acento, en negrita o con un trazo de marcador detrás — pero
+ * quien escribe el texto marca lo mismo en todos.
+ */
+export type Trozo = { texto: string; marca: "" | "hueco" | "fuerte" };
+
+export function partirMarcas(texto: string): Trozo[] {
+  const trozos: Trozo[] = [];
+  const re = /\[[^\]\n]{1,80}\]|\*[^*\n]{1,80}\*/g;
+  let desde = 0;
+  for (let m = re.exec(texto); m; m = re.exec(texto)) {
+    if (m.index > desde) trozos.push({ texto: texto.slice(desde, m.index), marca: "" });
+    const hueco = m[0].startsWith("[");
+    trozos.push({
+      // Los corchetes se quedan —son parte de lo que se copia— y los
+      // asteriscos no: son marca de formato, no texto.
+      texto: hueco ? m[0] : m[0].slice(1, -1),
+      marca: hueco ? "hueco" : "fuerte",
+    });
+    desde = m.index + m[0].length;
+  }
+  if (desde < texto.length) trozos.push({ texto: texto.slice(desde), marca: "" });
+  return trozos;
+}
 
 export type Carrusel = {
   laminas: Lamina[];
   /** El que eligió antes de escribir. Ausente en las corridas de antes. */
-  estilo?: Estilo;
+  modelo?: Modelo;
   descripcion: string;
   valor: string;
   limites: string[];
 };
-
-const vacio = (s?: string) => !s?.trim();
-
-/**
- * El molde con el que SE PINTA una lámina, que no siempre es el que pidió.
- *
- * Un molde sin su contenido no es un molde: una `lista` sin ítems pintaría una
- * lámina en blanco con un titular arriba. Antes de hacerle caso se comprueba
- * que traiga lo suyo, y si no, se cae a `texto`, que solo necesita titular y
- * cuerpo. Las corridas viejas no traen `molde` y caen aquí también.
- */
-export function moldeDe(l: Lamina, total: number): Molde {
-  const pedido = l.molde;
-
-  if (pedido === "portada" || (!pedido && l.numero === 1)) return "portada";
-  if (pedido === "lista") return l.items?.length ? "lista" : "texto";
-  if (pedido === "apuntes") return l.puntos?.length ? "apuntes" : "texto";
-  if (pedido === "plantilla") return vacio(l.cuerpo) ? "texto" : "plantilla";
-  if (pedido === "cita") return "cita";
-
-  // Sin molde y sin cuerpo, en la última: es el cierre, y el cierre es cita.
-  if (!pedido && l.numero === total && vacio(l.cuerpo)) return "cita";
-  return "texto";
-}
-
-/**
- * Los trozos entre corchetes de una plantilla — `[idioma]`, `[minutos]`.
- *
- * Es lo que en la referencia va en rojo: los huecos que el lector cambia por lo
- * suyo. Se devuelve partido para poder pintarlos en otro color sin medir dos
- * veces la misma línea.
- */
-export function partirHuecos(texto: string): { texto: string; hueco: boolean }[] {
-  const partes: { texto: string; hueco: boolean }[] = [];
-  const re = /\[[^\]\n]{1,80}\]/g;
-  let desde = 0;
-  for (let m = re.exec(texto); m; m = re.exec(texto)) {
-    if (m.index > desde) partes.push({ texto: texto.slice(desde, m.index), hueco: false });
-    partes.push({ texto: m[0], hueco: true });
-    desde = m.index + m[0].length;
-  }
-  if (desde < texto.length) partes.push({ texto: texto.slice(desde), hueco: false });
-  return partes;
-}
 
 /**
  * Compara dos frases sin que una coma decida que son distintas.

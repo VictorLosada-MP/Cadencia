@@ -121,6 +121,44 @@ function legible(c: Color, fondo: Color, minimo: number): Color {
   return hacia;
 }
 
+/**
+ * El mismo color con el tono girado. Los grados van de 0 a 360.
+ *
+ * Existe para las manchas del fondo: sacadas todas del acento, salían tres
+ * variaciones del mismo color y el fondo se veía embarrado. Girando el tono se
+ * consiguen tres colores que se distinguen y que siguen siendo de su paleta.
+ */
+export function girarTono(hex: string, grados: number): string {
+  const c = deHex(hex);
+  if (!c) return hex;
+  const r = c.r / 255;
+  const g = c.g / 255;
+  const b = c.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (!d) return hex;
+  const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h =
+    max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h / 6 + grados / 360) % 1;
+  if (h < 0) h += 1;
+
+  const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat;
+  const pp = 2 * l - q;
+  const canal = (t: number) => {
+    let x = t;
+    if (x < 0) x += 1;
+    if (x > 1) x -= 1;
+    if (x < 1 / 6) return pp + (q - pp) * 6 * x;
+    if (x < 1 / 2) return q;
+    if (x < 2 / 3) return pp + (q - pp) * (2 / 3 - x) * 6;
+    return pp;
+  };
+  return aHex({ r: canal(h + 1 / 3) * 255, g: canal(h) * 255, b: canal(h - 1 / 3) * 255 });
+}
+
 /** Mezcla dos colores. `parte` 0 es todo el primero, 1 todo el segundo. */
 export function mezclarHex(a: string, b: string, parte: number): string {
   const ca = deHex(a);

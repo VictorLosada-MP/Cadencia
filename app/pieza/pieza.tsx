@@ -15,8 +15,8 @@ import {
   type Ganchos,
   type Guion,
   type Pieza,
-  ESTILOS,
-  type Estilo,
+  MODELOS,
+  type Modelo,
 } from "@/types/guion";
 import { historiaQuePide } from "@/types/banco";
 import { Contarla } from "./historia";
@@ -72,14 +72,14 @@ export default function Guion() {
   });
   const [verTodos, setVerTodos] = useState(!familiaVenida);
   /**
-   * El aire del carrusel, y se elige ANTES de escribir.
+   * El modelo del carrusel, y se elige ANTES de escribir.
    *
-   * No es una piel que se pueda poner al final: en papel rayado y con letra a
-   * mano un renglón aguanta seis palabras, no veinte, así que el prompt escribe
-   * midiendo para el que se elija aquí. Repintarlo luego en el paso 4 sigue
-   * siendo gratis.
+   * No es una piel que se pueda poner al final: cada modelo pide campos
+   * distintos —una etiqueta corta, un bloque con huecos, una línea de remate—
+   * y largos distintos. El prompt escribe PARA el que se elija aquí.
+   * Repintarlo luego en el paso 4 sigue siendo gratis.
    */
-  const [estilo, setEstilo] = useState<Estilo>("limpio");
+  const [modelo, setModelo] = useState<Modelo>("captura");
   const [idea, setIdea] = useState(venida?.idea ?? "");
   const [angulo, setAngulo] = useState(venida?.angulo ?? "");
   const [deLaSemana] = useState<string | null>(venida?.dia ?? null);
@@ -137,7 +137,7 @@ export default function Guion() {
           angulo,
           idea_afilada: ganchos?.idea_afilada,
           gancho: elegido,
-          estilo,
+          modelo,
           historia,
         }),
       });
@@ -239,36 +239,35 @@ export default function Guion() {
         {formato && familiaDe(formato) === "carrusel" && (
           <div className="mt-5 rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
             <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-              ¿Con qué aire?
+              ¿Qué modelo de carrusel?
             </p>
             <p className="mb-2.5 mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
               Se elige ahora y no al final porque cambia lo que se escribe, no
-              solo cómo se pinta: en un cuaderno escrito a mano un renglón
-              aguanta seis palabras, no veinte.
+              solo cómo se pinta: cada modelo pide cosas distintas y de largos
+              distintos.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {ESTILOS.map((e) => (
+              {MODELOS.map((m) => (
                 <button
-                  key={e.id}
-                  onClick={() => setEstilo(e.id)}
+                  key={m.id}
+                  onClick={() => setModelo(m.id)}
                   className={`rounded-lg border p-3 text-left transition ${
-                    estilo === e.id
+                    modelo === m.id
                       ? "border-teal-700 bg-teal-50 dark:border-teal-400 dark:bg-teal-950/30"
                       : "border-neutral-300 hover:border-teal-700 dark:border-neutral-700 dark:hover:border-teal-400"
                   }`}
                 >
-                  <p className="font-semibold leading-snug">{e.nombre}</p>
+                  <p className="font-semibold leading-snug">{m.nombre}</p>
                   <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
-                    {e.que}
+                    {m.que}
                   </p>
                 </button>
               ))}
             </div>
             <p className="mt-2.5 text-xs text-neutral-500">
-              El sistema reparte el molde de cada lámina por lo que hace: la
-              portada con el gancho, el desarrollo en lista o apuntes, el cierre
-              con una frase. Repintar al estilo del otro, en el paso 4, no gasta
-              corrida.
+              La primera lámina para el dedo, las de en medio entregan y la
+              última pide algo: eso lo reparte el sitio que ocupa cada una.
+              Repintar a otro modelo, en el paso 4, no gasta corrida.
             </p>
           </div>
         )}
