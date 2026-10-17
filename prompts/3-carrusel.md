@@ -17,80 +17,83 @@ existen. Las del medio entregan de verdad. La última pide algo.
 **De 5 a 8 láminas.** Menos de cinco no es un carrusel, es una imagen con
 relleno. Más de ocho y se abandona a la mitad.
 
-## Las láminas y sus moldes
+## Las láminas, y el modelo que las pinta
 
-Cada lámina se pinta con un **molde**, y lo eliges tú por lo que esa lámina
-tiene que hacer. No es decoración: cada molde pide una forma de contenido
-distinta, y rellenar el campo equivocado deja la lámina en blanco.
+**Dónde está cada lámina decide qué hace**, y eso no lo eliges tú:
 
-**Las reglas de sitio, y no se negocian:**
+- **La 1 es la portada**, y lleva el gancho elegido **literal**. No lo
+  reescribes.
+- **La última pide algo**, apoyándose en su llamada a la acción tal como viene
+  en el Perfil. Si no viene ninguna, invita a escribir y lo dices en `limites`.
+- **Las de en medio entregan.** Una idea por lámina: si necesita dos ideas para
+  explicarse, son dos láminas o es una idea mal cortada.
 
-- **La 1 es siempre `portada`**, y lleva el gancho elegido **literal**. No lo
-  reescribes. Va solo, sin cuerpo.
-- **La última es siempre `cita`**, y pide algo apoyándose en su llamada a la
-  acción tal como viene en el Perfil. Si no viene ninguna, invita a escribir y
-  lo dices en `limites`.
-- **De la 2 a la penúltima eliges el molde** según lo que vayas a decir. Una
-  idea por lámina: si necesita dos ideas para explicarse, son dos láminas o es
-  una idea mal cortada.
+Lo que **sí** cambia con el modelo es **qué campos llenas y de qué largo**. Te
+llega el modelo elegido y escribes para ese. Son cuatro:
 
-**Los seis moldes, y qué campos llena cada uno:**
+### Captura
 
-| molde | cuándo | llena |
-|---|---|---|
-| `portada` | solo la 1 | `titular` |
-| `cita` | la última, y cualquiera que sea una afirmación con peso | `titular` (la frase), `cuerpo` (dos o tres líneas) |
-| `lista` | cuando lo que entregas son cosas que se buscan de un vistazo | `titular`, `items` |
-| `plantilla` | cuando entregas algo que se copia y se rellena | `titular`, `subtitulo`, `cuerpo` |
-| `apuntes` | cuando explicas un concepto con sus partes | `titular`, `puntos`, `remate` |
-| `texto` | una explicación corrida que no es ninguna de las anteriores | `titular`, `cuerpo` |
+Una publicación de red social: su cara y su arroba arriba, el texto centrado,
+mucho aire. Las ocho láminas son la misma lámina con otro texto.
 
-Lo que pide cada uno, con detalle:
+- `titular`: de tres a ocho palabras. Es la frase con peso.
+- `cuerpo`: una o dos frases, y se puede leer sola.
+- Nada más. Este modelo no usa `etiqueta`, `bloque`, `puntos` ni `remate`.
 
-**`cita`** — `titular` es la frase, de seis a catorce palabras, y tiene que
-sostenerse sola sin lo de abajo. `cuerpo` la desarrolla en dos o tres líneas. No
-lleva lista ni iconos: el texto es lo único que hay.
+### Mínimo
 
-**`lista`** — `items` lleva de cuatro a doce. Cada uno es `{"clave": "...",
-"que": "..."}`: la `clave` es lo corto que se busca con el ojo —un comando, un
-paso, un nombre— de una a tres palabras, y `que` es lo que hace, **menos de ocho
-palabras**. Si una descripción no cabe en ocho palabras, no es un ítem de lista:
-es una lámina.
+Blanco y letras negras. La portada apila el titular en mayúsculas y remata con
+una línea mucho mayor; las de dentro son un número enorme, una etiqueta y una
+frase. Cabe poco y se nota: aquí sobra el adorno.
 
-**`plantilla`** — `cuerpo` es el bloque que el lector copia tal cual. Lo que él
-tiene que cambiar por lo suyo va **entre corchetes**: `[tu rubro]`,
-`[minutos]`, `[lo que vendes]`. Se pinta en otro color, así que los corchetes no
-son un adorno: son la instrucción. `subtitulo` es una línea de qué hace esa
-plantilla.
+- **Portada**: `titular` de seis a doce palabras, y `remate` de **una a tres
+  palabras** — es la línea gigante del final (*«8 LEYES»*, *«SIN EXCUSAS»*).
+- **Dentro**: `etiqueta` de dos a cuatro palabras, el nombre de ese punto
+  (*«LEY DEL INTERCAMBIO»*), y `cuerpo` de una o dos frases cortas.
+- `titular` también va dentro, aunque no se pinte: es lo que se ve si el dueño
+  repinta a otro modelo.
 
-**`apuntes`** — `puntos` lleva de tres a cinco, cada uno **de una línea**, y se
-pintan resaltados. `remate` es la conclusión en una frase, la que va en la caja
-del final.
+### Terminal
 
-**Y en todos**: `imagen` es qué se ve, concreto — *"captura de su propia cuenta
-con el número tapado"*, *"una libreta con tres líneas escritas a mano"*.
-**Prohibido** *"imagen inspiradora"*, *"foto de gente sonriendo"* o cualquier
-cosa que describa un banco de imágenes en vez de una lámina.
+Monoespacio sobre oscuro, con huecos para rellenar. Portada y cierre van sobre
+foto, con el titular en mayúsculas.
 
-**No repitas molde tres veces seguidas.** Un carrusel que son seis listas
-seguidas se abandona en la tercera. Alterna: lo que entrega, lo que explica, lo
-que afirma.
+- **Portada y cierre**: `titular` corto y con fuerza. En el cierre, `etiqueta`
+  es el enlace o el sitio al que mandas (*«tusitio.com/algo»*, *«link en mi
+  perfil»*).
+- **Dentro**: `titular` de tres a ocho palabras; `etiqueta` es una línea de qué
+  hace eso; `bloque` es el texto que el lector copia tal cual; `puntos` son de
+  dos a cuatro viñetas de una línea.
+- Es el modelo de las plantillas: lo que el lector tiene que cambiar por lo
+  suyo va **entre corchetes**.
 
-## El estilo manda sobre el largo
+### Manchas
 
-Te llega el estilo que eligió el dueño, y cambia cuánto cabe:
+Manchas de color y una tarjeta encima. Sin foto. El texto va centrado dentro de
+la tarjeta, así que no aguanta párrafos largos.
 
-- **Limpio** — tipografía sobre fondo liso. El cuerpo aguanta dos frases, los
-  titulares hasta ocho palabras, y las plantillas pueden ser de ocho o diez
-  líneas.
-- **Cuaderno** — papel rayado y letra a mano. Un renglón escrito a mano aguanta
-  **seis o siete palabras**, no veinte. Aquí: titulares de tres a seis palabras,
-  cuerpos de una frase, descripciones de `items` de cinco palabras, puntos de
-  `apuntes` de una línea corta. Y prefieres `lista` y `apuntes` sobre `texto`:
-  unos apuntes son listas y subrayados, no párrafos.
+- **Portada**: `titular` de dos a cinco palabras —va en una serif enorme—,
+  `etiqueta` es la frase de la pastilla (de tres a seis palabras), y `remate`
+  el pie pequeño de debajo.
+- **Dentro**: `titular` de tres a siete palabras; `etiqueta` es el rótulo de una
+  o dos palabras que va resaltado (*«PROMPT»*, *«EL ERROR»*); `bloque` es el
+  contenido; `remate` es la conclusión en tres o cuatro palabras, que se pinta
+  resaltada.
 
-Si el estilo es cuaderno y lo que querías decir no cabe en seis palabras, no lo
-aprietas con abreviaturas: lo partes en dos láminas.
+## Dos marcas, y las mismas en los cuatro
+
+Dentro de cualquier texto puedes marcar dos cosas. Se pintan distinto según el
+modelo —en el color de acento, en negrita o con un trazo de marcador detrás—
+pero tú marcas igual en todos:
+
+- `[entre corchetes]` es un **hueco**: lo que el lector cambia por lo suyo.
+  `[tu rubro]`, `[minutos]`, `[lo que vendes]`.
+- `*entre asteriscos*` es una **palabra con peso**. `No solo *recibas*, aprende
+  a *dar*.` Dos o tres por lámina como mucho: si va todo marcado, no hay nada
+  marcado.
+
+Los asteriscos desaparecen al pintar; los corchetes se quedan, porque son parte
+de lo que se copia.
 
 ## Se lee de reojo
 
@@ -260,41 +263,20 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
   "laminas": [
     {
       "numero": 1,
-      "molde": "portada",
       "titular": "el gancho elegido, literal",
       "cuerpo": "",
+      "etiqueta": "solo si el modelo la pide",
+      "remate": "solo si el modelo lo pide",
       "imagen": "qué se ve, concreto"
     },
     {
       "numero": 2,
-      "molde": "lista",
       "titular": "lo que se lee grande",
-      "cuerpo": "",
-      "items": [{ "clave": "lo corto", "que": "qué hace, menos de ocho palabras" }],
-      "imagen": "qué se ve, concreto"
-    },
-    {
-      "numero": 3,
-      "molde": "plantilla",
-      "titular": "lo que se lee grande",
-      "subtitulo": "qué hace esta plantilla, una línea",
-      "cuerpo": "el bloque que se copia, con los [huecos] entre corchetes",
-      "imagen": "qué se ve, concreto"
-    },
-    {
-      "numero": 4,
-      "molde": "apuntes",
-      "titular": "lo que se lee grande",
+      "cuerpo": "una o dos frases, con *lo importante* marcado",
+      "etiqueta": "el rótulo corto, si el modelo lo pide",
+      "bloque": "el texto que se copia, con los [huecos] entre corchetes",
       "puntos": ["una línea", "otra línea"],
-      "remate": "la conclusión, una frase",
-      "cuerpo": "",
-      "imagen": "qué se ve, concreto"
-    },
-    {
-      "numero": 5,
-      "molde": "cita",
-      "titular": "la frase que se sostiene sola",
-      "cuerpo": "dos o tres líneas que la desarrollan",
+      "remate": "la conclusión corta, si el modelo la pide",
       "imagen": "qué se ve, concreto"
     }
   ],
@@ -304,11 +286,10 @@ Solo un objeto JSON válido. Sin texto antes ni después, sin bloques de código
 }
 ```
 
-`laminas` lleva entre 5 y 8, numeradas desde 1. La primera es `portada` con el
-gancho literal y la última es `cita`.
+`laminas` lleva entre 5 y 8, numeradas desde 1. La primera es el gancho literal
+y la última pide algo.
 
-**Cada lámina lleva `molde`, `titular`, `cuerpo` e `imagen` siempre** —`cuerpo`
-en cadena vacía cuando ese molde no lo usa— y además los campos de su molde.
-Una lámina con `"molde": "lista"` y sin `items` sale en blanco: el sistema la
-pinta como `texto` para que no se rompa, y entonces el molde que elegiste no
-sirvió de nada.
+**`titular`, `cuerpo` e `imagen` van siempre**, en todas, aunque ese modelo no
+pinte alguno: son lo que permite repintar a otro modelo sin volver a escribir.
+`etiqueta`, `bloque`, `puntos` y `remate` van **solo cuando el modelo elegido
+los pide** — ponerlos donde no van es trabajo que nadie va a ver.
